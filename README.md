@@ -2,7 +2,7 @@
 
 这是一个每隔一段时间把himawari8卫星对地球的图像设为桌面背景的程序。图像的分辨率可以达到11000x11000！
 
-<img src="https://github.com/zhengqingquan/gallery/blob/main/himawari8-observer/1/235000_0_0.png?raw=true" width="300">
+<img src="https://github.com/zhengqingquan/gallery/blob/main/himawari8-observer/1/235000_0_0.png?raw=true" width="300" >
 <img src="https://github.com/zhengqingquan/gallery/blob/main/himawari8-observer/1/154000_0_0.png?raw=true" width="300">
 
 
