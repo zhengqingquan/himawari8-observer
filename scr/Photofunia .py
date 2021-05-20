@@ -1,3 +1,6 @@
+"""
+png图片的合成
+"""
 from PIL import Image
 
 

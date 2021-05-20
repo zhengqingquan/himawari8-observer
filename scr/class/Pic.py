@@ -3,6 +3,8 @@ class Pic:
     pic_pixel = 550
     suffix = ".png"
     pic_size = 0  # 图片大小
+    pic_chip = 0  # 图片有多少张。
+    dl_state = 0  # 下载状态，0：下载。1下载完成。2下载中断
 
     def __init__(self, dic_info):
         self.equal = dic_info.equal  # 被等分为多少块

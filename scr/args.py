@@ -2,7 +2,8 @@
 参数解析部分
 """
 import argparse
-from scr.head.define import *
+from head.define import *
+
 
 def parse_args():
     description = """
@@ -38,23 +39,8 @@ def parse_args():
                         "--stop",
                         default=False,
                         help="stop download.")
-
     # 解析器解析参数。它将检查命令行，把每个参数转换为适当的类型然后调用相应的操作。
-    # args = parser.parse_args()
-
-    # print(type(args))
-    # print(args)
-
-    # ================================================
-    # parser = argparse.ArgumentParser(description='Process some integers.')
-    # parser.add_argument('integers', metavar='N', type=int, nargs='+',
-    #                     help='an integer for the accumulator')
-    # parser.add_argument('--sum', dest='accumulate', action='store_const',
-    #                     const=sum, default=max,
-    #                     help='sum the integers (default: find the max)')
-
     args = parser.parse_args()
-    # print(args.accumulate(args.integers))
     return args
 
 
