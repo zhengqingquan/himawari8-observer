@@ -2,7 +2,6 @@
 
 给出一个时间点，需要能得到这个时间点的全部图片
 """
-import time
 
 # 例如现在给出时间点
 # 20210515052000 14：20：00
@@ -11,9 +10,8 @@ import time
 # 如果下载的是空的，则会创建一个空的文件。
 
 # 如果是空文件，加入图片的时候会抛出一个错误。PIL.UnidentifiedImageError: cannot identify image file 'try4.png'
-from scr.dlpic import *
-from scr.folder import *
-import time
+from dl.dlpic import *
+from tool.folder import *
 
 equal = "20d"
 year = "2021"

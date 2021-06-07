@@ -2,6 +2,7 @@
 png图片的合成
 """
 from PIL import Image
+import os
 
 
 def photo_composition2(array_pic, equal, save_path):
@@ -84,13 +85,50 @@ def photo_composition(array_pic, equal, save_path):
     joint.save(save_path)
 
 
+def cls_photo_composition(pic):
+    """
+    Finish
+    将多张碎片照片合成一张完整的照片。
+    :param pic:Pic类，表示某张照片。
+    :return:
+    """
+    axis_x = 0
+    axis_y = 0
+    joint = Image.new("RGB", (pic.pic_side, pic.pic_side))
+    for key, val in pic.dic.items():
+        img = Image.open(val[0])
+        joint.paste(img, (pic.pic_pixel * axis_x, pic.pic_pixel * axis_y))  # (x，y)
+        axis_x += 1
+        if axis_x >= pic.equal_int:
+            axis_x = 0
+            axis_y += 1
+    joint.save(pic.final_path)
+    print(f"图片合成结束。路径为：{os.path.abspath(pic.final_path)}")
+
+
 def fix_pic(file, margin, path):
-    joint = Image.new("RGB", (11000 + margin * 2, 11000 + margin * 2))# 12100
+    """
+    将图片从11000*11000像素，变成12100*12100像素。为了美观，用于增加黑边，不会被任务栏遮挡。
+    :param file:原文件路径。
+    :param margin:边缘的宽度，如果是要变成12100，则该值为550，单位为：像素。
+    :param path:保持后的文件路径。
+    :return:None
+    """
+    joint = Image.new("RGB", (11000 + margin * 2, 11000 + margin * 2))
     img = Image.open(file)
     joint.paste(img, (margin, margin))  # (x，y)
     print("正在合成。。")
     joint.save(path)
     print("合成完毕。")
+
+
+def png_to_jpg(path):
+    quality = 95  # 将pngz图片质量，1~95（1最差，95最高），默认75。
+    path = 'C:/Users/96400/Downloads/154000_0_0.png'
+    img = Image.open(path)
+    new_img = Image.new("RGB", img.size)
+    new_img.paste(img, (0, 0))
+    new_img.convert('RGB').save('C:/Users/96400/Downloads/your.jpg', "JPEG", quality=quality)
 
 
 if __name__ == "__main__":
@@ -107,4 +145,5 @@ if __name__ == "__main__":
     # # print(len(arr_pic))
     # photo_composition(array_pic=arr_pic, save_path="../img/20210515052000/complete/temp1.png", equal="")
 
-    fix_pic("../img/20210515052000/complete/temp1.png", 550, "../img/20210515052000/complete/fix_temp1.png")
+    # fix_pic("../img/20210515052000/complete/temp1.png", 550, "../img/20210515052000/complete/fix_temp1.png")
+    png_to_jpg('C:/Users/96400/Downloads/154000_0_0.png')
