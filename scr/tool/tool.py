@@ -5,7 +5,6 @@ import sys
 from _datetime import datetime
 from datetime import datetime
 from time import strftime
-
 from tool.folder import *
 
 
@@ -57,15 +56,14 @@ def print_dic(dic):
     print(f"字典的长度为：{len(dic)}")
 
 
-def png_to_jpg():
+def time_dic(time, equal_int):
     """
-    TODO:可能需要把png转化成jpg格式。
-    :return:
+    Finish
+    将时间和碎片整合成一个字典类型。
+    :param time:时间
+    :param equal_int:碎片
+    :return:字典类型。
     """
-    pass
-
-
-def time_dic(time, equal):
     year = strftime("%Y", time)
     month = strftime("%m", time)
     day = strftime("%d", time)
@@ -73,7 +71,7 @@ def time_dic(time, equal):
     minute = strftime("%M", time)
     seconds = strftime("%S", time)
     dic_info = {
-        "equal_str": equal,
+        "equal_str": equal_int,
         "year": year,
         "month": month,
         "day": day,
@@ -94,7 +92,7 @@ def time_zones():
 
 def time_to_url_1d(time):
     """
-    根据时间获取550分辨率的url。
+    根据时间获取550分辨率的url。默认1d
     :param time:类型是time.struct_time类
     :return:
     """
