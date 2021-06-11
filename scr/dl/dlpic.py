@@ -33,6 +33,7 @@ def dl_dic_pic(pic, request):
             for chunk in r.iter_content(chunk_size=chunk_size):
                 file.write(chunk)
                 file_size += len(chunk)
+                print(file_size)
             # 判断某张碎图是否下载完成。
             if file_size == int(size):
                 pic.dic[url][1] = 1

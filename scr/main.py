@@ -90,6 +90,8 @@ def main2():
         # 获取时间
         time_str = get_last_time(requester)
 
+        # exit(1)
+
         # 实例化图片
         main_pic = Pic(time_str, args.equal)
 
@@ -104,7 +106,7 @@ def main2():
         cls_photo_composition(main_pic)
 
         # 替换桌面
-        pic_wallpaper(main_pic)
+        # pic_wallpaper(main_pic)
 
     except Exception as e:  # e代表error，可以用来访问异常中的一些关键字。
         print(e.__class__.__name__)

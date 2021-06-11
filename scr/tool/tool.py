@@ -174,6 +174,15 @@ def dic_url_path(arr_url, arr_path):
     return dic
 
 
+def to_greenwich_time(time, zone):
+    """
+    将传入的时间转为格林威治时间
+    :param time: 传入的时间
+    :param zone: 时区，与格林威治时间相差多少个小时
+    :return:
+    """
+
+
 if __name__ == '__main__':
     import dl.dlinit
 
