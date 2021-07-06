@@ -1,0 +1,2 @@
+2021-06-23 17:23:09,773 - connectionpool.py[line:695] - INFO: Starting new HTTPS connection (1): himawari8-dl.nict.go.jp
+2021-06-23 17:23:10,527 - connectionpool.py[line:695] - INFO: Starting new HTTPS connection (1): himawari8.nict.go.jp

@@ -53,12 +53,12 @@ def post_requests(request):
     res = request.post(url=url, data=data, verify=verify, proxies=proxies, stream=stream)
     print(f"请求状态为：{res.status_code}")
     print(f"文件大小为：{res.headers['Content-Length']}")
-    if res.status_code is 200:
-        with open(path, "wb") as file:
-            for chunk in res.iter_content(chunk_size=chunk_size):
-                file.write(chunk)
-                file_size += len(chunk)
-                print(file_size)
+    # if res.status_code is 200:
+    #     with open(path, "wb") as file:
+    #         for chunk in res.iter_content(chunk_size=chunk_size):
+    #             file.write(chunk)
+    #             file_size += len(chunk)
+    #             print(file_size)
 
 
 def get_hash(request):

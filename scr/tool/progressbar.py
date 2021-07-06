@@ -6,14 +6,17 @@ from dl.dlpic import dl_pic_2
 url = "https://himawari8.nict.go.jp/img/D531106/1d/550/2021/05/21/012000_0_0.png"
 path = "../test/temp2.png"
 
-# print("第一句话")
+print("第一句话")
 # print("第二句话",end="\r")
 # print("第四句话",end="\r")
-#
-# print("\n第三句话")
+print("\r第五句话", end='')
+print("\r第六句话", end='')
+print("第七句话")
+print("\r第八句话\r")
+print("\n第三句话")
 
 
-dl_pic_2(url, path)
+# dl_pic_2(url, path)
 
 
 def progressbar():
@@ -29,5 +32,5 @@ def progressbar():
 #     time.sleep(5)
 #     bar()  # we're done! 3 calls with total=3
 
-if __name__ == '__main__':
-    pass
+# if __name__ == '__main__':
+#     pass

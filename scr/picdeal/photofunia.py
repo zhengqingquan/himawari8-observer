@@ -111,7 +111,7 @@ def fix_pic(file, margin, path):
     将图片从11000*11000像素，变成12100*12100像素。为了美观，用于增加黑边，不会被任务栏遮挡。
     :param file:原文件路径。
     :param margin:边缘的宽度，如果是要变成12100，则该值为550，单位为：像素。
-    :param path:保持后的文件路径。
+    :param path:保存后的文件路径。
     :return:None
     """
     joint = Image.new("RGB", (11000 + margin * 2, 11000 + margin * 2))
