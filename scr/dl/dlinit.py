@@ -5,7 +5,6 @@ import requests
 import json
 from time import strptime
 import time
-  
 
 def test_request(times=20):
     """
