@@ -5,7 +5,8 @@
 <img src="https://github.com/zhengqingquan/gallery/blob/main/himawari8-observer/1/235000_0_0.png?raw=true" width="300" >
 <img src="https://github.com/zhengqingquan/gallery/blob/main/himawari8-observer/1/154000_0_0.png?raw=true" width="300">
 
-
+https://himawari8.nict.go.jp/
+https://sc-nc-web.nict.go.jp/wsdb_osndisk/shareDirDownload/bDw2maKV
 
 
 ## 目前支持：

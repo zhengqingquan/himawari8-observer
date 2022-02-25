@@ -3,7 +3,6 @@ import requests
 from lxml import etree
 from dl.dlinit import dl_init
 
-
 class Pic(object):
     """
     图片分为两种下载方式，碎片方式和完整方式。

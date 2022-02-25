@@ -20,7 +20,7 @@ def test_request(times=20):
     url = "https://himawari8.nict.go.jp/img/D531106/thumbnail/550/2021/05/18/023000_0_0.png"
     time_dl_start = time.perf_counter()  # 开始时间
     r = requests.Session()  # 让request保持连接
-    temp = 0
+    temp = 1
     while temp < times:
         print(f"第{temp}次连接")
         r.get(url, verify=verify, proxies=proxies, stream=stream)
