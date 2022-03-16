@@ -3,20 +3,21 @@ import requests
 from lxml import etree
 from dl.dlinit import dl_init
 
+
 class Pic(object):
     """
     图片分为两种下载方式，碎片方式和完整方式。
     碎片下载方式（equal way）：图片在下载过程中根据像素被分为多份，分别下载，最后再合成一张图片。
     完整下载方式（complete way）：图片在下载过程中就是一张完整的图片。
     """
-    himawari8_base = "https://himawari8.nict.go.jp/img/D531106"  # 碎片下载方式使用的url
+    himawari8_base = "https://himawari8.nict.go.jp/img/D531106"  # 碎片下载方式使用的url，后面会合成完整的下载方式，不应该被修改
     sc_nc_web_base = "https://sc-nc-web.nict.go.jp/wsdb_osndisk/fileSearch/download"  # 完整下载方式使用的url
-    hash_base = "https://sc-nc-web.nict.go.jp/wsdb_osndisk/shareDirDownload/bDw2maKV"  # 获取hash值时使用的url
+    hash_base = "https://sc-nc-web.nict.go.jp/wsdb_osndisk/shareDirDownload/bDw2maKV"  # 获取Token时使用的url
     suffix = "png"  # 图片类型后缀
     pic_pixel = 550  # 图片基本像素大小
     pic_size = 0  # 图片大小
     dl_finish_equal = False  # 碎片下载方式下，图片是否下载完成的状态位
-    dl_finish_cpl = False  #完整下载方式下，图片是否下载完成的状态位
+    dl_finish_cpl = False  # 完整下载方式下，图片是否下载完成的状态位
 
     def __init__(self, pic_time, equal):
         """
@@ -44,29 +45,37 @@ class Pic(object):
         self.pic_side = self.pic_pixel * self.int_equal  # 图片的边为多少像素
 
         # 存储图片时的顶级路径的文件夹名称，例如：img
+        # 用于下载时保存的文件夹名称，可以修改。
         self.folder_top = "img"
 
         # 存放完整图片的文件夹名称，例如：complete
+        # 用于下载时保存的文件夹名称，可以修改。
         self.folder_complete = "complete"
 
         # 存储文件夹名称，例如：20210515052000
+        # 用于下载时保存的文件夹名称，可以修改。
         self.folder_root = f"{self.year}{self.month}{self.day}{self.hour}{self.minute}{self.seconds}"
 
         # 碎片下载方式下，最终的图片名，例如：20d20210603052000.png
+        # 该名称用于构建下载时使用的url，为固定格式，不应该被修改。
         self.pic_name_equal = f"{self.str_equal}" \
                               f"{self.year}{self.month}{self.day}{self.hour}{self.minute}{self.seconds}.{self.suffix}"
 
         # 完整下载方式下，最终的图片名，例如：hima820210608022000fd.png
+        # 该名称用于构建下载时使用的url，为固定格式，不应该被修改。
         self.pic_name_cpl = f"hima8" \
                             f"{self.year}{self.month}{self.day}{self.hour}{self.minute}{self.seconds}fd.{self.suffix}"
 
         # 存储的当前文件夹目录，用来创建文件夹。例如：..img/20d20210515052000/complete
+        # 用于下载时保存的文件夹路径，不建议修改。
         self.folder_path = f"../{self.folder_top}/{self.folder_root}/{self.folder_complete}"
 
-        # 碎片下载方式下，最终的图片相对路径，用来最终的合成。例如：..img/20210515052000/complete/20d20210603052000.png
+        # 碎片下载方式下，最终的图片相对路径，用来最终合成。例如：..img/20210515052000/complete/20d20210603052000.png
+        # 用于下载时保存的文件夹路径，不建议修改。
         self.final_path_equal = f"{self.folder_path}/{self.pic_name_equal}"
 
         # 完整下载方式下，最终的图片相对路径，用来下载。例如..img/20210515052000/complete/hima820210608022000fd.png
+        # 用于下载时保存的文件夹路径，不建议修改。
         self.final_path_cpl = f"{self.folder_path}/{self.pic_name_cpl}"
 
         # 在碎片下载方式下，构建url和path的映射
@@ -83,6 +92,8 @@ class Pic(object):
         print(f"正在构建url和path的映射字典。")
         location_x = 0
         location_y = 0
+
+        # 构建文件夹时防止当20d的情况下会下载20x20，共四百张图片在一个文件夹中，这里做了写分开的组合。
         while location_y < self.int_equal:
             while location_x < self.int_equal:
                 # 下载时url使用的碎片图片的名称，例如：084000_3_0.png
