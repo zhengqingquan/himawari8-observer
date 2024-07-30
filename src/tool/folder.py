@@ -1,12 +1,9 @@
 """
-folder.py
-
 创建文件夹
 """
 
 import os
 from time import strftime
-
 
 def create_dic_folder(time, equal="20d"):
     """

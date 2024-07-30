@@ -5,6 +5,7 @@
 import os
 import ctypes
 from pathlib import Path
+import logging
 
 def pic_wallpaper(pic):
     """
@@ -30,7 +31,7 @@ def path_wallpaper(wallpaper_path: Path):
         SPI_SETDESKWALLPAPER = 20
         SPIF_UPDATEINIFILE = 1
         SPIF_SENDCHANGE = 2
-        ctypes.windll.user32.SystemParametersInfoW(SPI_SETDESKWALLPAPER, 0, os.path.abspath(wallpaper_path), 0)
+        ctypes.windll.user32.SystemParametersInfoW(SPI_SETDESKWALLPAPER, 0, os.path.abspath(wallpaper_path), SPIF_UPDATEINIFILE)
 
         logging.info(f'图片替换完成。')
 
@@ -40,7 +41,6 @@ def path_wallpaper(wallpaper_path: Path):
         return False
 
 if __name__ == "__main__":
-    import logging
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
     logging.info(f'当前工作路径：{Path.cwd()}')
     path_wallpaper(Path(r'./tool/8d20240723031000.png'))

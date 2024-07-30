@@ -1,7 +1,7 @@
 from time import strftime
 import requests
 from lxml import etree
-from dl.dlinit import dl_init
+from src.dl.dlinit import dl_init
 
 
 class Pic(object):

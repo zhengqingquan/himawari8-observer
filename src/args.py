@@ -1,9 +1,9 @@
 """
 参数解析部分
 """
-import argparse
-from head.define import *
 
+import argparse
+from src.head.define import *
 
 def arge_init():
     """
@@ -33,8 +33,8 @@ def arge_init():
                         "--equal",
                         type=str,
                         choices=["1d", "4d", "8d", "16d", "20d"],
-                        default="4d",
-                        const="4d",
+                        default="8d",
+                        const="8d",
                         action="store",
                         dest="equal",
                         nargs="?",
@@ -57,8 +57,8 @@ def arge_init():
                         "--download",
                         type=str,
                         choices=["complete", "equal"],
-                        default="complete",
-                        const="complete",
+                        default="equal",
+                        const="equal",
                         dest="dl_way",
                         action="store",
                         nargs="?",

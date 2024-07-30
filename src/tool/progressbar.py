@@ -1,7 +1,7 @@
 """
 进度条
 """
-from dl.dlpic import dl_pic_2
+# from dl.dlpic import dl_pic_2
 
 url = "https://himawari8.nict.go.jp/img/D531106/1d/550/2021/05/21/012000_0_0.png"
 path = "../test/temp2.png"

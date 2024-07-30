@@ -5,6 +5,8 @@ import time
 import os
 from lxml import etree
 import logging
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 
 
 def dl_dic_pic(pic, request):
@@ -16,18 +18,25 @@ def dl_dic_pic(pic, request):
     """
     print("下载开始。")
     proxies = {'http': None, 'https': None}  # 不使用代理
-    verify = False  # 关闭验证SSL证书
+    verify = True  # 关闭验证SSL证书
     stream = True  # 不会立马开始下载，默认是False
     dl_count = 1  # 计数值，正在下载第张图片
     file_size = 0  # 计数值，已经写入的文件大小
     chunk_size = 1024  # 每次下载的块大小
+
+    # 设置重试策略
+    retries = Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
+    adapter = HTTPAdapter(max_retries=retries)
+    request.mount('http://', adapter)
+    request.mount('https://', adapter)
+
     for url, path in pic.dic.items():
         file_path = os.path.abspath(path[0])  # 查看下载时的绝对路径
         print(f"正在下载第{dl_count}张图片。")
         print(f"当前下载的url为：{url}")
         print(f"当前下载的path为：{file_path}")
 
-        r = request.get(url, verify=verify, proxies=proxies, stream=stream)
+        r = request.get(url, verify=verify, proxies=proxies, stream=stream, timeout=(5, 14))
         print(f"请求状态为：{r.status_code}")
 
         pic_size = r.headers['Content-Length']  # 预下载的文件大小。单位：B（字节）
@@ -55,7 +64,7 @@ def dl_dic_pic(pic, request):
         print("图片全部下载完成！")
     else:
         print("未下载完成！")
-    return pic.dl_finish
+    return pic.dl_finish_equal
 
 
 def dl_post_pic(pic, request):
@@ -170,6 +179,7 @@ if __name__ == '__main__':
     # dl_pic_2(temp_url, temp_path)
     # 无网络会报requests.exceptions.ConnectionError错误。
     from cls.Pic import *
+    from cls import Pic
     from tool.tool import *
     from dl.dlinit import *
 

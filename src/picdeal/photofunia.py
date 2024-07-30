@@ -99,11 +99,11 @@ def cls_photo_composition(pic):
         img = Image.open(val[0])
         joint.paste(img, (pic.pic_pixel * axis_x, pic.pic_pixel * axis_y))  # (x，y)
         axis_x += 1
-        if axis_x >= pic.equal_int:
+        if axis_x >= pic.int_equal:
             axis_x = 0
             axis_y += 1
-    joint.save(pic.final_path)
-    print(f"图片合成结束。路径为：{os.path.abspath(pic.final_path)}")
+    joint.save(pic.final_path_equal)
+    print(f"图片合成结束。路径为：{os.path.abspath(pic.final_path_equal)}")
 
 
 def fix_pic(file, margin, path):
@@ -124,11 +124,11 @@ def fix_pic(file, margin, path):
 
 def png_to_jpg(path):
     quality = 95  # 将pngz图片质量，1~95（1最差，95最高），默认75。
-    path = 'C:/Users/96400/Downloads/154000_0_0.png'
+    # path = 'C:/Users/96400/Downloads/154000_0_0.png'
     img = Image.open(path)
     new_img = Image.new("RGB", img.size)
     new_img.paste(img, (0, 0))
-    new_img.convert('RGB').save('C:/Users/96400/Downloads/your.jpg', "JPEG", quality=quality)
+    new_img.convert('RGB').save(r'G:\work\himawari8-observer\img\20240723031000\complete\8d20240723031000.jpg', "JPEG", quality=quality)
 
 
 if __name__ == "__main__":
@@ -146,4 +146,4 @@ if __name__ == "__main__":
     # photo_composition(array_pic=arr_pic, save_path="../img/20210515052000/complete/temp1.png", equal="")
 
     # fix_pic("../img/20210515052000/complete/temp1.png", 550, "../img/20210515052000/complete/fix_temp1.png")
-    png_to_jpg('C:/Users/96400/Downloads/154000_0_0.png')
+    png_to_jpg(r'G:\work\himawari8-observer\img\20240723031000\complete\8d20240723031000.png')

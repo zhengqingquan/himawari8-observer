@@ -5,9 +5,19 @@
 <img src="https://github.com/zhengqingquan/gallery/blob/main/himawari8-observer/1/235000_0_0.png?raw=true" width="300" >
 <img src="https://github.com/zhengqingquan/gallery/blob/main/himawari8-observer/1/154000_0_0.png?raw=true" width="300">
 
+取名 himawari8-observer 意思就是观察者。把自己当为卫星观察地球。
+
 https://himawari8.nict.go.jp/
+
 https://sc-nc-web.nict.go.jp/wsdb_osndisk/shareDirDownload/bDw2maKV
 
+## 说明
+
+2024 年 7 月 1 日以后停止了对 Himawari 卫星的数据服务。
+
+但 https://himawari8.nict.go.jp/ 仍然可以访问。
+
+## 使用
 
 ## 目前支持：
 * win10

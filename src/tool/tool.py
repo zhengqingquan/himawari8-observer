@@ -5,8 +5,14 @@ import sys
 from _datetime import datetime
 from datetime import datetime
 from time import strftime
-from tool.folder import *
+from src.tool.folder import *
+import struct
 
+def is_64bit_windows():
+    """
+    检查是不是 64 位操作系统。
+    """
+    return struct.calcsize('P') * 8 == 64
 
 def get_system_time():
     """
