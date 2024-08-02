@@ -7,6 +7,8 @@
 
 取名 himawari8-observer 意思就是观察者。把自己当为卫星观察地球。
 
+https://github.com/zhengqingquan/himawari8-observer
+
 https://himawari8.nict.go.jp/
 
 https://sc-nc-web.nict.go.jp/wsdb_osndisk/shareDirDownload/bDw2maKV
@@ -46,9 +48,8 @@ https://sc-nc-web.nict.go.jp/wsdb_osndisk/shareDirDownload/bDw2maKV
 
 
 ## 配置
-第三方库
-lxml
-PIL
+
+请查看 `requirements.txt`
 
 ## 版本
 1.1.0 新增：可以直接下载11000x110000的图片

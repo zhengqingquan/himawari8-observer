@@ -3,7 +3,7 @@
 """
 
 import logging
-from src.head.define import LOG_PATH
+from src.head.config import LOG_PATH
 
 def log_init():
     """

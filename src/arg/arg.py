@@ -3,7 +3,7 @@ import argparse
 from src.head.define import PROGRAM_NAME, DESCRIPTION, EPILOG, SOFTWARE_VERSION
 
 def arg_init():
-        # 实例化解析器对象
+    # 实例化解析器对象
     parser = argparse.ArgumentParser(prog=PROGRAM_NAME,  # 程序名
                                      description=DESCRIPTION,  # 参数描述
                                      epilog=EPILOG,  # 结尾描述
@@ -33,3 +33,5 @@ def arg_init():
     # if len(sys.argv) <= 1:
     #     parser.print_help()
     #     sys.exit(1)
+
+    # args = parser.parse_args()

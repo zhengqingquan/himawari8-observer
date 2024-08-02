@@ -1,6 +1,9 @@
+import threading
 from src.log.log import log_init
 from src.arg.arg import arg_init
-from src.main import main3
+from src.timetask import stat_time_tast
+from src.UI.sysTray import setup_tray_icon
+from src.event.event import wait_sys
 
 if __name__ == "__main__":
     # 初始化日志
@@ -9,10 +12,12 @@ if __name__ == "__main__":
     # 参数命令
     arg_init()
 
-    # 配置项
-    # config.ini
+    # 创建一个线程来运行托盘图标
+    tray_thread = threading.Thread(target=setup_tray_icon, daemon=True)
+    tray_thread.start()
 
-    # 创建PIC类？
+    # 创建并启动调度线程
+    scheduler_thread = threading.Thread(target=stat_time_tast, daemon=True)
+    scheduler_thread.start()
 
-
-    main3()
+    wait_sys()  # 等待停止事件

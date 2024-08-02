@@ -1,6 +1,4 @@
 from time import strftime
-import requests
-from lxml import etree
 from src.dl.dlinit import dl_init
 
 
@@ -68,7 +66,7 @@ class Pic(object):
 
         # 存储的当前文件夹目录，用来创建文件夹。例如：..img/20d20210515052000/complete
         # 用于下载时保存的文件夹路径，不建议修改。
-        self.folder_path = f"../{self.folder_top}/{self.folder_root}/{self.folder_complete}"
+        self.folder_path = f"./{self.folder_top}/{self.folder_root}/{self.folder_complete}"
 
         # 碎片下载方式下，最终的图片相对路径，用来最终合成。例如：..img/20210515052000/complete/20d20210603052000.png
         # 用于下载时保存的文件夹路径，不建议修改。
