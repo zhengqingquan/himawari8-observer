@@ -2,15 +2,16 @@
 PROGRAM_NAME = "himawari8-observer"
 
 # 软件版本
-SOFTWARE_VERSION = "1.1.0"
+SOFTWARE_VERSION = "1.2.0"
 
 # 程序的描述
-DESCRIPTION = """
-            这是参数描述
-            """
+DESCRIPTION = """这是程序描述"""
+
+# 软件网站
+WEBSITE = "https://github.com/zhengqingquan/himawari8-observer"
 
 # 程序参数帮助的结尾。
-EPILOG = """
+EPILOG = f"""
         这是结尾。
-        github web: https://github.com/zhengqingquan/himawari8-observer
+        github web: {WEBSITE}
         """

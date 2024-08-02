@@ -1,2 +1,7 @@
 # 日志路径
 LOG_PATH="debug_log.txt"
+
+# 支持下载的分辨率
+IMAGE_RESOLUTION = [550, 2200, 4400, 8800, 11000]
+
+DEFAULT_RESOLUTION = 4400
