@@ -19,8 +19,8 @@ if __name__ == "__main__":
         tray_thread.start()
 
         # 创建并启动调度线程
-        scheduler_thread = threading.Thread(target=stat_time_tast, daemon=True)
-        scheduler_thread.start()
+        # scheduler_thread = threading.Thread(target=stat_time_tast, daemon=True)
+        # scheduler_thread.start()
 
         wait_sys()  # 等待停止事件
     except Exception as e:

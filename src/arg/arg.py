@@ -64,11 +64,6 @@ class Config:
                             action="version",
                             version=f"%(prog)s {SOFTWARE_VERSION}")
 
-        # Check if there are no arguments
-        # if len(sys.argv) <= 1:
-        #     self._parser.print_help()
-        #     sys.exit(1)
-
         # 解析参数。
         self._args = self._parser.parse_args()
 
