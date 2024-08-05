@@ -1,6 +1,6 @@
 from time import strftime
 from src.dl.dlinit import dl_init
-
+from src.metadata.soft_config import PROGRAM_DIR_ABS_PATH
 
 class Pic(object):
     """
@@ -66,15 +66,15 @@ class Pic(object):
 
         # 存储的当前文件夹目录，用来创建文件夹。例如：..img/20d20210515052000/complete
         # 用于下载时保存的文件夹路径，不建议修改。
-        self.folder_path = f"./{self.folder_top}/{self.folder_root}/{self.folder_complete}"
+        self.folder_path = PROGRAM_DIR_ABS_PATH.joinpath(f"./{self.folder_top}/{self.folder_root}/{self.folder_complete}")
 
         # 碎片下载方式下，最终的图片相对路径，用来最终合成。例如：..img/20210515052000/complete/20d20210603052000.png
         # 用于下载时保存的文件夹路径，不建议修改。
-        self.final_path_equal = f"{self.folder_path}/{self.pic_name_equal}"
+        self.final_path_equal = PROGRAM_DIR_ABS_PATH.joinpath(f"{self.folder_path}/{self.pic_name_equal}")
 
         # 完整下载方式下，最终的图片相对路径，用来下载。例如..img/20210515052000/complete/hima820210608022000fd.png
         # 用于下载时保存的文件夹路径，不建议修改。
-        self.final_path_cpl = f"{self.folder_path}/{self.pic_name_cpl}"
+        self.final_path_cpl = PROGRAM_DIR_ABS_PATH.joinpath(f"{self.folder_path}/{self.pic_name_cpl}")
 
         # 在碎片下载方式下，构建url和path的映射
         self.build_dic()
@@ -102,10 +102,10 @@ class Pic(object):
                       f"/{self.year}/{self.month}/{self.day}/{pic_name}"
 
                 # 碎片文件的路径，用来创建文件夹。例如：..img/20210515052000/4d/0
-                puzzle_path = f"../{self.folder_top}/{self.folder_root}/{self.str_equal}/{location_y}"
+                puzzle_path = PROGRAM_DIR_ABS_PATH.joinpath(f"./{self.folder_top}/{self.folder_root}/{self.str_equal}/{location_y}")
 
                 # 每张碎片图片的存储路径，用来下载。例如：..img/20210515052000/4d/0/084000_3_0.png
-                pic_path = f"{puzzle_path}/{pic_name}"
+                pic_path = PROGRAM_DIR_ABS_PATH.joinpath(f"{puzzle_path}/{pic_name}")
 
                 self.arr_url.append(url)
                 self.arr_puzzle.append(puzzle_path)

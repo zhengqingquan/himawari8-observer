@@ -40,9 +40,3 @@ def path_wallpaper(wallpaper_path: Path):
     except FileNotFoundError:
         logging.warning(f'图片不存在：{wallpaper_path}')
         return False
-
-if __name__ == "__main__":
-    # logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-    # logging.info(f'当前工作路径：{Path.cwd()}')
-    # path_wallpaper(Path(r'./tool/8d20240723031000.png'))
-    pass

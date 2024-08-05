@@ -8,7 +8,7 @@ def stat_time_tast():
 
     scheduler = BlockingScheduler()
 
-    # 添加一个每隔20分钟执行一次
+    # 添加一个每隔一段时间执行一次
     scheduler.add_job(main, 'interval', seconds=DOWNLOAD_INTERVAL_TIME, next_run_time=datetime.datetime.now())
 
     # 也可以添加其他类型的任务，比如每天在特定时间执行

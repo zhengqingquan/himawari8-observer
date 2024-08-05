@@ -1,9 +1,11 @@
-import os
 import sys
-import logging
+from pathlib import Path
+
+# 程序路径
+PROGRAM_DIR_ABS_PATH = Path(sys.argv[0]).absolute().parent
 
 # 日志文件的保存路径
-LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "debug_log.txt")
+LOG_PATH = PROGRAM_DIR_ABS_PATH.joinpath("debug_log.txt")
 
 # 支持下载的分辨率
 IMAGE_RESOLUTION = [550, 2200, 4400, 8800, 11000]

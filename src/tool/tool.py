@@ -1,8 +1,8 @@
 """
 一些工具函数
 """
+
 import sys
-from _datetime import datetime
 from datetime import datetime
 from time import strftime
 from src.tool.folder import *
@@ -16,13 +16,10 @@ def is_64bit_windows():
 
 def get_system_time():
     """
-    Finish
     获取当前系统的时间。
     :return:返回一个datetime.datetime类。如果需要，可以调用返回值的curr_time.year来获取系统时间的年份,且值为int型。
     """
-    curr_time = datetime.now()
-    return curr_time
-
+    return datetime.now()
 
 def get_win():
     """

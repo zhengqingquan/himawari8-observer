@@ -2,7 +2,7 @@
 PROGRAM_NAME = "himawari8-observer"
 
 # 软件版本
-SOFTWARE_VERSION = "1.3.0"
+SOFTWARE_VERSION = "v1.3.0"
 
 # 软件描述
 DESCRIPTION = """Regularly set the images from the Himawari8 satellite as desktop wallpaper."""

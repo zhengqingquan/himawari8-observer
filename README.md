@@ -62,7 +62,7 @@ https://sc-nc-web.nict.go.jp/wsdb_osndisk/shareDirDownload/bDw2maKV
 打包使用的python pyinstaller包
 
 ```cmd
-pyinstaller --noconsole --onefile --name himawari8-observer my_script.py
+pyinstaller --noconsole --onefile --name himawari8-observer run.py
 ```
 
 ## 安装
