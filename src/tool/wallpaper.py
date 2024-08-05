@@ -6,6 +6,7 @@ import os
 import ctypes
 from pathlib import Path
 import logging
+import winreg as reg
 
 def pic_wallpaper(pic):
     """
@@ -41,6 +42,7 @@ def path_wallpaper(wallpaper_path: Path):
         return False
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-    logging.info(f'当前工作路径：{Path.cwd()}')
-    path_wallpaper(Path(r'./tool/8d20240723031000.png'))
+    # logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+    # logging.info(f'当前工作路径：{Path.cwd()}')
+    # path_wallpaper(Path(r'./tool/8d20240723031000.png'))
+    pass

@@ -1,7 +1,7 @@
 import argparse
 import logging
-from src.head.define import *
-from src.head.config import *
+from src.metadata.soft_info import *
+from src.metadata.soft_config import *
 
 class Config:
     _instance = None

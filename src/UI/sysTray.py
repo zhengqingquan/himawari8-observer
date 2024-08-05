@@ -2,9 +2,10 @@ from tkinter import messagebox
 import pystray
 from PIL import Image, ImageDraw
 from src.event.event import end_main_sys
-from src.head.config import IMAGE_RESOLUTION
-from src.head.define import *
+from src.metadata.soft_config import IMAGE_RESOLUTION
+from src.metadata.soft_info import *
 import webbrowser
+from src.startup import add_to_startup_exe, remove_from_startup_exe, is_startup_set
 
 # 创建一个函数来绘制托盘图标
 def create_image():
@@ -38,9 +39,10 @@ def on_offical_website(icon, item):
     webbrowser.open_new(WEBSITE)
 
 def on_startup(icon, item):
-    # 打开指定的网站
-    # webbrowser.open_new(WEBSITE)
-    pass
+    if is_startup_set():
+        remove_from_startup_exe()
+    else:
+        add_to_startup_exe()
 
 # 创建子菜单项的回调函数
 def make_submenu_item(resolution):

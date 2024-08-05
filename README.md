@@ -57,6 +57,13 @@ https://sc-nc-web.nict.go.jp/wsdb_osndisk/shareDirDownload/bDw2maKV
 
 ## 程序的运行与停止
 
+## 打包
+
+打包使用的python pyinstaller包
+
+```cmd
+pyinstaller --noconsole --onefile --name himawari8-observer my_script.py
+```
 
 ## 安装
 

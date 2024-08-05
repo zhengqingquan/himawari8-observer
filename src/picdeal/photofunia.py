@@ -1,8 +1,10 @@
 """
 png图片的合成
 """
-from PIL import Image
+from PIL import Image, ImageGrab
 import os
+import logging
+import math
 
 
 def photo_composition2(array_pic, equal, save_path):
@@ -114,13 +116,34 @@ def fix_pic(file, margin, path):
     :param path:保存后的文件路径。
     :return:None
     """
-    joint = Image.new("RGB", (11000 + margin * 2, 11000 + margin * 2))
-    img = Image.open(file)
-    joint.paste(img, (margin, margin))  # (x，y)
-    print("正在合成。。")
-    joint.save(path)
-    print("合成完毕。")
+    # 获取屏幕分辨率
+    screen_width, screen_height = ImageGrab.grab().size
+    logging.info(f"当前屏幕分辨率: {screen_width}x{screen_height}")
+    logging.info(f"当前图片分辨率: {margin}")
 
+    expand_coefficient = 1/20
+    logging.info(f"图片扩展系数为: {expand_coefficient}")
+
+    expand_height = int(margin * expand_coefficient)
+    logging.info(f"图片扩展宽度为: {expand_height}")
+
+    image_coefficient = (margin + 2 * expand_height) / screen_height
+    logging.info(f"屏幕分辨率扩展系数为: {image_coefficient}")
+
+    screen_width = int(math.ceil(screen_width * image_coefficient))
+    screen_height = int(math.ceil(screen_height * image_coefficient))
+    logging.info(f"生成的壁纸分辨率为: {screen_width}x{screen_height}")
+
+    image_x = int(math.ceil(screen_width/2 - margin/2))
+    image_y = expand_height
+    logging.info(f"合成时原图的坐标为: ({image_x}, {image_y})")
+
+    joint = Image.new("RGB", (screen_width, screen_height))
+    img = Image.open(file)
+    joint.paste(img, image_x, image_y)
+    logging.info("开始合成。")
+    joint.save(path)
+    logging.info(f"合成完毕：{path}")
 
 def png_to_jpg(path):
     quality = 95  # 将pngz图片质量，1~95（1最差，95最高），默认75。
@@ -146,4 +169,11 @@ if __name__ == "__main__":
     # photo_composition(array_pic=arr_pic, save_path="../img/20210515052000/complete/temp1.png", equal="")
 
     # fix_pic("../img/20210515052000/complete/temp1.png", 550, "../img/20210515052000/complete/fix_temp1.png")
-    png_to_jpg(r'G:\work\himawari8-observer\img\20240723031000\complete\8d20240723031000.png')
+    # png_to_jpg(r'G:\work\himawari8-observer\img\20240723031000\complete\8d20240723031000.png')
+
+    # 创建一个日志记录器对象 logger。未使用参数，默认为根记录器。
+    logger = logging.getLogger()
+    # 设置 logger 的日志等级。
+    logger.setLevel(logging.DEBUG)
+
+    # fix_pic("src/picdeal/4d20240802090000.png",2200,"src/picdeal/4d202408020900002.png")

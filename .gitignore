@@ -3,3 +3,6 @@
 __pycache__/
 debug_log.txt
 img
+build
+dist
+*.spec

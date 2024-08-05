@@ -3,7 +3,7 @@
 """
 
 import argparse
-from src.head.define import *
+from src.metadata.soft_info import *
 
 def arge_init():
     """

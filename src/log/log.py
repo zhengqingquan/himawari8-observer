@@ -3,7 +3,8 @@
 """
 
 import logging
-from src.head.config import LOG_PATH
+from src.metadata.soft_config import LOG_PATH
+import os, sys
 
 def log_init():
     """
@@ -25,8 +26,14 @@ def log_init():
     # 将控制台处理器添加到日志记录器中。
     logger.addHandler(console_handler)
 
+    # print(LOG_PATH)
+    # print(os.path.abspath(__file__))
+    # print(os.path.join(os.path.abspath(__file__), LOG_PATH))
+    # logging.info(os.path.join(os.path.dirname(os.path.abspath(__file__)), LOG_PATH))
+    logging.info(os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), LOG_PATH))
+
     # 创建文件处理器（默认为追加模式）。
-    file_handler = logging.FileHandler(LOG_PATH, encoding='utf-8')
+    file_handler = logging.FileHandler(os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), LOG_PATH), encoding='utf-8')
     # 设置输出到文件日志的等级。
     file_handler.setLevel(logging.DEBUG)
     # 定义输出到文件日志的格式。
