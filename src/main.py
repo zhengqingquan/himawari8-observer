@@ -6,7 +6,6 @@ main.py
 
 # !/usr/bin/env python
 
-from src.args import *
 from src.dl.dlpic import *
 from src.dl.dlinit import *
 from src.tool.tool import *
