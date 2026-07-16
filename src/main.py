@@ -13,7 +13,6 @@ from src.picdeal.photofunia import *
 from src.cls.Pic import *
 from src.tool.wallpaper import *
 from src.dl_thread.dl_thread import download_files
-from src.arg.arg import get_download_resolution
 
 def main():
     # 新建一个下载会话。

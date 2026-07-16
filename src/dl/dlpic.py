@@ -45,7 +45,7 @@ def dl_dic_pic(pic, request):
         print(f"正在下载,文件大小为：{size_K}K（{pic_size}B）（{size_M}M）")
 
         # 开始下载，并且每次最多写入1024 B 的数据。
-        if r.status_code is 200:
+        if r.status_code == 200:
             with open(path[0], "wb") as file:
                 for chunk in r.iter_content(chunk_size=chunk_size):
                     file.write(chunk)
@@ -93,7 +93,7 @@ def dl_post_pic(pic, request):
     size_K = round(int(pic_size) / 1024, 2)  # 预下载的文件大小。单位：K，保留两位小数
     size_M = round(int(size_K) / 1024, 2)  # 预下载的文件大小。单位：M，保留两位小数
     print(f"正在下载,文件大小为：{size_K}K（{pic_size}B）（{size_M}M）")
-    if res.status_code is 200:
+    if res.status_code == 200:
         with open(pic.final_path_cpl, "wb") as file:
             for chunk in res.iter_content(chunk_size=chunk_size):
                 file.write(chunk)

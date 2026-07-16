@@ -1,8 +1,50 @@
-*.png
-/.idea
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.venv/
+venv/
+.env/
+.Python
+
+# Logs / runtime
 debug_log.txt
-img
-build
-dist
+*.log
+*.pid
+
+# App data / downloads
+img/
+*.png
+*.jpg
+*.jpeg
+
+# PyInstaller
 *.spec
+
+# Secrets / local env
+.env
+.env.*
+!.env.example
+credentials.json
+
+# Captures / large binaries
+*.har
+har/
+
+# IDE / editor
+.cursor/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
