@@ -58,6 +58,11 @@ img/
 *.manifest
 *.exe
 
+# ========== Agent / local skill config（不入库）==========
+AGENTS.md
+docs/agents/
+.scratch/
+
 # ========== Secrets / local env ==========
 .env
 .env.*
