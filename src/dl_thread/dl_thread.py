@@ -46,11 +46,11 @@ file_urls = [
 ]
 
 # 下载文件的函数
-def download_file(url):
+def download_file(url, path):
     local_filename = url.split('/')[-1]
     with requests.get(url, stream=True) as r:
         r.raise_for_status()
-        with open(local_filename, 'wb') as f:
+        with open(path, 'wb') as f:
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
     return local_filename
@@ -60,7 +60,7 @@ def download_files(urls):
     # 创建一个包含16个工作线程的线程池
     with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
         # 提交所有下载任务，并将future对象和对应的URL存储在字典中
-        future_to_url = {executor.submit(download_file, url): url for url in urls}
+        future_to_url = {executor.submit(download_file, url, path[0]): (url,path[0]) for url, path in urls.items()}
         # 遍历所有已完成的future对象
         for future in concurrent.futures.as_completed(future_to_url):
             url = future_to_url[future]
@@ -71,4 +71,16 @@ def download_files(urls):
             except Exception as exc:
                 print(f'{url} 下载时出错: {exc}')
 
-download_files(file_urls)
+
+# from src.cls.Pic import Pic
+# from src.dl.dlinit import *
+
+# # 新建一个下载会话。
+# requester = dl_init()
+
+# # 获取最新的时间
+# time_str = get_last_time(requester)
+
+# print(time_str)
+# Pic()
+# download_files(file_urls)

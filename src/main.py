@@ -12,6 +12,8 @@ from src.tool.tool import *
 from src.picdeal.photofunia import *
 from src.cls.Pic import *
 from src.tool.wallpaper import *
+from src.dl_thread.dl_thread import download_files
+from src.arg.arg import get_download_resolution
 
 def main():
     # 新建一个下载会话。
@@ -27,7 +29,8 @@ def main():
     cls_create_folder(main_pic)
 
     # 进行碎片化下载
-    dl_dic_pic(main_pic, requester)
+    # dl_dic_pic(main_pic, requester)
+    download_files(main_pic.dic)
 
     # 合成图片
     cls_photo_composition(main_pic)
