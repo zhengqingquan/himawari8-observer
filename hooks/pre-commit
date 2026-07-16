@@ -1,0 +1,8 @@
+#!/bin/sh
+changed=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.py$' | grep -E '^(main\.py|src/)')
+[ -z "$changed" ] && exit 0
+
+echo "$changed" | xargs ruff check --fix --exit-non-zero-on-fix
+echo "$changed" | xargs ruff format
+
+git add -u -- $changed

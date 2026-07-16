@@ -7,6 +7,7 @@ from time import strftime
 import logging
 from src.cls.Pic import Pic
 
+
 def create_dic_folder(time, equal="20d"):
     """
     根据时间创建文件夹。
@@ -42,6 +43,7 @@ def arr_create_folder(arr):
     for item in arr:
         create_folder(item)
 
+
 def create_folder(folder_path):
     """
     判断路径是否存在，若不存在则创建一个。
@@ -52,7 +54,8 @@ def create_folder(folder_path):
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
 
-def cls_create_folder(pic:Pic):
+
+def cls_create_folder(pic: Pic):
     """
     根据参数传入的pic类创建文件夹。
     :param pic:Pic类，表示照片

@@ -1,6 +1,7 @@
 """
 png图片的合成
 """
+
 from PIL import Image, ImageGrab
 import os
 import logging
@@ -41,7 +42,7 @@ def photo_composition2(array_pic, equal, save_path):
 
     # 保存图片
     joint.save(save_path)
-    '''
+    """
     img2 = Image.open("try2.png")
     size2 = img2.size  # (550,550)
     print(type(size2))
@@ -51,7 +52,7 @@ def photo_composition2(array_pic, equal, save_path):
     joint = Image.new("RGB", (1100, 550))  # （长，宽）
     joint.paste(img2, (0, 0))  # 图片从哪开始（x，y）
     joint.save('horizontal2.png')
-    '''
+    """
 
     # img = Image.open("try4.png")
     # size = img.size
@@ -121,7 +122,7 @@ def fix_pic(file, margin, path):
     logging.info(f"当前屏幕分辨率: {screen_width}x{screen_height}")
     logging.info(f"当前图片分辨率: {margin}")
 
-    expand_coefficient = 1/20
+    expand_coefficient = 1 / 20
     logging.info(f"图片扩展系数为: {expand_coefficient}")
 
     expand_height = int(margin * expand_coefficient)
@@ -134,7 +135,7 @@ def fix_pic(file, margin, path):
     screen_height = int(math.ceil(screen_height * image_coefficient))
     logging.info(f"生成的壁纸分辨率为: {screen_width}x{screen_height}")
 
-    image_x = int(math.ceil(screen_width/2 - margin/2))
+    image_x = int(math.ceil(screen_width / 2 - margin / 2))
     image_y = expand_height
     logging.info(f"合成时原图的坐标为: ({image_x}, {image_y})")
 
@@ -145,13 +146,18 @@ def fix_pic(file, margin, path):
     joint.save(path)
     logging.info(f"合成完毕：{path}")
 
+
 def png_to_jpg(path):
     quality = 95  # 将pngz图片质量，1~95（1最差，95最高），默认75。
     # path = 'C:/Users/96400/Downloads/154000_0_0.png'
     img = Image.open(path)
     new_img = Image.new("RGB", img.size)
     new_img.paste(img, (0, 0))
-    new_img.convert('RGB').save(r'G:\work\himawari8-observer\img\20240723031000\complete\8d20240723031000.jpg', "JPEG", quality=quality)
+    new_img.convert("RGB").save(
+        r"G:\work\himawari8-observer\img\20240723031000\complete\8d20240723031000.jpg",
+        "JPEG",
+        quality=quality,
+    )
 
 
 if __name__ == "__main__":

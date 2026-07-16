@@ -6,7 +6,7 @@ import os
 import ctypes
 from pathlib import Path
 import logging
-import winreg as reg
+
 
 def pic_wallpaper(pic):
     """
@@ -15,6 +15,7 @@ def pic_wallpaper(pic):
     :return:1 or 0
     """
     return path_wallpaper(os.path.abspath(pic.final_path))
+
 
 def path_wallpaper(wallpaper_path: Path):
     """
@@ -26,17 +27,18 @@ def path_wallpaper(wallpaper_path: Path):
         if wallpaper_path.exists() is False:
             raise FileNotFoundError
 
-        logging.info(f'图片路径为：{wallpaper_path.resolve()}')
+        logging.info(f"图片路径为：{wallpaper_path.resolve()}")
 
         # 必须使用图片的绝对路径。若不是绝对路径，则会设置为默认的纯（黑）色背景。
         SPI_SETDESKWALLPAPER = 20
         SPIF_UPDATEINIFILE = 1
-        SPIF_SENDCHANGE = 2
-        ctypes.windll.user32.SystemParametersInfoW(SPI_SETDESKWALLPAPER, 0, os.path.abspath(wallpaper_path), SPIF_UPDATEINIFILE)
+        ctypes.windll.user32.SystemParametersInfoW(
+            SPI_SETDESKWALLPAPER, 0, os.path.abspath(wallpaper_path), SPIF_UPDATEINIFILE
+        )
 
-        logging.info(f'图片替换完成。')
+        logging.info("图片替换完成。")
 
         return True
     except FileNotFoundError:
-        logging.warning(f'图片不存在：{wallpaper_path}')
+        logging.warning(f"图片不存在：{wallpaper_path}")
         return False

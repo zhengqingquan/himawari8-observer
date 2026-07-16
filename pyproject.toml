@@ -1,0 +1,12 @@
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint]
+select = ["F", "E", "W"]
+ignore = ["E501"]

@@ -6,13 +6,15 @@ main.py
 
 # !/usr/bin/env python
 
-from src.dl.dlpic import *
-from src.dl.dlinit import *
-from src.tool.tool import *
-from src.picdeal.photofunia import *
-from src.cls.Pic import *
-from src.tool.wallpaper import *
+from pathlib import Path
+
+from src.cls.Pic import Pic
+from src.dl.dlinit import dl_init, get_last_time
 from src.dl_thread.dl_thread import download_files
+from src.picdeal.photofunia import cls_photo_composition
+from src.tool.folder import cls_create_folder
+from src.tool.wallpaper import path_wallpaper
+
 
 def main():
     # 新建一个下载会话。

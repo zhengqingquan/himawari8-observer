@@ -1,7 +1,8 @@
 import argparse
 import logging
-from src.metadata.soft_info import *
-from src.metadata.soft_config import *
+from src.metadata.soft_config import DEFAULT_RESOLUTION, IMAGE_RESOLUTION
+from src.metadata.soft_info import DESCRIPTION, EPILOG, PROGRAM_NAME, SOFTWARE_VERSION
+
 
 class Config:
     _instance = None
@@ -22,47 +23,53 @@ class Config:
 
     def parse_arguments(self):
         # 实例化解析器对象
-        self._parser = argparse.ArgumentParser(prog=PROGRAM_NAME,
-                                        description=DESCRIPTION,
-                                        epilog=EPILOG,
-                                        # usage=argparse.SUPPRESS,  # 关闭用例usage，该值默认为None
-                                        # add_help=True  # 为解析器默认添加一个-h/--help选项
-                                        )
+        self._parser = argparse.ArgumentParser(
+            prog=PROGRAM_NAME,
+            description=DESCRIPTION,
+            epilog=EPILOG,
+            # usage=argparse.SUPPRESS,  # 关闭用例usage，该值默认为None
+            # add_help=True  # 为解析器默认添加一个-h/--help选项
+        )
 
         # 为解析器添加参数
         # 当parse_args()被调用，选项会以"-"前缀识别，剩下的参数则会被假定为位置参数
-        self._parser.add_argument("-dl",
-                            "--download",
-                            type=str,
-                            choices=["complete", "equal"],
-                            default="equal",
-                            const="equal",
-                            dest="download_method",
-                            action="store",
-                            nargs="?",
-                            help="download way and begin.")
+        self._parser.add_argument(
+            "-dl",
+            "--download",
+            type=str,
+            choices=["complete", "equal"],
+            default="equal",
+            const="equal",
+            dest="download_method",
+            action="store",
+            nargs="?",
+            help="download way and begin.",
+        )
 
-        self._parser.add_argument("-r",
-                            "--resolution",
-                            choices=IMAGE_RESOLUTION,
-                            default=DEFAULT_RESOLUTION,
-                            const=DEFAULT_RESOLUTION,
-                            action="store",
-                            dest="download_resolution",
-                            nargs="?",
-                            help="\"Equal\" represents how many 550-pixel images one side of an image is equal to.")
+        self._parser.add_argument(
+            "-r",
+            "--resolution",
+            choices=IMAGE_RESOLUTION,
+            default=DEFAULT_RESOLUTION,
+            const=DEFAULT_RESOLUTION,
+            action="store",
+            dest="download_resolution",
+            nargs="?",
+            help='"Equal" represents how many 550-pixel images one side of an image is equal to.',
+        )
 
-        self._parser.add_argument("-a",
-                            "--adjust",
-                            dest="is_auto_adjust_picture",
-                            default=False,
-                            action="store_false",
-                            help="Automatically adjust images. Prevent being obscured by the taskbar.")
+        self._parser.add_argument(
+            "-a",
+            "--adjust",
+            dest="is_auto_adjust_picture",
+            default=False,
+            action="store_false",
+            help="Automatically adjust images. Prevent being obscured by the taskbar.",
+        )
 
-        self._parser.add_argument("-v",
-                            "--version",
-                            action="version",
-                            version=f"%(prog)s {SOFTWARE_VERSION}")
+        self._parser.add_argument(
+            "-v", "--version", action="version", version=f"%(prog)s {SOFTWARE_VERSION}"
+        )
 
         # 解析参数。
         self._args = self._parser.parse_args()

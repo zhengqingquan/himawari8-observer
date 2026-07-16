@@ -1,9 +1,7 @@
 """
 创建下载的线程
 """
-import threading
-import multiprocessing
-import time
+
 import concurrent.futures
 import requests
 
@@ -33,43 +31,48 @@ import requests
 
 # 假设这是你要下载的文件的URL列表
 file_urls = [
-    'https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_0_0.png',
-    'https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_0_1.png',
-    'https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_0_2.png',
-    'https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_0_3.png',
-    'https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_1_0.png',
-    'https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_1_1.png',
-    'https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_1_2.png',
-    'https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_1_3.png',
-    'https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_2_0.png',
-    'https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_2_1.png',
+    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_0_0.png",
+    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_0_1.png",
+    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_0_2.png",
+    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_0_3.png",
+    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_1_0.png",
+    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_1_1.png",
+    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_1_2.png",
+    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_1_3.png",
+    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_2_0.png",
+    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_2_1.png",
 ]
+
 
 # 下载文件的函数
 def download_file(url, path):
-    local_filename = url.split('/')[-1]
+    local_filename = url.split("/")[-1]
     with requests.get(url, stream=True) as r:
         r.raise_for_status()
-        with open(path, 'wb') as f:
+        with open(path, "wb") as f:
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
     return local_filename
+
 
 # 使用多线程下载文件
 def download_files(urls):
     # 创建一个包含16个工作线程的线程池
     with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
         # 提交所有下载任务，并将future对象和对应的URL存储在字典中
-        future_to_url = {executor.submit(download_file, url, path[0]): (url,path[0]) for url, path in urls.items()}
+        future_to_url = {
+            executor.submit(download_file, url, path[0]): (url, path[0])
+            for url, path in urls.items()
+        }
         # 遍历所有已完成的future对象
         for future in concurrent.futures.as_completed(future_to_url):
             url = future_to_url[future]
             try:
                 # 获取任务结果
-                data = future.result()
-                print(f'{url} 下载完成')
+                future.result()
+                print(f"{url} 下载完成")
             except Exception as exc:
-                print(f'{url} 下载时出错: {exc}')
+                print(f"{url} 下载时出错: {exc}")
 
 
 # from src.cls.Pic import Pic

@@ -1,0 +1,19 @@
+---
+description: Commit via .cursor/scripts/git-commit.ps1 only; never push unless asked
+alwaysApply: true
+---
+
+# Git 提交规范
+
+当用户要求提交 / commit 时：
+
+1. **必须**使用仓库脚本提交，禁止直接执行 `git commit`：
+   ```powershell
+   .\.cursor\scripts\git-commit.ps1 -Message "提交说明" -Files path1,path2
+   ```
+2. 未指定文件时，可省略 `-Files`（脚本只对已跟踪的修改执行 `git add -u`）。
+3. **禁止** `git push`，除非用户明确要求 push。
+4. **禁止**提交密钥与运行态/大体量无关文件，例如：`.env`、`credentials.json`、`*.pid`、`*.har`。
+5. 默认不要自动纳入 `test/`、`har/`；仅当用户点名时才加入 `-Files`。
+6. 提交前用 `git status` / `git diff` 确认内容；提交后用脚本输出或 `git status` 校验成功。
+7. 不要更新 git config；不要 `--amend`（除非用户明确要求且符合安全条件）；不要 `--no-verify`。

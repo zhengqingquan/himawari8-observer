@@ -9,8 +9,8 @@ path = "../test/temp2.png"
 print("第一句话")
 # print("第二句话",end="\r")
 # print("第四句话",end="\r")
-print("\r第五句话", end='')
-print("\r第六句话", end='')
+print("\r第五句话", end="")
+print("\r第六句话", end="")
 print("第七句话")
 print("\r第八句话\r")
 print("\n第三句话")
@@ -19,9 +19,14 @@ print("\n第三句话")
 # dl_pic_2(url, path)
 
 
-def progressbar():
-    print('\r', '🍅' * filled + '--' * (duration - filled), '[{:.0%}]'.format(frac), extra, end='')
-    pass
+def progressbar(filled, duration, frac, extra=""):
+    print(
+        "\r",
+        "🍅" * filled + "--" * (duration - filled),
+        "[{:.0%}]".format(frac),
+        extra,
+        end="",
+    )
 
 
 # with alive_bar(3) as bar:

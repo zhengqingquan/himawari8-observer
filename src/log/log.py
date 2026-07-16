@@ -5,6 +5,7 @@
 import logging
 from src.metadata.soft_config import LOG_PATH
 
+
 def log_init():
     """
     日志模块的初始化。
@@ -27,10 +28,14 @@ def log_init():
 
     # 创建文件处理器（默认为追加模式）。
     logging.info(f"Log path：{LOG_PATH}")
-    file_handler = logging.FileHandler(LOG_PATH, encoding='utf-8')
+    file_handler = logging.FileHandler(LOG_PATH, encoding="utf-8")
     # 设置输出到文件日志的等级。
     file_handler.setLevel(logging.DEBUG)
     # 定义输出到文件日志的格式。
-    file_handler.setFormatter(logging.Formatter("%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s"))
+    file_handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s"
+        )
+    )
     # 将文件处理器添加到日志记录器中。
     logger.addHandler(file_handler)

@@ -1,50 +1,93 @@
-# Python
+# ========== Python ==========
 __pycache__/
 *.py[cod]
 *$py.class
-*.egg-info/
-.eggs/
-dist/
-build/
-*.egg
-.venv/
-venv/
-.env/
+*.so
+*.pyd
 .Python
 
-# Logs / runtime
+# Packaging / install
+build/
+dist/
+wheels/
+*.egg
+*.egg-info/
+.eggs/
+*.whl
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+.venv
+venv
+env/
+ENV/
+
+# Tooling caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
+.cache/
+
+# ========== App runtime / downloads ==========
+# 运行日志与进程文件
 debug_log.txt
 *.log
 *.pid
 
-# App data / downloads
+# 下载与合成的图片（程序默认目录为 img/）
 img/
+
+# 仓库内一般不提交影像；若需提交资源可加例外，例如：!assets/icon.png
 *.png
 *.jpg
 *.jpeg
+*.webp
+*.bmp
+*.gif
 
-# PyInstaller
+# ========== PyInstaller ==========
+# 本地生成的打包配置与中间产物（需要提交 .spec 时再加例外）
 *.spec
+*.manifest
+*.exe
 
-# Secrets / local env
+# ========== Secrets / local env ==========
 .env
 .env.*
 !.env.example
 credentials.json
+*.pem
+*.key
 
-# Captures / large binaries
+# ========== Captures / large binaries ==========
 *.har
 har/
 
-# IDE / editor
-.cursor/
+# ========== IDE / editor ==========
+# 忽略 Cursor 本地状态，保留可共享的规则与提交脚本
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
+!.cursor/scripts/
+!.cursor/scripts/**
+
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
+.history/
 
-# OS
+# ========== OS ==========
 Thumbs.db
 Desktop.ini
 .DS_Store
+ehthumbs.db
+$RECYCLE.BIN/

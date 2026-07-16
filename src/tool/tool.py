@@ -5,14 +5,15 @@
 import sys
 from datetime import datetime
 from time import strftime
-from src.tool.folder import *
 import struct
+
 
 def is_64bit_windows():
     """
     检查是不是 64 位操作系统。
     """
-    return struct.calcsize('P') * 8 == 64
+    return struct.calcsize("P") * 8 == 64
+
 
 def get_system_time():
     """
@@ -20,6 +21,7 @@ def get_system_time():
     :return:返回一个datetime.datetime类。如果需要，可以调用返回值的curr_time.year来获取系统时间的年份,且值为int型。
     """
     return datetime.now()
+
 
 def get_win():
     """
@@ -80,7 +82,7 @@ def time_dic(time, equal_int):
         "day": day,
         "hour": hour,
         "minute": minute,
-        "seconds": seconds
+        "seconds": seconds,
     }
     return dic_info
 
@@ -105,7 +107,10 @@ def time_to_url_1d(time):
     hour = strftime("%H", time)
     minute = strftime("%M", time)
     seconds = strftime("%S", time)
-    url = f"https://himawari8.nict.go.jp/img/D531106/1d/550/{year}/{month}/{day}/{hour}{minute}{seconds}_0_0.png"
+    return (
+        f"https://himawari8.nict.go.jp/img/D531106/1d/550/"
+        f"{year}/{month}/{day}/{hour}{minute}{seconds}_0_0.png"
+    )
 
 
 def time_to_url(time, equal="20d"):
@@ -156,7 +161,9 @@ def time_to_path(time, equal="20d"):
     while locationY < 20:
         while locationX < 20:
             pic_name = f"{hour}{minute}{seconds}_{locationX}_{locationY}.png"
-            path = f"../img/{year}{month}{day}{hour}{minute}{seconds}/{equal}/{locationY}/{pic_name}"
+            path = (
+                f"../img/{year}{month}{day}{hour}{minute}{seconds}/{equal}/{locationY}/{pic_name}"
+            )
             arr_path.append(path)
             locationX = locationX + 1
         locationX = 0
@@ -186,7 +193,7 @@ def to_greenwich_time(time, zone):
     """
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import dl.dlinit
 
     r = dl.dlinit.dl_init()
