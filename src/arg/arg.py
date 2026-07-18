@@ -31,21 +31,6 @@ class Config:
             # add_help=True  # 为解析器默认添加一个-h/--help选项
         )
 
-        # 为解析器添加参数
-        # 当parse_args()被调用，选项会以"-"前缀识别，剩下的参数则会被假定为位置参数
-        self._parser.add_argument(
-            "-dl",
-            "--download",
-            type=str,
-            choices=["complete", "equal"],
-            default="equal",
-            const="equal",
-            dest="download_method",
-            action="store",
-            nargs="?",
-            help="download way and begin.",
-        )
-
         self._parser.add_argument(
             "-r",
             "--resolution",
@@ -56,7 +41,7 @@ class Config:
             action="store",
             dest="download_resolution",
             nargs="?",
-            help='"Equal" represents how many 550-pixel images one side of an image is equal to.',
+            help='"equal" represents how many 550-pixel images one side of an image is equal to.',
         )
 
         self._parser.add_argument(
@@ -75,16 +60,12 @@ class Config:
         # 解析参数。
         self._args = self._parser.parse_args()
 
-        logging.info(f"Download method: {self._args.download_method}")
         logging.info(f"Download resolution: {self._args.download_resolution}")
         logging.info(f"Is auto adjust picture: {self._args.is_auto_adjust_picture}")
 
     # TODO 可以重新解析参数。
     def parse_known_args(self, args):
         self._parser.parse_known_args(args)
-
-    def get_download_method(self):
-        return self._args.download_method
 
     def get_download_resolution(self):
         return self._args.download_resolution

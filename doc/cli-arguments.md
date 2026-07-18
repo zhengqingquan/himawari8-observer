@@ -26,7 +26,6 @@ python run.py --version
 
 | 短选项 | 长选项 | 取值 | 默认值 | 说明 |
 |--------|--------|------|--------|------|
-| `-dl` | `--download` | `equal` / `complete` | `equal` | 下载方式 |
 | `-r` | `--resolution` | `550` / `2200` / `4400` / `8800` / `11000` | `2200` | 目标图像边长（像素） |
 | `-a` | `--adjust` | 开关标志 | 关闭 | 是否自动调整图片，避免被任务栏遮挡 |
 | `-v` | `--version` | — | — | 打印版本后退出 |
@@ -34,30 +33,11 @@ python run.py --version
 
 分辨率可选值与默认值由 `src/resolution_grade.py` 定义，经 `src/metadata/soft_config.py` 再导出。
 
+程序固定使用瓦片下载（equal）：从 himawari8 按 550×550 分块下载再合成；已移除不可用的 sc-nc-web「完整图」下载选项。
+
 ---
 
 ## 参数详解
-
-### `-dl` / `--download`
-
-选择卫星图的下载方式。
-
-| 取值 | 含义 |
-|------|------|
-| `equal` | **碎片下载**：按 550×550 瓦片分块下载，再合成为完整图（默认） |
-| `complete` | **完整下载**：通过完整图接口一次拉取整张图 |
-
-可省略参数值（`nargs="?"`）：只写 `-dl` 时等价于 `equal`。
-
-示例：
-
-```bash
-python run.py -dl equal
-python run.py --download complete
-python run.py -dl
-```
-
----
 
 ### `-r` / `--resolution`
 
@@ -121,14 +101,14 @@ python run.py -v
 ## 组合示例
 
 ```bash
-# 碎片下载 + 默认 2200 分辨率（4d）
+# 默认 2200 分辨率（4d）
 python run.py
 
-# 碎片下载 + 11000 分辨率
-python run.py -dl equal -r 11000
+# 11000 分辨率
+python run.py -r 11000
 
-# 完整下载 + 2200 分辨率
-python run.py --download complete --resolution 2200
+# 修边 + 4400
+python run.py -a -r 4400
 ```
 
 打包后的可执行文件用法相同，将 `python run.py` 换成对应可执行文件名即可，例如：
@@ -152,8 +132,7 @@ himawari8-observer.exe -h
 
 读取解析结果可使用：
 
-- `Config().get_download_method()`（尚未接入流水线）
-- `Config().get_download_resolution()`（`main()` 已接入壁纸更新）
-- `Config().is_auto_adjust_picture()` → 启动时冻结为 `auto_adjust`，经 `build_wallpaper_job` 注入
+- `Config().get_download_resolution()`（启动时冻结进 `WallpaperJobRef`）
+- `Config().is_auto_adjust_picture()` → 启动时冻结为 `auto_adjust`
 
-> **接线说明**：`-r` / `-a` 在启动时解析并冻结进 `WallpaperJobRef`；托盘「图片分辨率」可运行中换档（不回写 CLI），并立即触发一次壁纸更新。「打开日志」打开 `LOG_PATH`。`-dl` 仍未驱动业务。
+> **接线说明**：`-r` / `-a` 在启动时解析并冻结进 `WallpaperJobRef`；托盘「图片分辨率」可运行中换档（不回写 CLI），并立即触发一次壁纸更新。「打开日志」打开 `LOG_PATH`。
