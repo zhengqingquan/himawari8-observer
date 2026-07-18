@@ -2,34 +2,15 @@
 创建下载的线程
 """
 
+from __future__ import annotations
+
 import concurrent.futures
+from collections.abc import Callable, Mapping
+from typing import Any
+
 import requests
 
-# # 获取电脑有多少个逻辑处理器（线程）
-# num_cpus = multiprocessing.cpu_count()
-# print(num_cpus)
-
-# # 线程数
-# thread_num = num_cpus
-# # 信号量，同时只允许3个线程运行
-# threading.BoundedSemaphore(thread_num)
-
-# # 当前运行线程的名字
-# def loop():
-#     while True:
-#         time.sleep(5)
-#         print(threading.current_thread().name)
-
-
-# import sys
-# try:
-#     for i in range(0, thread_num):
-#         t = threading.Thread(target=loop)
-#         t.start()
-# except KeyboardInterrupt:
-#     sys.exit()
-
-# 假设这是你要下载的文件的URL列表
+# 假设这是你要下载的文件的URL列表（本地演示用）
 file_urls = [
     "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_0_0.png",
     "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_0_1.png",
@@ -43,9 +24,11 @@ file_urls = [
     "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_2_1.png",
 ]
 
+DownloadOne = Callable[[str, Any], Any]
 
-# 下载文件的函数
+
 def download_file(url, path):
+    """下载单张瓦片到 path。"""
     local_filename = url.split("/")[-1]
     with requests.get(url, stream=True) as r:
         r.raise_for_status()
@@ -55,35 +38,22 @@ def download_file(url, path):
     return local_filename
 
 
-# 使用多线程下载文件
-def download_files(urls):
-    # 创建一个包含16个工作线程的线程池
-    with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
-        # 提交所有下载任务，并将future对象和对应的URL存储在字典中
+def download_files(
+    urls: Mapping[str, Any],
+    *,
+    download_one: DownloadOne | None = None,
+    max_workers: int = 16,
+) -> None:
+    """使用线程池下载 urls（值为 [path, status]）。单张下载可注入。"""
+    one = download_one or download_file
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_url = {
-            executor.submit(download_file, url, path[0]): (url, path[0])
-            for url, path in urls.items()
+            executor.submit(one, url, path[0]): (url, path[0]) for url, path in urls.items()
         }
-        # 遍历所有已完成的future对象
         for future in concurrent.futures.as_completed(future_to_url):
             url = future_to_url[future]
             try:
-                # 获取任务结果
                 future.result()
                 print(f"{url} 下载完成")
             except Exception as exc:
                 print(f"{url} 下载时出错: {exc}")
-
-
-# from src.cls.Pic import Pic
-# from src.dl.dlinit import *
-
-# # 新建一个下载会话。
-# requester = dl_init()
-
-# # 获取最新的时间
-# time_str = get_last_time(requester)
-
-# print(time_str)
-# Pic()
-# download_files(file_urls)

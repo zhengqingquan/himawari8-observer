@@ -64,10 +64,6 @@ def on_startup(icon, item):
         add_to_startup_exe()
 
 
-def on_update_wallpaper(icon, item):
-    threading.Thread(target=run_wallpaper_update, daemon=True).start()
-
-
 def on_not_implemented(icon, item):
     logging.info("菜单项未实现: %s", getattr(item, "text", item))
 
@@ -80,7 +76,15 @@ def make_submenu_item(resolution):
 
 
 # 创建托盘图标
-def setup_tray_icon():
+def setup_tray_icon(pipeline):
+    """pipeline: 壁纸更新入口（通常为 main），由 run.py 注入。"""
+
+    def on_update_wallpaper(icon, item):
+        threading.Thread(
+            target=lambda: run_wallpaper_update(pipeline=pipeline),
+            daemon=True,
+        ).start()
+
     global icon
     icon = pystray.Icon(f"{PROGRAM_NAME}_sysTray_icon")
     icon.icon = create_image()

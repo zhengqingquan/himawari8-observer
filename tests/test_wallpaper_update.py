@@ -1,4 +1,4 @@
-"""Seam: run_wallpaper_update — idle runs pipeline once; busy skips."""
+"""Seam: run_wallpaper_update — idle runs pipeline once; busy skips; pipeline required."""
 
 import threading
 import unittest
@@ -7,6 +7,10 @@ from src.wallpaper_update import run_wallpaper_update
 
 
 class RunWallpaperUpdateTests(unittest.TestCase):
+    def test_requires_pipeline(self):
+        with self.assertRaises(TypeError):
+            run_wallpaper_update()
+
     def test_runs_pipeline_when_idle(self):
         calls = []
 

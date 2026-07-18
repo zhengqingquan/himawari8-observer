@@ -2,16 +2,16 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from src.wallpaper_update import run_wallpaper_update
 import sys
 import datetime
+from collections.abc import Callable
 from src.metadata.soft_config import DOWNLOAD_INTERVAL_TIME
 
 
-def stat_time_tast():
-
+def stat_time_tast(pipeline: Callable[[], None]):
     scheduler = BlockingScheduler()
 
     # 添加一个每隔一段时间执行一次
     scheduler.add_job(
-        run_wallpaper_update,
+        lambda: run_wallpaper_update(pipeline=pipeline),
         "interval",
         seconds=DOWNLOAD_INTERVAL_TIME,
         next_run_time=datetime.datetime.now(),
