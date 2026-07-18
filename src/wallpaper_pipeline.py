@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from pathlib import Path
 from time import struct_time
@@ -55,5 +56,8 @@ def run_wallpaper_pipeline(
     pic = Pic(time_str, grade)
     cls_create_folder(pic)
     download(pic)
+    if not pic.download_finish():
+        logging.warning("瓦片未全部下载完成，跳过合成与设壁纸")
+        return
     compose(pic)
     set_desktop(Path(pic.final_path_equal))

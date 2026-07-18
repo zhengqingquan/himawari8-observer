@@ -5,12 +5,15 @@
 from __future__ import annotations
 
 import concurrent.futures
+import logging
 from collections.abc import Callable, Mapping
 from typing import Any
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 
-# 假设这是你要下载的文件的URL列表（本地演示用）
+# 本地演示用 URL 列表（未接入 pipeline）
 file_urls = [
     "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_0_0.png",
     "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_0_1.png",
@@ -27,15 +30,25 @@ file_urls = [
 DownloadOne = Callable[[str, Any], Any]
 
 
-def download_file(url, path):
-    """下载单张瓦片到 path。"""
-    local_filename = url.split("/")[-1]
-    with requests.get(url, stream=True) as r:
+def _build_session() -> requests.Session:
+    session = requests.Session()
+    retries = Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
+    adapter = HTTPAdapter(max_retries=retries)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
+
+
+def download_file(url, path, *, session: requests.Session | None = None):
+    """下载单张瓦片到 path（可选共用 Session / retry）。"""
+    proxies = {"http": None, "https": None}
+    client = session or requests
+    with client.get(url, stream=True, verify=True, proxies=proxies, timeout=(5, 14)) as r:
         r.raise_for_status()
         with open(path, "wb") as f:
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
-    return local_filename
+    return url.split("/")[-1]
 
 
 def download_files(
@@ -44,16 +57,22 @@ def download_files(
     download_one: DownloadOne | None = None,
     max_workers: int = 16,
 ) -> None:
-    """使用线程池下载 urls（值为 [path, status]）。单张下载可注入。"""
-    one = download_one or download_file
+    """使用线程池下载 urls（值为 [path, status]）。成功则 status=1。"""
+    session = None if download_one is not None else _build_session()
+
+    def default_one(url, path):
+        return download_file(url, path, session=session)
+
+    one = download_one or default_one
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_url = {
-            executor.submit(one, url, path[0]): (url, path[0]) for url, path in urls.items()
+        future_to_entry = {
+            executor.submit(one, url, entry[0]): (url, entry) for url, entry in urls.items()
         }
-        for future in concurrent.futures.as_completed(future_to_url):
-            url = future_to_url[future]
+        for future in concurrent.futures.as_completed(future_to_entry):
+            url, entry = future_to_entry[future]
             try:
                 future.result()
-                print(f"{url} 下载完成")
+                entry[1] = 1
+                logging.info("%s 下载完成", url)
             except Exception as exc:
-                print(f"{url} 下载时出错: {exc}")
+                logging.warning("%s 下载时出错: %s", url, exc)
