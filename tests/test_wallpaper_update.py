@@ -1,12 +1,60 @@
-"""Seam: run_wallpaper_update — idle runs pipeline once; busy skips; pipeline required."""
+"""Seam: pause gates scheduled wallpaper updates; manual can bypass."""
 
 import threading
 import unittest
 
-from src.wallpaper_update import run_wallpaper_update
+from src.wallpaper_update import (
+    is_paused,
+    pause,
+    resume,
+    run_wallpaper_update,
+)
+
+
+class WallpaperPauseTests(unittest.TestCase):
+    def setUp(self):
+        resume()
+
+    def tearDown(self):
+        resume()
+
+    def test_pause_and_resume_toggle(self):
+        self.assertFalse(is_paused())
+        pause()
+        self.assertTrue(is_paused())
+        resume()
+        self.assertFalse(is_paused())
+
+    def test_respect_pause_skips_when_paused(self):
+        calls = []
+        pause()
+        self.assertFalse(
+            run_wallpaper_update(
+                pipeline=lambda: calls.append(1),
+                respect_pause=True,
+            )
+        )
+        self.assertEqual(calls, [])
+
+    def test_manual_runs_while_paused(self):
+        calls = []
+        pause()
+        self.assertTrue(
+            run_wallpaper_update(
+                pipeline=lambda: calls.append(1),
+                respect_pause=False,
+            )
+        )
+        self.assertEqual(calls, [1])
 
 
 class RunWallpaperUpdateTests(unittest.TestCase):
+    def setUp(self):
+        resume()
+
+    def tearDown(self):
+        resume()
+
     def test_requires_pipeline(self):
         with self.assertRaises(TypeError):
             run_wallpaper_update()

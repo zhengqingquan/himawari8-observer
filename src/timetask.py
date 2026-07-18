@@ -11,7 +11,7 @@ def stat_time_tast(pipeline: Callable[[], None]):
 
     # 添加一个每隔一段时间执行一次
     scheduler.add_job(
-        lambda: run_wallpaper_update(pipeline=pipeline),
+        lambda: run_wallpaper_update(pipeline=pipeline, respect_pause=True),
         "interval",
         seconds=DOWNLOAD_INTERVAL_TIME,
         next_run_time=datetime.datetime.now(),

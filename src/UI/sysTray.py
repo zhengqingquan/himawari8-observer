@@ -9,7 +9,12 @@ from src.event.event import end_main_sys
 from src.metadata.soft_config import IMAGE_RESOLUTION
 from src.metadata.soft_info import DESCRIPTION, PROGRAM_NAME, SOFTWARE_VERSION, WEBSITE
 from src.startup import add_to_startup_exe, remove_from_startup_exe, is_startup_set
-from src.wallpaper_update import run_wallpaper_update
+from src.wallpaper_update import (
+    is_paused,
+    pause,
+    resume,
+    run_wallpaper_update,
+)
 
 
 # 创建一个函数来绘制托盘图标
@@ -77,13 +82,22 @@ def make_submenu_item(resolution):
 
 # 创建托盘图标
 def setup_tray_icon(pipeline):
-    """pipeline: 壁纸更新入口（通常为 main），由 run.py 注入。"""
+    """pipeline: 冻结档位后的壁纸更新任务，由 run.py 注入。"""
 
     def on_update_wallpaper(icon, item):
         threading.Thread(
-            target=lambda: run_wallpaper_update(pipeline=pipeline),
+            target=lambda: run_wallpaper_update(pipeline=pipeline, respect_pause=False),
             daemon=True,
         ).start()
+
+    def pause_menu_text(item):
+        return "恢复更新壁纸" if is_paused() else "暂停更新壁纸"
+
+    def on_toggle_pause(icon, item):
+        if is_paused():
+            resume()
+        else:
+            pause()
 
     global icon
     icon = pystray.Icon(f"{PROGRAM_NAME}_sysTray_icon")
@@ -99,7 +113,7 @@ def setup_tray_icon(pipeline):
     # 创建主菜单
     icon.menu = pystray.Menu(
         pystray.MenuItem("更新壁纸", on_update_wallpaper),
-        pystray.MenuItem("暂停更新壁纸", on_not_implemented),
+        pystray.MenuItem(pause_menu_text, on_toggle_pause),
         pystray.MenuItem("图片分辨率", sub_menu),
         pystray.MenuItem("开机启动", on_startup),
         pystray.MenuItem("日志设置", on_not_implemented),
