@@ -41,7 +41,7 @@ class Pic(object):
         self.arr_url = []  # 下载时的url，数组类型
         self.arr_path = []  # 下载时的文件路径，数组类型
         self.dic = {}  # 下载时url与图片路径的映射，字典类型
-        self.post_data = {}  # 使用post下载时候的data数据。
+        self.post_data = {}  # 使用post下载时候的data数据（按需 ensure）
         self.pic_chip = self.int_equal**2  # 图片有多少张。
         self.pic_side = self.pic_pixel * self.int_equal  # 图片的边为多少像素
 
@@ -49,8 +49,7 @@ class Pic(object):
         # 用于下载时保存的文件夹名称，可以修改。
         self.folder_top = "img"
 
-        # 存放完整图片的文件夹名称，例如：complete
-        # 用于下载时保存的文件夹名称，可以修改。
+        # 存放合成输出的文件夹名称（历史命名 complete，非 complete 下载能力）
         self.folder_complete = "complete"
 
         # 存储文件夹名称，例如：20210515052000
@@ -66,12 +65,9 @@ class Pic(object):
             f"{self.year}{self.month}{self.day}{self.hour}{self.minute}{self.seconds}.{self.suffix}"
         )
 
-        # 完整下载方式下，最终的图片名，例如：hima820210608022000fd.png
-        # 该名称用于构建下载时使用的url，为固定格式，不应该被修改。
-        self.pic_name_cpl = (
-            f"hima8"
-            f"{self.year}{self.month}{self.day}{self.hour}{self.minute}{self.seconds}fd.{self.suffix}"
-        )
+        # complete 下载字段：默认不建，避免 equal 路径泄漏
+        self.pic_name_cpl = None
+        self.final_path_cpl = None
 
         # 存储的当前文件夹目录，用来创建文件夹。例如：..img/20d20210515052000/complete
         # 用于下载时保存的文件夹路径，不建议修改。
@@ -85,17 +81,8 @@ class Pic(object):
             f"{self.folder_path}/{self.pic_name_equal}"
         )
 
-        # 完整下载方式下，最终的图片相对路径，用来下载。例如..img/20210515052000/complete/hima820210608022000fd.png
-        # 用于下载时保存的文件夹路径，不建议修改。
-        self.final_path_cpl = PROGRAM_DIR_ABS_PATH.joinpath(
-            f"{self.folder_path}/{self.pic_name_cpl}"
-        )
-
         # 在碎片下载方式下，构建url和path的映射
         self.build_dic()
-
-        # 在完整下载方式下，构建post请求的data
-        self.build_post_data()
 
     def build_dic(self):
         """
@@ -151,6 +138,19 @@ class Pic(object):
         if self.pic_chip == len(self.dic):
             print("url和path的映射字典构建完成。")
 
+    def ensure_complete_download_fields(self):
+        """按需填充 complete 下载所需字段（equal 真路径默认不调用）。"""
+        if self.pic_name_cpl is not None and self.final_path_cpl is not None and self.post_data:
+            return
+        self.pic_name_cpl = (
+            f"hima8"
+            f"{self.year}{self.month}{self.day}{self.hour}{self.minute}{self.seconds}fd.{self.suffix}"
+        )
+        self.final_path_cpl = PROGRAM_DIR_ABS_PATH.joinpath(
+            f"{self.folder_path}/{self.pic_name_cpl}"
+        )
+        self.build_post_data()
+
     def build_post_data(self):
         self.post_data = {
             "_method": "POST",
@@ -186,5 +186,6 @@ if __name__ == "__main__":
     pic = Pic(last_time, "20d")  # 实例化类
 
     print_dic(pic.dic)  # 打印碎片下载方式的映射
+    pic.ensure_complete_download_fields()
     print_dic(pic.post_data)  # 打印完整下载方式下post请求的data
     print(pic.download_finish())  # 打印看是否下载完整

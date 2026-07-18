@@ -75,6 +75,7 @@ def dl_post_pic(pic, request):
     :param request:连接请求
     :return:下载完成返回True，下载未完成返回False
     """
+    pic.ensure_complete_download_fields()
     proxies = {"http": None, "https": None}  # 不使用代理
     verify = False  # 开启验证SSL证书
     stream = True  # 不会立马开始下载，默认是False
