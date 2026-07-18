@@ -118,7 +118,11 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         pystray.MenuItem("更新壁纸", on_update_wallpaper),
         pystray.MenuItem(pause_menu_text, on_toggle_pause),
         pystray.MenuItem("图片分辨率", sub_menu),
-        pystray.MenuItem("开机启动", on_startup),
+        pystray.MenuItem(
+            "开机启动",
+            on_startup,
+            checked=lambda item: is_startup_set(),
+        ),
         pystray.MenuItem("打开日志", on_open_log),
         pystray.MenuItem("访问官网", on_offical_website),
         pystray.MenuItem(f"关于 {PROGRAM_NAME}", on_clicked),
