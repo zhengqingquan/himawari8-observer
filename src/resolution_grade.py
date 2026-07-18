@@ -6,6 +6,7 @@ _TILE_PIXEL = 550
 _DEFAULT_GRADE = "4d"
 _GRADE_TO_GRID: dict[str, int] = {
     "1d": 1,
+    "2d": 2,
     "4d": 4,
     "8d": 8,
     "16d": 16,
