@@ -49,6 +49,7 @@ class Config:
         self._parser.add_argument(
             "-r",
             "--resolution",
+            type=int,
             choices=IMAGE_RESOLUTION,
             default=DEFAULT_RESOLUTION,
             const=DEFAULT_RESOLUTION,

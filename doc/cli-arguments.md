@@ -152,6 +152,8 @@ himawari8-observer.exe -h
 
 读取解析结果可使用：
 
-- `Config().get_download_method()`
-- `Config().get_download_resolution()`
-- `Config().is_auto_adjust_picture()`
+- `Config().get_download_method()`（尚未接入流水线）
+- `Config().get_download_resolution()`（`main()` 已接入壁纸更新）
+- `Config().is_auto_adjust_picture()`（尚未接入流水线）
+
+> **接线说明**：`-r` 在启动时解析后，由 `src/main.py` 转为分辨率档位并传入 `run_wallpaper_pipeline`；定时与托盘「更新壁纸」均经 `main()`，因此会使用同一 `-r`。`-dl` / `-a` 仍未驱动业务。
