@@ -1,6 +1,7 @@
 from time import strftime
 from src.dl.dlinit import dl_init
 from src.metadata.soft_config import PROGRAM_DIR_ABS_PATH
+from src.resolution_grade import grade_to_grid, tile_pixel
 
 
 class Pic(object):
@@ -16,7 +17,7 @@ class Pic(object):
     )
     hash_base = "https://sc-nc-web.nict.go.jp/wsdb_osndisk/shareDirDownload/bDw2maKV"  # 获取Token时使用的url
     suffix = "png"  # 图片类型后缀
-    pic_pixel = 550  # 图片基本像素大小
+    pic_pixel = tile_pixel()  # 瓦片边长（像素）
     pic_size = 0  # 图片大小
     dl_finish_equal = False  # 碎片下载方式下，图片是否下载完成的状态位
     dl_finish_cpl = False  # 完整下载方式下，图片是否下载完成的状态位
@@ -27,10 +28,8 @@ class Pic(object):
         :param pic_time:照片的时间。
         :param equal:str类型，从程序参数传入。意为被等分为多少块，例如：20d
         """
-        arr_equal = {"1d": 1, "4d": 4, "8d": 8, "16d": 16, "20d": 20}
         self.str_equal = equal  # 被等分为多少块，str类型，例如：20d
-        self.int_equal = arr_equal.get(self.str_equal)  # 被等分为多少块，int类型，例如：20
-
+        self.int_equal = grade_to_grid(self.str_equal)
         self.year = strftime("%Y", pic_time)  # 年
         self.month = strftime("%m", pic_time)  # 月
         self.day = strftime("%d", pic_time)  # 日
