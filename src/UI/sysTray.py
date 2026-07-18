@@ -1,3 +1,6 @@
+import logging
+import threading
+
 import pystray
 import webbrowser
 from tkinter import messagebox
@@ -6,6 +9,7 @@ from src.event.event import end_main_sys
 from src.metadata.soft_config import IMAGE_RESOLUTION
 from src.metadata.soft_info import DESCRIPTION, PROGRAM_NAME, SOFTWARE_VERSION, WEBSITE
 from src.startup import add_to_startup_exe, remove_from_startup_exe, is_startup_set
+from src.wallpaper_update import run_wallpaper_update
 
 
 # 创建一个函数来绘制托盘图标
@@ -60,9 +64,19 @@ def on_startup(icon, item):
         add_to_startup_exe()
 
 
+def on_update_wallpaper(icon, item):
+    threading.Thread(target=run_wallpaper_update, daemon=True).start()
+
+
+def on_not_implemented(icon, item):
+    logging.info("菜单项未实现: %s", getattr(item, "text", item))
+
+
 # 创建子菜单项的回调函数
 def make_submenu_item(resolution):
-    return pystray.MenuItem(f"分辨率 {resolution}", lambda icon, item: on_startup(icon, item))
+    return pystray.MenuItem(
+        f"分辨率 {resolution}", lambda icon, item: on_not_implemented(icon, item)
+    )
 
 
 # 创建托盘图标
@@ -80,11 +94,11 @@ def setup_tray_icon():
 
     # 创建主菜单
     icon.menu = pystray.Menu(
-        pystray.MenuItem("更新壁纸", on_startup),
-        pystray.MenuItem("暂停更新壁纸", on_startup),  # 暂停更新壁纸，开始更新壁纸。
-        pystray.MenuItem("图片分辨率", sub_menu),  # 子菜单项
+        pystray.MenuItem("更新壁纸", on_update_wallpaper),
+        pystray.MenuItem("暂停更新壁纸", on_not_implemented),
+        pystray.MenuItem("图片分辨率", sub_menu),
         pystray.MenuItem("开机启动", on_startup),
-        pystray.MenuItem("日志设置", on_startup),  # 记录日志 日志等级
+        pystray.MenuItem("日志设置", on_not_implemented),
         pystray.MenuItem("访问官网", on_offical_website),
         pystray.MenuItem(f"关于 {PROGRAM_NAME}", on_clicked),
         pystray.MenuItem("退出", on_quit),

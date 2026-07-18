@@ -63,6 +63,11 @@ AGENTS.md
 docs/agents/
 .scratch/
 
+# ========== Local as-is architecture snapshot（不入库）==========
+# 供本地 agent 消费；见 .scratch/as-is-architecture/map.md
+/CONTEXT.md
+/ARCHITECTURE.md
+
 # ========== Secrets / local env ==========
 .env
 .env.*
