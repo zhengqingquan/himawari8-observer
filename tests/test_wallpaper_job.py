@@ -1,4 +1,4 @@
-"""Seam: build_wallpaper_job freezes resolution grade at assembly."""
+"""Seam: build_wallpaper_job freezes resolution grade and auto_adjust at assembly."""
 
 import unittest
 
@@ -29,6 +29,17 @@ class BuildWallpaperJobTests(unittest.TestCase):
         pixels[0] = 550
         job()
         self.assertEqual(grades, ["8d"])
+
+    def test_job_freezes_auto_adjust(self):
+        flags = []
+
+        def fake_pipeline(*, auto_adjust=False, **_kwargs):
+            flags.append(auto_adjust)
+
+        job = build_wallpaper_job("4d", auto_adjust=True, run_pipeline=fake_pipeline)
+        job()
+        job()
+        self.assertEqual(flags, [True, True])
 
 
 if __name__ == "__main__":

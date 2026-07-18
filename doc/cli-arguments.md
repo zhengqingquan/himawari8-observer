@@ -28,7 +28,7 @@ python run.py --version
 |--------|--------|------|--------|------|
 | `-dl` | `--download` | `equal` / `complete` | `equal` | 下载方式 |
 | `-r` | `--resolution` | `550` / `2200` / `4400` / `8800` / `11000` | `2200` | 目标图像边长（像素） |
-| `-a` | `--adjust` | 开关标志 | 未启用 | 是否自动调整图片，避免被任务栏遮挡 |
+| `-a` | `--adjust` | 开关标志 | 关闭 | 是否自动调整图片，避免被任务栏遮挡 |
 | `-v` | `--version` | — | — | 打印版本后退出 |
 | `-h` | `--help` | — | — | 打印帮助后退出 |
 
@@ -91,7 +91,7 @@ python run.py -r
 
 帮助文案含义：启用自动调整。
 
-> **实现说明**：当前 `argparse` 定义为 `action="store_false"` 且 `default=False`，传入或不传入该标志时，配置值均为 `False`。该选项的业务接线与行为仍待完善，请以实际代码为准。
+> **实现说明**：`action="store_true"`，默认关闭；传入 `-a` / `--adjust` 时启用。启动时冻结进 `build_wallpaper_job`，compose 之后、设壁纸之前调用 `fix_pic`，输出为同目录 `*_adjust.png`。
 
 示例：
 
@@ -154,6 +154,6 @@ himawari8-observer.exe -h
 
 - `Config().get_download_method()`（尚未接入流水线）
 - `Config().get_download_resolution()`（`main()` 已接入壁纸更新）
-- `Config().is_auto_adjust_picture()`（尚未接入流水线）
+- `Config().is_auto_adjust_picture()` → 启动时冻结为 `auto_adjust`，经 `build_wallpaper_job` 注入
 
-> **接线说明**：`-r` 在启动时解析并冻结为分辨率档位，经 `build_wallpaper_job` 注入定时与托盘「更新壁纸」；运行中不再回读 Config。`-dl` / `-a` 仍未驱动业务。
+> **接线说明**：`-r` / `-a` 在启动时解析并冻结，经 `build_wallpaper_job` 注入定时与托盘「更新壁纸」；运行中不再回读 Config。`-dl` 仍未驱动业务。

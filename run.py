@@ -16,7 +16,9 @@ if __name__ == "__main__":
         # 处理参数命令和初始化程序配置
         config = Config()
         grade = pixel_to_grade(config.get_download_resolution())
-        wallpaper_job = build_wallpaper_job(grade)
+        wallpaper_job = build_wallpaper_job(
+            grade, auto_adjust=config.is_auto_adjust_picture()
+        )
 
         # 托盘与调度注入同一冻结档位的任务
         tray_thread = threading.Thread(

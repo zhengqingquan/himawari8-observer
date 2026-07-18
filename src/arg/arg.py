@@ -64,7 +64,7 @@ class Config:
             "--adjust",
             dest="is_auto_adjust_picture",
             default=False,
-            action="store_false",
+            action="store_true",
             help="Automatically adjust images. Prevent being obscured by the taskbar.",
         )
 
