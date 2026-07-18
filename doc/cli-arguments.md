@@ -156,4 +156,4 @@ himawari8-observer.exe -h
 - `Config().get_download_resolution()`（`main()` 已接入壁纸更新）
 - `Config().is_auto_adjust_picture()` → 启动时冻结为 `auto_adjust`，经 `build_wallpaper_job` 注入
 
-> **接线说明**：`-r` / `-a` 在启动时解析并冻结，经 `build_wallpaper_job` 注入定时与托盘「更新壁纸」；运行中不再回读 Config。`-dl` 仍未驱动业务。
+> **接线说明**：`-r` / `-a` 在启动时解析并冻结进 `WallpaperJobRef`；托盘「图片分辨率」可运行中换档（不回写 CLI），并立即触发一次壁纸更新。「打开日志」打开 `LOG_PATH`。`-dl` 仍未驱动业务。

@@ -1,4 +1,5 @@
 import logging
+import os
 import threading
 
 import pystray
@@ -6,9 +7,10 @@ import webbrowser
 from tkinter import messagebox
 from PIL import Image, ImageDraw
 from src.event.event import end_main_sys
-from src.metadata.soft_config import IMAGE_RESOLUTION
+from src.metadata.soft_config import IMAGE_RESOLUTION, LOG_PATH
 from src.metadata.soft_info import DESCRIPTION, PROGRAM_NAME, SOFTWARE_VERSION, WEBSITE
 from src.startup import add_to_startup_exe, remove_from_startup_exe, is_startup_set
+from src.wallpaper_job import WallpaperJobRef
 from src.wallpaper_update import (
     is_paused,
     pause,
@@ -35,11 +37,6 @@ def on_clicked(icon, item):
 介绍：{DESCRIPTION}
 """
     messagebox.showinfo("信息", message_text)
-
-
-# 创建托盘图标子菜单的回调函数
-def on_submenu_item(icon, item):
-    messagebox.showinfo("子菜单项", "您点击了子菜单项")
 
 
 # 创建托盘图标右键菜单的回调函数
@@ -69,24 +66,19 @@ def on_startup(icon, item):
         add_to_startup_exe()
 
 
-def on_not_implemented(icon, item):
-    logging.info("菜单项未实现: %s", getattr(item, "text", item))
-
-
-# 创建子菜单项的回调函数
-def make_submenu_item(resolution):
-    return pystray.MenuItem(
-        f"分辨率 {resolution}", lambda icon, item: on_not_implemented(icon, item)
-    )
+def on_open_log(icon, item):
+    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    LOG_PATH.touch(exist_ok=True)
+    os.startfile(LOG_PATH)
 
 
 # 创建托盘图标
-def setup_tray_icon(pipeline):
-    """pipeline: 冻结档位后的壁纸更新任务，由 run.py 注入。"""
+def setup_tray_icon(job_ref: WallpaperJobRef):
+    """job_ref: 托盘与定时器共享的壁纸任务引用，由 run.py 注入。"""
 
     def on_update_wallpaper(icon, item):
         threading.Thread(
-            target=lambda: run_wallpaper_update(pipeline=pipeline, respect_pause=False),
+            target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
             daemon=True,
         ).start()
 
@@ -99,24 +91,35 @@ def setup_tray_icon(pipeline):
         else:
             pause()
 
+    def make_resolution_item(pixel_side: int):
+        def on_select(icon, item):
+            job_ref.set_pixel_side(pixel_side)
+            logging.info("分辨率档位已切换为 %spx（%s）", pixel_side, job_ref.resolution_grade)
+            threading.Thread(
+                target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
+                daemon=True,
+            ).start()
+
+        return pystray.MenuItem(
+            f"分辨率 {pixel_side}",
+            on_select,
+            checked=lambda item: job_ref.pixel_side == pixel_side,
+            radio=True,
+        )
+
     global icon
     icon = pystray.Icon(f"{PROGRAM_NAME}_sysTray_icon")
     icon.icon = create_image()
     icon.title = PROGRAM_NAME
 
-    # 创建子菜单项
-    sub_menu_items = [make_submenu_item(res) for res in IMAGE_RESOLUTION]
+    sub_menu = pystray.Menu(*[make_resolution_item(res) for res in IMAGE_RESOLUTION])
 
-    # 创建子菜单
-    sub_menu = pystray.Menu(*sub_menu_items)
-
-    # 创建主菜单
     icon.menu = pystray.Menu(
         pystray.MenuItem("更新壁纸", on_update_wallpaper),
         pystray.MenuItem(pause_menu_text, on_toggle_pause),
         pystray.MenuItem("图片分辨率", sub_menu),
         pystray.MenuItem("开机启动", on_startup),
-        pystray.MenuItem("日志设置", on_not_implemented),
+        pystray.MenuItem("打开日志", on_open_log),
         pystray.MenuItem("访问官网", on_offical_website),
         pystray.MenuItem(f"关于 {PROGRAM_NAME}", on_clicked),
         pystray.MenuItem("退出", on_quit),

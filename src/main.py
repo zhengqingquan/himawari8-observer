@@ -2,7 +2,7 @@
 main.py
 
 一次性入口：从 Config 读分辨率并执行一次壁纸更新。
-常驻进程请在 run.py 用 build_wallpaper_job 冻结档位后注入。
+常驻进程请在 run.py 用 WallpaperJobRef 注入托盘与定时器。
 """
 
 # !/usr/bin/env python
