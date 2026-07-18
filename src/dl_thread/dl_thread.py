@@ -1,5 +1,5 @@
 """
-创建下载的线程
+创建下载的线程（瓦片下载的并发实现细节）
 """
 
 from __future__ import annotations
@@ -12,20 +12,6 @@ from typing import Any
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
-
-# 本地演示用 URL 列表（未接入 pipeline）
-file_urls = [
-    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_0_0.png",
-    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_0_1.png",
-    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_0_2.png",
-    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_0_3.png",
-    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_1_0.png",
-    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_1_1.png",
-    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_1_2.png",
-    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_1_3.png",
-    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_2_0.png",
-    "https://himawari8.nict.go.jp/img/D531106/4d/550/2024/08/05/082000_2_1.png",
-]
 
 DownloadOne = Callable[[str, Any], Any]
 

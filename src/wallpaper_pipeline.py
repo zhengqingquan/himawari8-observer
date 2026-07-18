@@ -9,9 +9,9 @@ from time import struct_time
 
 from src.cls.Pic import Pic
 from src.dl.dlinit import dl_init, get_last_time
-from src.dl_thread.dl_thread import download_files
 from src.picdeal.photofunia import cls_photo_composition
 from src.resolution_grade import default_grade
+from src.tile_download import download_tiles
 from src.tool.folder import cls_create_folder
 from src.tool.wallpaper import path_wallpaper
 
@@ -26,7 +26,7 @@ def _default_fetch_observation_time() -> struct_time:
 
 
 def _default_download_tiles(pic: Pic) -> None:
-    download_files(pic.dic)
+    download_tiles(pic)
 
 
 def _default_compose_equal(pic: Pic) -> None:
