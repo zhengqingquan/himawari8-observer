@@ -388,14 +388,21 @@ https://jh190005-4.kudpc.kyoto-u.ac.jp/himawari/img/D531106/...
 | 1 | GET | `.../img/D531106/latest.json` | 200 |
 | 2 | GET | `.../img/D531107/latest.json` | 200 |
 | 3 | GET | `.../img/FULL_24h/latest.json` | 200 |
-| 4 | GET | `.../img/D531106/1d/550/{date}/..._0_0.png` | 304 |
-| 5 | GET | `.../img/D531106/thumbnail/550/{date}/..._0_0.png` | 304 |
-| 6 | GET | `.../img/FULL_24h/B13/1d/550/{date}/..._0_0.png` | 200 |
-| 7 | GET | `.../img/FULL_24h/BlueMarble/1d/275/BlueMarble_0_0.png` | 200 |
-| 8 | GET | `https://himawari.asia/json/D531108/{date}.json` | 200 |
-| 9 | GET | `https://himawari.asia/json/event.js` | 404 |
-| 10 | GET | `https://himawari.asia/js/env.js` | 200 |
+| 4 | GET | `.../img/D531106/1d/550/{date}/..._{x}_{y}.png` | 200 / 304 |
+| 5 | GET | `.../img/D531106/2d/550/{date}/..._{x}_{y}.png` | 200 / 304 |
+| 6 | GET | `.../img/D531106/4d/550/{date}/..._{x}_{y}.png` | 200 / 304 |
+| 7 | GET | `.../img/D531106/8d/550/{date}/..._{x}_{y}.png` | 200 / 304 |
+| 8 | GET | `.../img/D531106/16d/550/{date}/..._{x}_{y}.png` | 200 / 304 |
+| 9 | GET | `.../img/D531106/20d/550/{date}/..._{x}_{y}.png` | 200 / 304 |
+| 10 | GET | `.../img/D531106/thumbnail/550/{date}/..._0_0.png` | 200 / 304 |
+| 11 | GET | `.../img/FULL_24h/B13/1d/550/{date}/..._0_0.png` | 200 / 304 |
+| 12 | GET | `.../img/FULL_24h/BlueMarble/1d/275/BlueMarble_0_0.png` | 200 |
+| 13 | GET | `https://himawari.asia/json/D531108/{date}.json`（NICT 同源：`himawari8.nict.go.jp`） | 200 |
+| 14 | GET | `…/json/event.js` | 404 |
+| 15 | GET | `…/js/env.js` | 200 |
+
+> 高档位（`8d` / `16d` / `20d`）在浏览器 HAR 中多为**视口局部瓦片**，不一定请求满 N×N 网格；壁纸程序若要整图合成，仍应按档位拉齐全部瓦片。
 
 ---
 
-*文档根据 `har/himawari.asia.har` 自动整理，镜像主机名可能随站点配置变更，以 `env.js` 中 `imgBaseUrl` 为准。*
+*文档根据 `har/himawari.asia.har` 与 `har/himawari8.nict.go.jp.har` 整理，镜像主机名可能随站点配置变更，以 `env.js` 中 `imgBaseUrl` 为准。*
