@@ -28,6 +28,8 @@ python run.py --version
 |--------|--------|------|--------|------|
 | `-r` | `--resolution` | `550` / `1100` / `2200` / `4400` / `8800` / `11000` | `2200` | 目标图像边长（像素） |
 | `-a` | `--adjust` / `--no-adjust` | 布尔开关 | **开启** | 是否加黑边修边，避免被任务栏遮挡 |
+| — | `--margin-top` | `0`–`100` | `5` | 顶边黑边占原图边长的百分比 |
+| — | `--margin-bottom` | `0`–`100` | `5` | 底边黑边占原图边长的百分比 |
 | `-v` | `--version` | — | — | 打印版本后退出 |
 | `-h` | `--help` | — | — | 打印帮助后退出 |
 
@@ -79,6 +81,18 @@ python run.py
 python run.py -a
 python run.py --adjust
 python run.py --no-adjust
+```
+
+---
+
+### `--margin-top` / `--margin-bottom`
+
+修边开启时，顶边 / 底边黑边占正方形原图边长的百分比，取值 `0`–`100`，默认均为 `5`。
+
+示例：
+
+```bash
+python run.py --margin-top 5 --margin-bottom 12
 ```
 
 ---

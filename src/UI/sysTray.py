@@ -7,7 +7,7 @@ import pystray
 import webbrowser
 from PIL import Image, ImageDraw
 from src.event.event import end_main_sys
-from src.metadata.soft_config import IMAGE_RESOLUTION, LOG_PATH
+from src.metadata.soft_config import IMAGE_RESOLUTION, LOG_PATH, MARGIN_PERCENT_CHOICES
 from src.metadata.soft_info import DESCRIPTION, PROGRAM_NAME, SOFTWARE_VERSION, WEBSITE
 from src.startup import add_to_startup_exe, remove_from_startup_exe, is_startup_set
 from src.wallpaper_job import WallpaperJobRef
@@ -111,17 +111,70 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             radio=True,
         )
 
+    def on_toggle_adjust(icon, item):
+        enabled = not job_ref.auto_adjust
+        job_ref.set_auto_adjust(enabled)
+        logging.info("黑边修边已%s", "开启" if enabled else "关闭")
+        threading.Thread(
+            target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
+            daemon=True,
+        ).start()
+
+    def make_margin_top_item(percent: float):
+        def on_select(icon, item):
+            job_ref.set_margin_top_percent(percent)
+            logging.info("顶边黑边已设为 %s%%", percent)
+            threading.Thread(
+                target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
+                daemon=True,
+            ).start()
+
+        return pystray.MenuItem(
+            f"顶边 {percent:g}%",
+            on_select,
+            checked=lambda item: job_ref.margin_top_percent == percent,
+            radio=True,
+        )
+
+    def make_margin_bottom_item(percent: float):
+        def on_select(icon, item):
+            job_ref.set_margin_bottom_percent(percent)
+            logging.info("底边黑边已设为 %s%%", percent)
+            threading.Thread(
+                target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
+                daemon=True,
+            ).start()
+
+        return pystray.MenuItem(
+            f"底边 {percent:g}%",
+            on_select,
+            checked=lambda item: job_ref.margin_bottom_percent == percent,
+            radio=True,
+        )
+
     global icon
     icon = pystray.Icon(f"{PROGRAM_NAME}_sysTray_icon")
     icon.icon = create_image()
     icon.title = PROGRAM_NAME
 
-    sub_menu = pystray.Menu(*[make_resolution_item(res) for res in IMAGE_RESOLUTION])
+    resolution_menu = pystray.Menu(*[make_resolution_item(res) for res in IMAGE_RESOLUTION])
+    margin_menu = pystray.Menu(
+        pystray.MenuItem(
+            "启用黑边修边",
+            on_toggle_adjust,
+            checked=lambda item: job_ref.auto_adjust,
+        ),
+        pystray.Menu.SEPARATOR,
+        *[make_margin_top_item(p) for p in MARGIN_PERCENT_CHOICES],
+        pystray.Menu.SEPARATOR,
+        *[make_margin_bottom_item(p) for p in MARGIN_PERCENT_CHOICES],
+    )
 
     icon.menu = pystray.Menu(
         pystray.MenuItem("更新壁纸", on_update_wallpaper),
         pystray.MenuItem(pause_menu_text, on_toggle_pause),
-        pystray.MenuItem("图片分辨率", sub_menu),
+        pystray.MenuItem("图片分辨率", resolution_menu),
+        pystray.MenuItem("黑边修边", margin_menu),
         pystray.MenuItem(
             "开机启动",
             on_startup,

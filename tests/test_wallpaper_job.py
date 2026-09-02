@@ -41,6 +41,21 @@ class BuildWallpaperJobTests(unittest.TestCase):
         job()
         self.assertEqual(flags, [True, True])
 
+    def test_job_freezes_margin_percents(self):
+        margins = []
+
+        def fake_pipeline(*, margin_top_percent=5.0, margin_bottom_percent=5.0, **_kwargs):
+            margins.append((margin_top_percent, margin_bottom_percent))
+
+        job = build_wallpaper_job(
+            "4d",
+            margin_top_percent=3.0,
+            margin_bottom_percent=12.0,
+            run_pipeline=fake_pipeline,
+        )
+        job()
+        self.assertEqual(margins, [(3.0, 12.0)])
+
 
 if __name__ == "__main__":
     unittest.main()

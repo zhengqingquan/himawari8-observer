@@ -15,4 +15,9 @@ from src.wallpaper_job import build_wallpaper_job
 def main() -> None:
     config = Config()
     grade = pixel_to_grade(config.get_download_resolution())
-    build_wallpaper_job(grade, auto_adjust=config.is_auto_adjust_picture())()
+    build_wallpaper_job(
+        grade,
+        auto_adjust=config.is_auto_adjust_picture(),
+        margin_top_percent=config.get_margin_top_percent(),
+        margin_bottom_percent=config.get_margin_bottom_percent(),
+    )()

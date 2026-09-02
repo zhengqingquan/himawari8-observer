@@ -1,4 +1,4 @@
-"""Seam: -a / --adjust defaults on; --no-adjust disables."""
+"""Seam: -a / --adjust defaults on; margin percents default to 5."""
 
 import sys
 import unittest
@@ -32,6 +32,18 @@ class AdjustFlagTests(unittest.TestCase):
     def test_no_adjust_disables(self):
         config = _fresh_config(["run.py", "--no-adjust"])
         self.assertFalse(config.is_auto_adjust_picture())
+
+    def test_default_margin_percents_are_five(self):
+        config = _fresh_config(["run.py"])
+        self.assertEqual(config.get_margin_top_percent(), 5.0)
+        self.assertEqual(config.get_margin_bottom_percent(), 5.0)
+
+    def test_margin_percents_can_be_set(self):
+        config = _fresh_config(
+            ["run.py", "--margin-top", "3", "--margin-bottom", "12.5"]
+        )
+        self.assertEqual(config.get_margin_top_percent(), 3.0)
+        self.assertEqual(config.get_margin_bottom_percent(), 12.5)
 
 
 if __name__ == "__main__":

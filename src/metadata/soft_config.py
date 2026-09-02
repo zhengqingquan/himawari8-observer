@@ -17,3 +17,10 @@ DEFAULT_RESOLUTION = grade_to_pixel(default_grade())
 
 # 下载图片的间隔时间（单位：秒）
 DOWNLOAD_INTERVAL_TIME = 20 * 60
+
+# 修边黑边占原图边长的默认百分比
+DEFAULT_MARGIN_TOP_PERCENT = 5.0
+DEFAULT_MARGIN_BOTTOM_PERCENT = 5.0
+
+# 托盘可选的黑边百分比预设
+MARGIN_PERCENT_CHOICES = (0.0, 5.0, 8.0, 10.0, 12.0, 15.0)

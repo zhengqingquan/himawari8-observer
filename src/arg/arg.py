@@ -1,7 +1,22 @@
 import argparse
 import logging
-from src.metadata.soft_config import DEFAULT_RESOLUTION, IMAGE_RESOLUTION
+from src.metadata.soft_config import (
+    DEFAULT_MARGIN_BOTTOM_PERCENT,
+    DEFAULT_MARGIN_TOP_PERCENT,
+    DEFAULT_RESOLUTION,
+    IMAGE_RESOLUTION,
+)
 from src.metadata.soft_info import DESCRIPTION, EPILOG, PROGRAM_NAME, SOFTWARE_VERSION
+
+
+def _percent(value: str) -> float:
+    try:
+        percent = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"invalid percent: {value!r}") from exc
+    if not 0.0 <= percent <= 100.0:
+        raise argparse.ArgumentTypeError("percent must be between 0 and 100")
+    return percent
 
 
 class Config:
@@ -55,6 +70,22 @@ class Config:
         )
 
         self._parser.add_argument(
+            "--margin-top",
+            type=_percent,
+            default=DEFAULT_MARGIN_TOP_PERCENT,
+            dest="margin_top_percent",
+            help="Top black-border percent of the square image side (default: 5).",
+        )
+
+        self._parser.add_argument(
+            "--margin-bottom",
+            type=_percent,
+            default=DEFAULT_MARGIN_BOTTOM_PERCENT,
+            dest="margin_bottom_percent",
+            help="Bottom black-border percent of the square image side (default: 5).",
+        )
+
+        self._parser.add_argument(
             "-v", "--version", action="version", version=f"%(prog)s {SOFTWARE_VERSION}"
         )
 
@@ -63,6 +94,11 @@ class Config:
 
         logging.info(f"Download resolution: {self._args.download_resolution}")
         logging.info(f"Is auto adjust picture: {self._args.is_auto_adjust_picture}")
+        logging.info(
+            "Margin percents: top=%s bottom=%s",
+            self._args.margin_top_percent,
+            self._args.margin_bottom_percent,
+        )
 
     # TODO 可以重新解析参数。
     def parse_known_args(self, args):
@@ -73,3 +109,9 @@ class Config:
 
     def is_auto_adjust_picture(self):
         return self._args.is_auto_adjust_picture
+
+    def get_margin_top_percent(self):
+        return self._args.margin_top_percent
+
+    def get_margin_bottom_percent(self):
+        return self._args.margin_bottom_percent

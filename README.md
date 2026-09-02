@@ -24,7 +24,8 @@
 ```bash
 python run.py
 python run.py -r 4400
-python run.py -a -r 2200
+python run.py --margin-bottom 12
+python run.py --no-adjust -r 2200
 python run.py -h
 ```
 
@@ -34,6 +35,8 @@ python run.py -h
 |------|------|
 | `-r` / `--resolution` | 合成边长：`550` / `1100` / `2200`（默认）/ `4400` / `8800` / `11000` |
 | `-a` / `--adjust` | 加黑边修边，减轻任务栏遮挡（**默认开启**；`--no-adjust` 关闭） |
+| `--margin-top` | 顶边黑边占原图边长百分比（默认 `5`） |
+| `--margin-bottom` | 底边黑边占原图边长百分比（默认 `5`） |
 | `-v` / `--version` | 打印版本后退出 |
 
 更完整说明见 [`doc/cli-arguments.md`](doc/cli-arguments.md)。
@@ -42,6 +45,7 @@ python run.py -h
 
 - 更新壁纸 / 暂停或恢复定时更新
 - 切换图片分辨率（立即触发一次更新）
+- 黑边修边（开关；顶边/底边百分比预设，默认各 5%）
 - 开机启动、打开日志、访问官网、关于与退出
 
 定时间隔默认约 20 分钟；进程启动时会立刻更新一次。需要马上换图时可用托盘「更新壁纸」。

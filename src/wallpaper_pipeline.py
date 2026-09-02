@@ -9,6 +9,10 @@ from time import struct_time
 
 from src.cls.Pic import Pic
 from src.dl.dlinit import dl_init, get_last_time
+from src.metadata.soft_config import (
+    DEFAULT_MARGIN_BOTTOM_PERCENT,
+    DEFAULT_MARGIN_TOP_PERCENT,
+)
 from src.picdeal.photofunia import cls_photo_composition, fix_pic
 from src.resolution_grade import default_grade
 from src.tile_download import download_tiles
@@ -34,13 +38,6 @@ def _default_compose_equal(pic: Pic) -> None:
     cls_photo_composition(pic)
 
 
-def _default_adjust_wallpaper(pic: Pic) -> Path:
-    src = Path(pic.final_path_equal)
-    out = src.with_name(f"{src.stem}_adjust{src.suffix}")
-    fix_pic(str(src), pic.pic_side, str(out))
-    return out
-
-
 def _default_set_wallpaper(path: Path) -> None:
     path_wallpaper(path)
 
@@ -54,14 +51,29 @@ def run_wallpaper_pipeline(
     set_wallpaper: SetWallpaper | None = None,
     resolution_grade: str | None = None,
     auto_adjust: bool = False,
+    margin_top_percent: float = DEFAULT_MARGIN_TOP_PERCENT,
+    margin_bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
 ) -> None:
     """跑一次壁纸更新。副作用步骤可注入，便于测试。"""
     fetch = fetch_observation_time or _default_fetch_observation_time
     download = download_tiles or _default_download_tiles
     compose = compose_equal or _default_compose_equal
-    adjust = adjust_wallpaper or _default_adjust_wallpaper
     set_desktop = set_wallpaper or _default_set_wallpaper
     grade = resolution_grade if resolution_grade is not None else default_grade()
+
+    def default_adjust(pic: Pic) -> Path:
+        src = Path(pic.final_path_equal)
+        out = src.with_name(f"{src.stem}_adjust{src.suffix}")
+        fix_pic(
+            str(src),
+            pic.pic_side,
+            str(out),
+            top_percent=margin_top_percent,
+            bottom_percent=margin_bottom_percent,
+        )
+        return out
+
+    adjust = adjust_wallpaper or default_adjust
 
     time_str = fetch()
     pic = Pic(time_str, grade)

@@ -9,7 +9,7 @@ class WallpaperJobRefTests(unittest.TestCase):
     def test_call_uses_current_grade(self):
         grades = []
 
-        def fake_build(resolution_grade, *, auto_adjust=False):
+        def fake_build(resolution_grade, *, auto_adjust=False, **_kwargs):
             def job():
                 grades.append((resolution_grade, auto_adjust))
 
@@ -24,7 +24,7 @@ class WallpaperJobRefTests(unittest.TestCase):
     def test_set_pixel_side_maps_to_grade(self):
         grades = []
 
-        def fake_build(resolution_grade, *, auto_adjust=False):
+        def fake_build(resolution_grade, *, auto_adjust=False, **_kwargs):
             def job():
                 grades.append(resolution_grade)
 
@@ -36,6 +36,40 @@ class WallpaperJobRefTests(unittest.TestCase):
         self.assertEqual(ref.pixel_side, 8800)
         ref()
         self.assertEqual(grades, ["16d"])
+
+    def test_set_margin_rebuilds_job(self):
+        builds = []
+
+        def fake_build(
+            resolution_grade,
+            *,
+            auto_adjust=False,
+            margin_top_percent=5.0,
+            margin_bottom_percent=5.0,
+            **_kwargs,
+        ):
+            builds.append(
+                (resolution_grade, auto_adjust, margin_top_percent, margin_bottom_percent)
+            )
+
+            def job():
+                return None
+
+            return job
+
+        ref = WallpaperJobRef("4d", build_job=fake_build)
+        ref.set_margin_bottom_percent(12.0)
+        ref.set_auto_adjust(False)
+        self.assertEqual(ref.margin_bottom_percent, 12.0)
+        self.assertFalse(ref.auto_adjust)
+        self.assertEqual(
+            builds,
+            [
+                ("4d", False, 5.0, 5.0),
+                ("4d", False, 5.0, 12.0),
+                ("4d", False, 5.0, 12.0),
+            ],
+        )
 
 
 if __name__ == "__main__":

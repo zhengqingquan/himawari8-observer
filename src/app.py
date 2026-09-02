@@ -21,7 +21,10 @@ def main() -> None:
         config = Config()
         grade = pixel_to_grade(config.get_download_resolution())
         job_ref = WallpaperJobRef(
-            grade, auto_adjust=config.is_auto_adjust_picture()
+            grade,
+            auto_adjust=config.is_auto_adjust_picture(),
+            margin_top_percent=config.get_margin_top_percent(),
+            margin_bottom_percent=config.get_margin_bottom_percent(),
         )
 
         # 托盘与调度共享同一任务引用（托盘可运行中换档）
