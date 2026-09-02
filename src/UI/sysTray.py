@@ -45,13 +45,6 @@ def on_quit(icon, item):
     end_main_sys()
 
 
-# 启动时的提示。
-def show_startup_notification():
-    # TODO 使用通知而非弹窗的效果会好一些。
-    # messagebox.showinfo("信息", f"{PROGRAM_NAME} {SOFTWARE_VERSION} 启动成功。")
-    pass
-
-
 # 打开官网菜单项的回调函数。
 def on_offical_website(icon, item):
     webbrowser.open_new(WEBSITE)
@@ -131,5 +124,3 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
 
     # 启动图标。
     icon.run_detached()
-
-    show_startup_notification()

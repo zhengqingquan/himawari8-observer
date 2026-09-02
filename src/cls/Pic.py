@@ -10,7 +10,6 @@ class Pic(object):
     himawari8_base = "https://himawari8.nict.go.jp/img/D531106"
     suffix = "png"
     pic_pixel = tile_pixel()
-    pic_size = 0
     dl_finish_equal = False
 
     def __init__(self, pic_time, equal):
@@ -29,8 +28,6 @@ class Pic(object):
         self.seconds = strftime("%S", pic_time)
 
         self.arr_puzzle = []
-        self.arr_url = []
-        self.arr_path = []
         self.dic = {}
         self.pic_chip = self.int_equal**2
         self.pic_side = self.pic_pixel * self.int_equal
@@ -58,6 +55,8 @@ class Pic(object):
         print("正在构建url和path的映射字典。")
         location_x = 0
         location_y = 0
+        arr_url = []
+        arr_path = []
 
         while location_y < self.int_equal:
             while location_x < self.int_equal:
@@ -71,14 +70,14 @@ class Pic(object):
                 )
                 pic_path = PROGRAM_DIR_ABS_PATH.joinpath(f"{puzzle_path}/{pic_name}")
 
-                self.arr_url.append(url)
+                arr_url.append(url)
                 self.arr_puzzle.append(puzzle_path)
-                self.arr_path.append(pic_path)
+                arr_path.append(pic_path)
                 location_x = location_x + 1
             location_x = 0
             location_y = location_y + 1
 
-        self.dic = dict(zip(self.arr_url, self.arr_path))
+        self.dic = dict(zip(arr_url, arr_path))
         for key, val in self.dic.items():
             self.dic[key] = [val, 0]
         if self.pic_chip == len(self.dic):
@@ -91,15 +90,3 @@ class Pic(object):
             if val[1] == 0:
                 self.dl_finish_equal = False
         return self.dl_finish_equal
-
-
-if __name__ == "__main__":
-    from tool.tool import print_dic
-
-    from dl.dlinit import dl_init, get_last_time
-
-    requester = dl_init()
-    last_time = get_last_time(requester)
-    pic = Pic(last_time, "20d")
-    print_dic(pic.dic)
-    print(pic.download_finish())

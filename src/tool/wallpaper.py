@@ -8,15 +8,6 @@ from pathlib import Path
 import logging
 
 
-def pic_wallpaper(pic):
-    """
-    根据传入的图片替换桌面背景。
-    :param pic:类pic
-    :return:1 or 0
-    """
-    return path_wallpaper(os.path.abspath(pic.final_path))
-
-
 def path_wallpaper(wallpaper_path: Path):
     """
     根据路径替换桌面背景，win7 可能不支持 png 格式。
