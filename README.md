@@ -53,5 +53,7 @@ python run.py -h
 ## 打包
 
 ```cmd
-pyinstaller --noconsole --onefile --name himawari8-observer run.py
+pyinstaller --noconsole --onefile --icon assets/app.ico --add-data "assets/tray_icon.png;assets" --name himawari8-observer run.py
 ```
+
+图标资源在 `assets/`：`app.ico`（exe）、`tray_icon.png`（托盘）。

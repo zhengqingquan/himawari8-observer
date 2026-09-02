@@ -1,11 +1,13 @@
 import logging
 import os
+import sys
 import threading
 import ctypes
+from pathlib import Path
 
 import pystray
 import webbrowser
-from PIL import Image, ImageDraw
+from PIL import Image
 from src.event.event import end_main_sys
 from src.metadata.soft_config import IMAGE_RESOLUTION, LOG_PATH, MARGIN_PERCENT_CHOICES
 from src.metadata.soft_info import DESCRIPTION, PROGRAM_NAME, SOFTWARE_VERSION, WEBSITE
@@ -18,15 +20,22 @@ from src.wallpaper_update import (
     run_wallpaper_update,
 )
 
+_TRAY_ICON_NAME = "tray_icon.png"
 
-# 创建一个函数来绘制托盘图标
+
+def _tray_icon_path() -> Path:
+    """打包后从 _MEIPASS/assets 读；开发时从仓库 assets/ 读。"""
+    if getattr(sys, "frozen", False):
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            bundled = Path(meipass) / "assets" / _TRAY_ICON_NAME
+            if bundled.is_file():
+                return bundled
+    return Path(__file__).resolve().parents[2] / "assets" / _TRAY_ICON_NAME
+
+
 def create_image():
-    # 创建一个空白图像
-    image = Image.new("RGB", (64, 64), (255, 255, 255))
-    dc = ImageDraw.Draw(image)
-    # 在图像中绘制一个黑色的圆圈
-    dc.ellipse((16, 16, 48, 48), fill="black")
-    return image
+    return Image.open(_tray_icon_path())
 
 
 # 创建托盘图标右键菜单的回调函数

@@ -44,13 +44,15 @@ debug_log.txt
 # 下载与合成的图片（程序默认目录为 img/）
 img/
 
-# 仓库内一般不提交影像；若需提交资源可加例外，例如：!assets/icon.png
+# 仓库内一般不提交影像；程序图标资源在 assets/ 例外入库
 *.png
 *.jpg
 *.jpeg
 *.webp
 *.bmp
 *.gif
+!assets/tray_icon.png
+!assets/app.ico
 
 # ========== PyInstaller ==========
 # 本地生成的打包配置与中间产物（需要提交 .spec 时再加例外）
