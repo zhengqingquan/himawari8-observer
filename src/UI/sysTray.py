@@ -67,7 +67,7 @@ def on_open_log(icon, item):
 
 # 创建托盘图标
 def setup_tray_icon(job_ref: WallpaperJobRef):
-    """job_ref: 托盘与定时器共享的壁纸任务引用，由 run.py 注入。"""
+    """job_ref: 托盘与定时器共享的壁纸任务引用，由 src.app 注入。"""
 
     def on_update_wallpaper(icon, item):
         threading.Thread(
