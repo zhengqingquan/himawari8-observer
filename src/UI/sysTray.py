@@ -1,10 +1,10 @@
 import logging
 import os
 import threading
+import ctypes
 
 import pystray
 import webbrowser
-from tkinter import messagebox
 from PIL import Image, ImageDraw
 from src.event.event import end_main_sys
 from src.metadata.soft_config import IMAGE_RESOLUTION, LOG_PATH
@@ -36,7 +36,18 @@ def on_clicked(icon, item):
 版本：{SOFTWARE_VERSION}
 介绍：{DESCRIPTION}
 """
-    messagebox.showinfo("信息", message_text)
+
+    def show_about():
+        # 独立线程弹出，避免卡住 pystray 的 Win32 消息循环。
+        # MB_OK | MB_ICONINFORMATION | MB_TOPMOST | MB_SETFOREGROUND
+        ctypes.windll.user32.MessageBoxW(
+            None,
+            message_text,
+            f"关于 {PROGRAM_NAME}",
+            0x00050040,
+        )
+
+    threading.Thread(target=show_about, daemon=True).start()
 
 
 # 创建托盘图标右键菜单的回调函数
