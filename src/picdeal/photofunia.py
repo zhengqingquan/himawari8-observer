@@ -30,36 +30,34 @@ def cls_photo_composition(pic):
 
 def fix_pic(file, margin, path):
     """
-    将图片从11000*11000像素，变成12100*12100像素。为了美观，用于增加黑边，不会被任务栏遮挡。
-    :param file:原文件路径。
-    :param margin:边缘的宽度，如果是要变成12100，则该值为550，单位为：像素。
-    :param path:保存后的文件路径。
-    :return:None
+    将正方形等分合成图嵌入与屏幕同比例的黑边画布，底边加厚以减轻任务栏遮挡。
+
+    :param file: 原文件路径
+    :param margin: 原图边长（像素）
+    :param path: 保存路径
     """
     screen_width, screen_height = ImageGrab.grab().size
     logging.info(f"当前屏幕分辨率: {screen_width}x{screen_height}")
-    logging.info(f"当前图片分辨率: {margin}")
+    logging.info(f"当前图片边长: {margin}")
 
-    expand_coefficient = 1 / 20
-    logging.info(f"图片扩展系数为: {expand_coefficient}")
+    # 顶边约 5%，底边约 12%（任务栏多占一些黑边）
+    top_expand = int(margin * 0.05)
+    bottom_expand = int(margin * 0.12)
+    content_height = margin + top_expand + bottom_expand
 
-    expand_height = int(margin * expand_coefficient)
-    logging.info(f"图片扩展宽度为: {expand_height}")
+    # 画布与屏幕同宽高比，高度覆盖「图 + 上下黑边」
+    scale = content_height / screen_height
+    canvas_width = int(math.ceil(screen_width * scale))
+    canvas_height = content_height
+    logging.info(f"生成的壁纸分辨率为: {canvas_width}x{canvas_height}")
 
-    image_coefficient = (margin + 2 * expand_height) / screen_height
-    logging.info(f"屏幕分辨率扩展系数为: {image_coefficient}")
-
-    screen_width = int(math.ceil(screen_width * image_coefficient))
-    screen_height = int(math.ceil(screen_height * image_coefficient))
-    logging.info(f"生成的壁纸分辨率为: {screen_width}x{screen_height}")
-
-    image_x = int(math.ceil(screen_width / 2 - margin / 2))
-    image_y = expand_height
+    image_x = int(math.ceil((canvas_width - margin) / 2))
+    image_y = top_expand
     logging.info(f"合成时原图的坐标为: ({image_x}, {image_y})")
 
-    joint = Image.new("RGB", (screen_width, screen_height))
-    img = Image.open(file)
-    joint.paste(img, image_x, image_y)
+    joint = Image.new("RGB", (canvas_width, canvas_height), color=(0, 0, 0))
+    with Image.open(file) as img:
+        joint.paste(img, (image_x, image_y))
     logging.info("开始合成。")
     joint.save(path)
     logging.info(f"合成完毕：{path}")

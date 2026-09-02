@@ -48,9 +48,10 @@ class Config:
             "-a",
             "--adjust",
             dest="is_auto_adjust_picture",
-            default=False,
-            action="store_true",
-            help="Automatically adjust images. Prevent being obscured by the taskbar.",
+            default=True,
+            action=argparse.BooleanOptionalAction,
+            help="Pad wallpaper with black borders so the taskbar covers the margin "
+            "(default: on; use --no-adjust to disable).",
         )
 
         self._parser.add_argument(

@@ -27,7 +27,7 @@ python run.py --version
 | 短选项 | 长选项 | 取值 | 默认值 | 说明 |
 |--------|--------|------|--------|------|
 | `-r` | `--resolution` | `550` / `1100` / `2200` / `4400` / `8800` / `11000` | `2200` | 目标图像边长（像素） |
-| `-a` | `--adjust` | 开关标志 | 关闭 | 是否自动调整图片，避免被任务栏遮挡 |
+| `-a` | `--adjust` / `--no-adjust` | 布尔开关 | **开启** | 是否加黑边修边，避免被任务栏遮挡 |
 | `-v` | `--version` | — | — | 打印版本后退出 |
 | `-h` | `--help` | — | — | 打印帮助后退出 |
 
@@ -66,19 +66,19 @@ python run.py -r
 
 ---
 
-### `-a` / `--adjust`
+### `-a` / `--adjust` / `--no-adjust`
 
-用于控制是否自动裁剪/调整壁纸，减轻被任务栏遮挡的问题。
+将正方形合成图放入与屏幕同比例的黑边画布，底边加厚，减轻任务栏遮挡。
 
-帮助文案含义：启用自动调整。
-
-> **实现说明**：`action="store_true"`，默认关闭；传入 `-a` / `--adjust` 时启用。启动时冻结进 `build_wallpaper_job`，compose 之后、设壁纸之前调用 `fix_pic`，输出为同目录 `*_adjust.png`。
+> **实现说明**：`BooleanOptionalAction`，**默认开启**；`--no-adjust` 关闭。启动时冻结进 `build_wallpaper_job`，compose 之后、设壁纸之前调用 `fix_pic`，输出为同目录 `*_adjust.png`。
 
 示例：
 
 ```bash
+python run.py
 python run.py -a
 python run.py --adjust
+python run.py --no-adjust
 ```
 
 ---
@@ -102,14 +102,14 @@ python run.py -v
 ## 组合示例
 
 ```bash
-# 默认 2200 分辨率（4d）
+# 默认 2200 分辨率（4d）+ 黑边修边
 python run.py
 
 # 11000 分辨率
 python run.py -r 11000
 
-# 修边 + 4400
-python run.py -a -r 4400
+# 关闭修边 + 4400
+python run.py --no-adjust -r 4400
 ```
 
 打包后的可执行文件用法相同，将 `python run.py` 换成对应可执行文件名即可，例如：
