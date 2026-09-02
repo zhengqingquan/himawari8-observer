@@ -81,12 +81,8 @@ credentials.json
 har/
 
 # ========== IDE / editor ==========
-# 忽略 Cursor 本地状态，保留可共享的规则与提交脚本
-.cursor/*
-!.cursor/rules/
-!.cursor/rules/**
-!.cursor/scripts/
-!.cursor/scripts/**
+# Cursor 本地配置与规则（整目录不入库）
+.cursor/
 
 .idea/
 .vscode/
