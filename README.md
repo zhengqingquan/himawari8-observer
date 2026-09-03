@@ -1,18 +1,42 @@
+<!-- markdownlint-disable -->
+
+**简体中文** | [繁體中文](README_zh-HK.md) | [English](README_en-US.md)
+
+<div align="center">
+
+<img src="https://github.com/zhengqingquan/gallery/blob/main/himawari8-observer/1/235000_0_0.png?raw=true" width="120" alt="himawari8-observer">
+
 # himawari8-observer
 
-每隔一段时间将葵花 8 号（Himawari）卫星影像设为 Windows 桌面壁纸的本地常驻程序。合成图边长最高可达约 11000×11000。
+定时将葵花 8 号（Himawari-8）卫星影像设为 Windows 桌面壁纸<br>
+轻量托盘常驻 · Python 本地合成
 
-<img src="https://github.com/zhengqingquan/gallery/blob/main/himawari8-observer/1/235000_0_0.png?raw=true" width="300" >
-<img src="https://github.com/zhengqingquan/gallery/blob/main/himawari8-observer/1/154000_0_0.png?raw=true" width="300">
+[反馈问题](https://github.com/zhengqingquan/himawari8-observer/issues) · [Releases](https://github.com/zhengqingquan/himawari8-observer/releases)<br>
+[功能](#功能) · [使用](#使用) · [打包](#打包) · [参数说明](doc/cli-arguments.md)
 
-取名 himawari8-observer：把自己当为卫星观察地球。
+[![Version](https://img.shields.io/github/v/release/zhengqingquan/himawari8-observer)](https://github.com/zhengqingquan/himawari8-observer/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Stars](https://img.shields.io/github/stars/zhengqingquan/himawari8-observer?color=ffcb47&labelColor=black)<br>
+![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-0078D6?logo=windows&logoColor=white)
+![PyInstaller](https://img.shields.io/badge/Packaging-PyInstaller-blueviolet)
 
-- 仓库：https://github.com/zhengqingquan/himawari8-observer
-- 瓦片与观测时间：https://himawari8.nict.go.jp/ · https://himawari8-dl.nict.go.jp/
+<p>
+  <img src="https://github.com/zhengqingquan/gallery/blob/main/himawari8-observer/1/235000_0_0.png?raw=true" width="300" alt="Himawari sample 1" />
+  <img src="https://github.com/zhengqingquan/gallery/blob/main/himawari8-observer/1/154000_0_0.png?raw=true" width="300" alt="Himawari sample 2" />
+</p>
 
-## 说明
+数据源：[himawari8.nict.go.jp](https://himawari8.nict.go.jp/) · [himawari8-dl.nict.go.jp](https://himawari8-dl.nict.go.jp/)
 
-影像来自 NICT 的 Himawari 瓦片服务（按 550×550 分块下载后本地合成）。旧的 sc-nc-web「完整图」接口已不可用，本程序也不再提供该选项。
+</div>
+
+## 功能
+
+- 按分辨率档位（550～11000）下载 550×550 瓦片并本地合成
+- 默认约每 20 分钟更新；启动时立刻更新一次
+- 默认黑边修边，减轻任务栏遮挡（顶/底边距可调）
+- 默认设壁纸后清理瓦片与旧缓存（保留当前壁纸图）
+- 托盘：手动更新、暂停定时、换分辨率、修边、清理开关、开机启动等
 
 ## 环境
 
@@ -26,36 +50,22 @@ python run.py
 python run.py -r 4400
 python run.py --margin-bottom 12
 python run.py --no-adjust -r 2200
+python run.py --no-cleanup-after-apply
 python run.py -h
 ```
-
-常用参数：
 
 | 选项 | 说明 |
 |------|------|
 | `-r` / `--resolution` | 合成边长：`550` / `1100` / `2200`（默认）/ `4400` / `8800` / `11000` |
-| `-a` / `--adjust` | 加黑边修边，减轻任务栏遮挡（**默认开启**；`--no-adjust` 关闭） |
-| `--margin-top` | 顶边黑边占原图边长百分比（默认 `5`） |
-| `--margin-bottom` | 底边黑边占原图边长百分比（默认 `5`） |
-| `--cleanup-after-apply` | 设壁纸后清理瓦片与旧目录（**默认开启**；`--no-cleanup-after-apply` 关闭） |
+| `-a` / `--adjust` | 黑边修边（**默认开启**；`--no-adjust` 关闭） |
+| `--margin-top` / `--margin-bottom` | 顶/底边黑边百分比（默认各 `5`） |
+| `--cleanup-after-apply` | 设壁纸后清理缓存（**默认开启**；`--no-cleanup-after-apply` 关闭） |
 | `-v` / `--version` | 打印版本后退出 |
 
-更完整说明见 [`doc/cli-arguments.md`](doc/cli-arguments.md)。
-
-启动后托盘常驻，可：
-
-- 更新壁纸 / 暂停或恢复定时更新
-- 切换图片分辨率（立即触发一次更新）
-- 黑边修边（开关；顶边/底边百分比预设，默认各 5%）
-- 应用后清理缓存（默认开启；保留当前壁纸图）
-- 开机启动、打开日志、访问官网、关于与退出
-
-定时间隔默认约 20 分钟；进程启动时会立刻更新一次。需要马上换图时可用托盘「更新壁纸」。
+完整参数说明见 [`doc/cli-arguments.md`](doc/cli-arguments.md)。
 
 ## 打包
 
 ```cmd
 pyinstaller --noconsole --onefile --icon assets/app.ico --add-data "assets/tray_icon.png;assets" --name himawari8-observer run.py
 ```
-
-图标资源在 `assets/`：`app.ico`（exe）、`tray_icon.png`（托盘）。
