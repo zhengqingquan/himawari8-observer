@@ -9,7 +9,7 @@
 # himawari8-observer
 
 定時將葵花 8 號（Himawari-8）衛星影像設為 Windows 桌面桌布<br>
-輕量系統匣常駐 · 本機合成 · 目前版本 **v1.3.1**
+輕量系統匣常駐 · 本機合成 · 目前版本 **v1.4.0**
 
 [回報問題](https://github.com/zhengqingquan/himawari8-observer/issues) · [Releases](https://github.com/zhengqingquan/himawari8-observer/releases) · [更新紀錄](CHANGELOG.md)
 

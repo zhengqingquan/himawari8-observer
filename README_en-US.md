@@ -9,7 +9,7 @@
 # himawari8-observer
 
 Set Himawari-8 satellite imagery as your Windows desktop wallpaper on a schedule<br>
-Lightweight system-tray app · Local compositing · Current version **v1.3.1**
+Lightweight system-tray app · Local compositing · Current version **v1.4.0**
 
 [Issues](https://github.com/zhengqingquan/himawari8-observer/issues) · [Releases](https://github.com/zhengqingquan/himawari8-observer/releases) · [Changelog](CHANGELOG.md)
 
