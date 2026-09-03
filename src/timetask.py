@@ -1,5 +1,5 @@
 from apscheduler.schedulers.blocking import BlockingScheduler
-from src.wallpaper_update import run_wallpaper_update
+from src.wallpaper.update import run_wallpaper_update
 import sys
 import datetime
 from collections.abc import Callable

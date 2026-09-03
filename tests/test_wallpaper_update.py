@@ -3,7 +3,7 @@
 import threading
 import unittest
 
-from src.wallpaper_update import (
+from src.wallpaper.update import (
     is_paused,
     pause,
     resume,

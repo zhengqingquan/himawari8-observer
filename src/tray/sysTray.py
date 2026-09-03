@@ -12,8 +12,8 @@ from src.event.event import end_main_sys
 from src.metadata.soft_config import IMAGE_RESOLUTION, LOG_PATH, MARGIN_PERCENT_CHOICES
 from src.metadata.soft_info import DESCRIPTION, PROGRAM_NAME, SOFTWARE_VERSION, WEBSITE
 from src.startup import add_to_startup_exe, remove_from_startup_exe, is_startup_set
-from src.wallpaper_job import WallpaperJobRef
-from src.wallpaper_update import (
+from src.wallpaper.job import WallpaperJobRef
+from src.wallpaper.update import (
     is_paused,
     pause,
     resume,

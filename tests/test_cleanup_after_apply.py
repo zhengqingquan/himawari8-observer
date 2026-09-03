@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from src.cleanup import cleanup_after_wallpaper_apply
-from src.wallpaper_pipeline import run_wallpaper_pipeline
+from src.wallpaper.pipeline import run_wallpaper_pipeline
 from tests.workdir_paths import temporary_base_dir
 
 

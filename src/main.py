@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from src.cli.args import Config
 from src.resolution_grade import pixel_to_grade
-from src.wallpaper_job import build_wallpaper_job
+from src.wallpaper.job import build_wallpaper_job
 
 
 def main() -> None:

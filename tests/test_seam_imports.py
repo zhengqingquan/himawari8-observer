@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 _FORBIDDEN_IMPORT_PREFIXES = (
-    "src.wallpaper_pipeline",
+    "src.wallpaper.pipeline",
     "src.download",
     "src.compose",
     "src.pic",

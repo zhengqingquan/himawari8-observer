@@ -11,7 +11,7 @@ from src.log.log import log_init
 from src.resolution_grade import pixel_to_grade
 from src.timetask import stat_time_tast
 from src.tray.sysTray import setup_tray_icon
-from src.wallpaper_job import WallpaperJobRef
+from src.wallpaper.job import WallpaperJobRef
 
 
 def main() -> None:

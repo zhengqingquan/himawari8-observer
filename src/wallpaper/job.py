@@ -11,7 +11,7 @@ from src.metadata.soft_config import (
     DEFAULT_MARGIN_TOP_PERCENT,
 )
 from src.resolution_grade import grade_to_pixel, pixel_to_grade
-from src.wallpaper_pipeline import run_wallpaper_pipeline
+from src.wallpaper.pipeline import run_wallpaper_pipeline
 
 BuildJob = Callable[..., Callable[[], None]]
 
@@ -51,7 +51,7 @@ def build_wallpaper_job(
 class WallpaperJobRef:
     """托盘与定时器共享的可调用任务；可在运行中更换分辨率档位。
 
-    tray / timetask 只应依赖本引用与 wallpaper_update，勿直连 pipeline / download。
+    tray / timetask 只应依赖本引用与 wallpaper.update，勿直连 pipeline / download。
     """
 
     def __init__(

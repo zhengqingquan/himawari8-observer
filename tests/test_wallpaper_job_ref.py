@@ -2,7 +2,7 @@
 
 import unittest
 
-from src.wallpaper_job import WallpaperJobRef
+from src.wallpaper.job import WallpaperJobRef
 
 
 class WallpaperJobRefTests(unittest.TestCase):

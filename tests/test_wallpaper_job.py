@@ -2,7 +2,7 @@
 
 import unittest
 
-from src.wallpaper_job import build_wallpaper_job
+from src.wallpaper.job import build_wallpaper_job
 
 
 class BuildWallpaperJobTests(unittest.TestCase):
