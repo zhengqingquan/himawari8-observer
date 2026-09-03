@@ -5,7 +5,7 @@ import time
 import unittest
 from pathlib import Path
 
-from src.tool.cleanup import cleanup_after_wallpaper_apply
+from src.cleanup import cleanup_after_wallpaper_apply
 from src.wallpaper_pipeline import run_wallpaper_pipeline
 
 

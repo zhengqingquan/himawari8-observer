@@ -17,9 +17,9 @@ from src.metadata.soft_config import (
 from src.picdeal.photofunia import cls_photo_composition, fix_pic
 from src.resolution_grade import default_grade
 from src.tile_download import download_tiles
-from src.tool.cleanup import cleanup_after_wallpaper_apply
-from src.tool.folder import cls_create_folder
-from src.tool.wallpaper import path_wallpaper
+from src.cleanup import cleanup_after_wallpaper_apply
+from src.folder import cls_create_folder
+from src.set_wallpaper import path_wallpaper
 
 FetchObservationTime = Callable[[], struct_time]
 DownloadTiles = Callable[[Pic], None]
