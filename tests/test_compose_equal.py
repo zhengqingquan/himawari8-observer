@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from PIL import Image
 
@@ -13,7 +14,20 @@ from src.compose.equal import (
     apply_margins,
     compose_equal_image,
     compose_equal_image_with_margins,
+    get_primary_screen_size,
 )
+
+
+class GetPrimaryScreenSizeTests(unittest.TestCase):
+    def test_reads_system_metrics(self):
+        with patch("src.compose.equal.ctypes.windll.user32.GetSystemMetrics") as metrics:
+            metrics.side_effect = lambda index: {0: 1920, 1: 1080}[index]
+            self.assertEqual(get_primary_screen_size(), (1920, 1080))
+
+    def test_rejects_invalid_size(self):
+        with patch("src.compose.equal.ctypes.windll.user32.GetSystemMetrics", return_value=0):
+            with self.assertRaises(OSError):
+                get_primary_screen_size()
 
 
 class ComposeEqualImageTests(unittest.TestCase):

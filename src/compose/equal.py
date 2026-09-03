@@ -2,17 +2,37 @@
 
 from __future__ import annotations
 
+import ctypes
 import logging
 import math
 import os
 from pathlib import Path
 
-from PIL import Image, ImageGrab
+from PIL import Image
 
 from src.metadata.soft_config import (
     DEFAULT_MARGIN_BOTTOM_PERCENT,
     DEFAULT_MARGIN_TOP_PERCENT,
 )
+
+_SM_CXSCREEN = 0
+_SM_CYSCREEN = 1
+
+
+def get_primary_screen_size() -> tuple[int, int]:
+    """用 Win32 ``GetSystemMetrics`` 读取主屏像素尺寸（不截屏）。
+
+    Returns:
+        ``(width, height)``。
+
+    Raises:
+        OSError: API 返回非正尺寸时。
+    """
+    width = int(ctypes.windll.user32.GetSystemMetrics(_SM_CXSCREEN))
+    height = int(ctypes.windll.user32.GetSystemMetrics(_SM_CYSCREEN))
+    if width <= 0 or height <= 0:
+        raise OSError(f"GetSystemMetrics returned invalid screen size: {width}x{height}")
+    return width, height
 
 
 def compute_margin_layout(
@@ -92,14 +112,14 @@ def compose_equal_image_with_margins(
         output_path: 修边后壁纸输出路径。
         top_percent: 顶边黑边占原图边长的百分比。
         bottom_percent: 底边黑边占原图边长的百分比。
-        screen_size: 可选 ``(width, height)``；默认 ``ImageGrab.grab().size``。
+        screen_size: 可选 ``(width, height)``；默认主屏 ``GetSystemMetrics`` 尺寸。
 
     Returns:
         输出路径（``Path``）。
     """
     out = Path(output_path)
     if screen_size is None:
-        screen_width, screen_height = ImageGrab.grab().size
+        screen_width, screen_height = get_primary_screen_size()
     else:
         screen_width, screen_height = screen_size
 
@@ -157,12 +177,12 @@ def apply_margins(
         path: 输出保存路径。
         top_percent: 顶边黑边占原图边长的百分比。
         bottom_percent: 底边黑边占原图边长的百分比。
-        screen_size: 可选 ``(width, height)``；默认截屏尺寸。
+        screen_size: 可选 ``(width, height)``；默认主屏尺寸。
     """
     joint = None
     try:
         if screen_size is None:
-            screen_width, screen_height = ImageGrab.grab().size
+            screen_width, screen_height = get_primary_screen_size()
         else:
             screen_width, screen_height = screen_size
         logging.info("Screen resolution: %sx%s", screen_width, screen_height)
