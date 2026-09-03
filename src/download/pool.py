@@ -1,6 +1,4 @@
-"""
-创建下载的线程（瓦片下载的并发实现细节）
-"""
+"""瓦片下载的并发实现细节（线程池 + Session/retry）。"""
 
 from __future__ import annotations
 

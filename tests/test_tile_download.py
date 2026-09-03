@@ -4,7 +4,7 @@ import time
 import unittest
 
 from src.cls.Pic import Pic
-from src.tile_download import download_tiles
+from src.download.tiles import download_tiles
 
 
 class TileDownloadTests(unittest.TestCase):

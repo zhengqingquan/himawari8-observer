@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import Any
 
 from src.cls.Pic import Pic
-from src.dl_thread.dl_thread import download_files
+from src.download.pool import download_files
 
 DownloadFiles = Callable[..., None]
 

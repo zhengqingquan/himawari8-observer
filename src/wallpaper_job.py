@@ -51,7 +51,7 @@ def build_wallpaper_job(
 class WallpaperJobRef:
     """托盘与定时器共享的可调用任务；可在运行中更换分辨率档位。
 
-    UI / timetask 只应依赖本引用与 wallpaper_update，勿直连 pipeline / dl。
+    UI / timetask 只应依赖本引用与 wallpaper_update，勿直连 pipeline / download。
     """
 
     def __init__(

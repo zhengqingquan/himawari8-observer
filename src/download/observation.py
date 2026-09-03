@@ -1,11 +1,10 @@
-"""
-下载的初始化
-"""
+"""观测时间：Session 与 latest.json。"""
+
+import json
+import logging
+from time import strptime
 
 import requests
-import json
-from time import strptime
-import logging
 
 
 def dl_init():

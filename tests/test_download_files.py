@@ -2,7 +2,7 @@
 
 import unittest
 
-from src.dl_thread.dl_thread import download_files
+from src.download.pool import download_files
 
 
 class DownloadFilesTests(unittest.TestCase):
