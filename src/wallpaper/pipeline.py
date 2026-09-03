@@ -44,10 +44,6 @@ def _default_download_tiles(pic: Pic) -> None:
     download_tiles(pic)
 
 
-def _default_compose_equal(pic: Pic) -> None:
-    compose_equal_image(pic)
-
-
 def _default_set_wallpaper(path: Path) -> bool | None:
     return apply_desktop_wallpaper(path)
 
@@ -64,7 +60,8 @@ def build_applied_run_key(
     auto_adjust: bool,
     margin_top_percent: float,
     margin_bottom_percent: float,
-) -> tuple[str, str, bool, float, float]:
+    reduce_banding: bool = False,
+) -> tuple[str, str, bool, float, float, bool]:
     """用于判断是否可跳过重复下载的指纹（观测时间 + 影响成图的参数）。"""
     return (
         strftime(_OBS_TIME_FMT, observation_time),
@@ -72,13 +69,14 @@ def build_applied_run_key(
         auto_adjust,
         float(margin_top_percent),
         float(margin_bottom_percent),
+        bool(reduce_banding),
     )
 
 
 def _remember_applied(
     applied_run_state: AppliedRunState | None,
     *,
-    run_key: tuple[str, str, bool, float, float],
+    run_key: tuple[str, str, bool, float, float, bool],
     wallpaper_path: Path,
     record_run_key: bool,
 ) -> None:
@@ -108,6 +106,7 @@ def run_wallpaper_pipeline(
     margin_bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
     cleanup_after_apply: bool = True,
     use_yesterday_local_time: bool = False,
+    reduce_banding: bool = False,
     base_dir: Path | None = None,
     applied_run_state: AppliedRunState | None = None,
     record_run_key: bool = True,
@@ -128,7 +127,6 @@ def run_wallpaper_pipeline(
     """
     fetch = fetch_observation_time or _default_fetch_observation_time
     download = download_tiles or _default_download_tiles
-    compose = compose_equal or _default_compose_equal
     set_desktop = set_wallpaper or _default_set_wallpaper
     read_desktop = get_desktop_wallpaper or read_desktop_wallpaper
     grade = resolution_grade if resolution_grade is not None else default_grade()
@@ -142,6 +140,7 @@ def run_wallpaper_pipeline(
             str(out),
             top_percent=margin_top_percent,
             bottom_percent=margin_bottom_percent,
+            deband=reduce_banding,
         )
         return out
 
@@ -157,6 +156,7 @@ def run_wallpaper_pipeline(
         auto_adjust=auto_adjust,
         margin_top_percent=margin_top_percent,
         margin_bottom_percent=margin_bottom_percent,
+        reduce_banding=reduce_banding,
     )
     observation_time = run_key[0]
     if applied_run_state is not None and applied_run_state.get("last") == run_key:
@@ -200,9 +200,13 @@ def run_wallpaper_pipeline(
             _adjusted_output_path(pic),
             top_percent=margin_top_percent,
             bottom_percent=margin_bottom_percent,
+            deband=reduce_banding,
         )
     else:
-        compose(pic)
+        if compose_equal is None:
+            compose_equal_image(pic, deband=reduce_banding and not auto_adjust)
+        else:
+            compose_equal(pic)
         wallpaper_path = adjust(pic) if auto_adjust else Path(pic.final_path_equal)
     applied = set_desktop(wallpaper_path)
     if applied is False:

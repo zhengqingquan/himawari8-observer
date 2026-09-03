@@ -104,6 +104,7 @@ class SettingsFileIoTests(unittest.TestCase):
             self.assertEqual(raw["auto_adjust"], default_settings()["auto_adjust"])
             self.assertFalse(raw["logging_enabled"])
             self.assertFalse(raw["use_yesterday_local_time"])
+            self.assertFalse(raw["reduce_banding"])
 
     def test_partial_save_preserves_logging_flag(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -135,13 +136,13 @@ class SettingsFileIoTests(unittest.TestCase):
             loaded = load_settings(path)
             self.assertEqual(
                 loaded["last_run_key"],
-                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0],
+                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False],
             )
             self.assertEqual(loaded["last_wallpaper_path"], r"E:\app\img\wall.png")
             state = applied_run_state_from_settings(loaded)
             self.assertEqual(
                 state["last"],
-                ("2026-09-03 02:10:00", "20d", True, 0.0, 5.0),
+                ("2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False),
             )
             self.assertEqual(state["wallpaper_path"], r"E:\app\img\wall.png")
 
@@ -178,6 +179,7 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
         self.assertEqual(resolved["margin_bottom_percent"], 10.0)
         self.assertFalse(resolved["cleanup_after_apply"])
         self.assertTrue(resolved["use_yesterday_local_time"])
+        self.assertFalse(resolved["reduce_banding"])
 
     def test_cli_overrides_file(self):
         resolved = resolve_runtime_settings(

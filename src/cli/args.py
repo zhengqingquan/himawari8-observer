@@ -106,6 +106,15 @@ class Config:
         )
 
         self._parser.add_argument(
+            "--reduce-banding",
+            dest="reduce_banding",
+            default=None,
+            action=argparse.BooleanOptionalAction,
+            help="Reduce color banding in composed wallpaper "
+            "(default: off; use --reduce-banding to enable).",
+        )
+
+        self._parser.add_argument(
             "--logging",
             dest="logging_enabled",
             default=None,
@@ -126,6 +135,7 @@ class Config:
             "margin_bottom_percent": self._args.margin_bottom_percent,
             "cleanup_after_apply": self._args.cleanup_after_apply,
             "use_yesterday_local_time": self._args.use_yesterday_local_time,
+            "reduce_banding": self._args.reduce_banding,
             "logging_enabled": self._args.logging_enabled,
         }
         self._resolved = resolve_runtime_settings(cli_values)
@@ -144,6 +154,7 @@ class Config:
             "Use yesterday local time: %s",
             self._resolved["use_yesterday_local_time"],
         )
+        logging.info("Reduce banding: %s", self._resolved["reduce_banding"])
         logging.info("Logging enabled: %s", self._resolved["logging_enabled"])
 
     def get_download_resolution(self):
@@ -163,6 +174,9 @@ class Config:
 
     def is_use_yesterday_local_time(self):
         return self._resolved["use_yesterday_local_time"]
+
+    def is_reduce_banding(self):
+        return self._resolved["reduce_banding"]
 
     def is_logging_enabled(self):
         return self._resolved["logging_enabled"]

@@ -33,6 +33,7 @@ def build_wallpaper_job(
     margin_bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
     cleanup_after_apply: bool = True,
     use_yesterday_local_time: bool = False,
+    reduce_banding: bool = False,
     base_dir: Path | None = None,
     run_pipeline: RunPipeline | None = None,
     applied_run_state: dict[str, Any] | None = None,
@@ -57,6 +58,7 @@ def build_wallpaper_job(
             margin_bottom_percent=margin_bottom_percent,
             cleanup_after_apply=cleanup_after_apply,
             use_yesterday_local_time=use_yesterday_local_time,
+            reduce_banding=reduce_banding,
             base_dir=base_dir,
             applied_run_state=state,
         )
@@ -79,6 +81,7 @@ class WallpaperJobRef:
         margin_bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
         cleanup_after_apply: bool = True,
         use_yesterday_local_time: bool = False,
+        reduce_banding: bool = False,
         base_dir: Path | None = None,
         build_job: BuildJob | None = None,
         run_pipeline: RunPipeline | None = None,
@@ -91,6 +94,7 @@ class WallpaperJobRef:
         self._margin_bottom_percent = margin_bottom_percent
         self._cleanup_after_apply = cleanup_after_apply
         self._use_yesterday_local_time = use_yesterday_local_time
+        self._reduce_banding = reduce_banding
         self._base_dir = base_dir
         self._build_job = build_job or build_wallpaper_job
         self._run_pipeline = run_pipeline or run_wallpaper_pipeline
@@ -125,6 +129,7 @@ class WallpaperJobRef:
             margin_bottom_percent=self._margin_bottom_percent,
             cleanup_after_apply=self._cleanup_after_apply,
             use_yesterday_local_time=self._use_yesterday_local_time,
+            reduce_banding=self._reduce_banding,
             base_dir=self._base_dir,
             run_pipeline=self._run_pipeline,
             applied_run_state=self._applied_run_state,
@@ -174,6 +179,7 @@ class WallpaperJobRef:
             margin_bottom_percent = self._margin_bottom_percent
             cleanup_after_apply = self._cleanup_after_apply
             use_yesterday_local_time = self._use_yesterday_local_time
+            reduce_banding = self._reduce_banding
             base_dir = self._base_dir
             state = self._applied_run_state
             pipeline = self._run_pipeline
@@ -183,6 +189,7 @@ class WallpaperJobRef:
             "margin_top_percent": margin_top_percent,
             "margin_bottom_percent": margin_bottom_percent,
             "use_yesterday_local_time": use_yesterday_local_time,
+            "reduce_banding": reduce_banding,
             "base_dir": base_dir,
             "applied_run_state": state,
         }
@@ -265,6 +272,10 @@ class WallpaperJobRef:
         return self._use_yesterday_local_time
 
     @property
+    def reduce_banding(self) -> bool:
+        return self._reduce_banding
+
+    @property
     def base_dir(self) -> Path | None:
         return self._base_dir
 
@@ -330,6 +341,11 @@ class WallpaperJobRef:
             self._use_yesterday_local_time = use_yesterday_local_time
             self._rebuild_job_locked()
 
+    def set_reduce_banding(self, reduce_banding: bool) -> None:
+        with self._lock:
+            self._reduce_banding = reduce_banding
+            self._rebuild_job_locked()
+
     def _rebuild_job_locked(self) -> None:
         last = self._applied_run_state.get("last")
         if isinstance(last, tuple) and last:
@@ -352,6 +368,7 @@ class WallpaperJobRef:
             margin_bottom_percent=self._margin_bottom_percent,
             cleanup_after_apply=self._cleanup_after_apply,
             use_yesterday_local_time=self._use_yesterday_local_time,
+            reduce_banding=self._reduce_banding,
             base_dir=self._base_dir,
             run_pipeline=self._run_pipeline,
             applied_run_state=self._applied_run_state,

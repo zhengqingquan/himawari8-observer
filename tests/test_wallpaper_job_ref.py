@@ -130,7 +130,7 @@ class WallpaperJobRefTests(unittest.TestCase):
 
     def test_init_hydrates_observation_time_from_applied_state(self):
         state = {
-            "last": ("2026-09-03 02:10:00", "4d", True, 0.0, 5.0),
+            "last": ("2026-09-03 02:10:00", "4d", True, 0.0, 5.0, False),
             "wallpaper_path": r"E:\app\img\wall.png",
         }
         ref = WallpaperJobRef(

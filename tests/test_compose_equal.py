@@ -16,6 +16,7 @@ from src.compose.equal import (
     compose_equal_image_with_margins,
     compute_margin_layout,
     get_primary_screen_size,
+    reduce_color_banding,
 )
 
 
@@ -58,6 +59,52 @@ class GetPrimaryScreenSizeTests(unittest.TestCase):
                 get_primary_screen_size()
 
 
+class ReduceColorBandingTests(unittest.TestCase):
+    def test_preserves_pure_black(self):
+        src = Image.new("RGB", (32, 32), color=(0, 0, 0))
+        try:
+            out = reduce_color_banding(src)
+            try:
+                self.assertEqual(out.getpixel((0, 0)), (0, 0, 0))
+                self.assertEqual(out.getpixel((16, 16)), (0, 0, 0))
+            finally:
+                out.close()
+        finally:
+            src.close()
+
+    def test_breaks_flat_midtone_into_varied_pixels(self):
+        src = Image.new("RGB", (64, 64), color=(40, 40, 48))
+        try:
+            out = reduce_color_banding(src)
+            try:
+                colors = {out.getpixel((x, y)) for x in range(0, 64, 4) for y in range(0, 64, 4)}
+                self.assertGreater(len(colors), 1)
+            finally:
+                out.close()
+        finally:
+            src.close()
+
+    def test_reduces_posterized_gradient_jumps(self):
+        width, height = 320, 40
+        src = Image.new("RGB", (width, height))
+        pixels = src.load()
+        for x in range(width):
+            level = (x // 20) * 15
+            for y in range(height):
+                pixels[x, y] = (level, level, level)
+        try:
+            out = reduce_color_banding(src)
+            try:
+                before = [src.getpixel((x, height // 2))[0] for x in range(width)]
+                after = [out.getpixel((x, height // 2))[0] for x in range(width)]
+                self.assertGreater(len(set(before)), 5)
+                self.assertGreater(len(set(after)), len(set(before)))
+            finally:
+                out.close()
+        finally:
+            src.close()
+
+
 class ComposeEqualImageTests(unittest.TestCase):
     def test_composes_2x2_tiles_and_closes_canvas(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -78,7 +125,7 @@ class ComposeEqualImageTests(unittest.TestCase):
                 final_path_equal=out,
                 tiles=tiles,
             )
-            compose_equal_image(pic)
+            compose_equal_image(pic, deband=False)
             self.assertTrue(out.is_file())
             with Image.open(out) as composed:
                 self.assertEqual(composed.size, (20, 20))
@@ -111,6 +158,7 @@ class ComposeEqualImageTests(unittest.TestCase):
                 top_percent=0.0,
                 bottom_percent=0.0,
                 screen_size=(40, 20),
+                deband=False,
             )
             self.assertEqual(result, out)
             with Image.open(out) as composed:
@@ -134,6 +182,7 @@ class ApplyMarginsTests(unittest.TestCase):
                 top_percent=0.0,
                 bottom_percent=0.0,
                 screen_size=(200, 100),
+                deband=False,
             )
             self.assertTrue(out.is_file())
             with Image.open(out) as result:

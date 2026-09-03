@@ -27,6 +27,7 @@ _SETTINGS_KEYS = frozenset(
         "margin_bottom_percent",
         "cleanup_after_apply",
         "use_yesterday_local_time",
+        "reduce_banding",
         "logging_enabled",
         "last_run_key",
         "last_wallpaper_path",
@@ -48,6 +49,7 @@ def default_settings() -> dict[str, Any]:
         "margin_bottom_percent": DEFAULT_MARGIN_BOTTOM_PERCENT,
         "cleanup_after_apply": True,
         "use_yesterday_local_time": False,
+        "reduce_banding": False,
         "logging_enabled": False,
     }
 
@@ -79,21 +81,34 @@ def _coerce_bool(value: Any) -> bool | None:
 
 
 def _coerce_last_run_key(value: Any) -> list[Any] | None:
-    """校验指纹列表：``[obs_time, grade, auto_adjust, top%, bottom%]``。"""
-    if not isinstance(value, (list, tuple)) or len(value) != 5:
+    """校验指纹列表：``[obs_time, grade, auto_adjust, top%, bottom%, reduce_banding]``。
+
+    兼容旧版 5 项指纹（缺省 ``reduce_banding=False``）。
+    """
+    if not isinstance(value, (list, tuple)) or len(value) not in (5, 6):
         return None
-    obs_time, grade, auto_adjust, top, bottom = value
+    obs_time, grade, auto_adjust, top, bottom = value[:5]
+    reduce_banding = value[5] if len(value) == 6 else False
     if not isinstance(obs_time, str) or not obs_time.strip():
         return None
     if not isinstance(grade, str) or not grade.strip():
         return None
     if not isinstance(auto_adjust, bool):
         return None
+    if not isinstance(reduce_banding, bool):
+        return None
     top_f = _coerce_percent(top)
     bottom_f = _coerce_percent(bottom)
     if top_f is None or bottom_f is None:
         return None
-    return [obs_time.strip(), grade.strip(), auto_adjust, top_f, bottom_f]
+    return [
+        obs_time.strip(),
+        grade.strip(),
+        auto_adjust,
+        top_f,
+        bottom_f,
+        reduce_banding,
+    ]
 
 
 def _coerce_wallpaper_path(value: Any) -> str | None:
@@ -163,6 +178,16 @@ def sanitize_settings(raw: Any) -> dict[str, Any]:
             )
         else:
             cleaned["use_yesterday_local_time"] = yesterday
+
+    if "reduce_banding" in raw:
+        reduce_banding = _coerce_bool(raw["reduce_banding"])
+        if reduce_banding is None:
+            logging.warning(
+                "Ignoring invalid settings.reduce_banding: %r",
+                raw["reduce_banding"],
+            )
+        else:
+            cleaned["reduce_banding"] = reduce_banding
 
     if "logging_enabled" in raw:
         logging_enabled = _coerce_bool(raw["logging_enabled"])
@@ -258,6 +283,7 @@ def settings_dict_from_job(
     margin_bottom_percent: float,
     cleanup_after_apply: bool,
     use_yesterday_local_time: bool = False,
+    reduce_banding: bool = False,
 ) -> dict[str, Any]:
     """从壁纸任务字段组装可写入的 settings dict（不含 logging / 应用指纹）。"""
     return {
@@ -267,6 +293,7 @@ def settings_dict_from_job(
         "margin_bottom_percent": margin_bottom_percent,
         "cleanup_after_apply": cleanup_after_apply,
         "use_yesterday_local_time": use_yesterday_local_time,
+        "reduce_banding": reduce_banding,
     }
 
 
@@ -276,13 +303,14 @@ def applied_run_state_from_settings(settings: dict[str, Any] | None) -> dict[str
     if not settings:
         return state
     run_key = settings.get("last_run_key")
-    if isinstance(run_key, list) and len(run_key) == 5:
+    if isinstance(run_key, list) and len(run_key) == 6:
         state["last"] = (
             str(run_key[0]),
             str(run_key[1]),
             bool(run_key[2]),
             float(run_key[3]),
             float(run_key[4]),
+            bool(run_key[5]),
         )
     path = settings.get("last_wallpaper_path")
     if isinstance(path, str) and path.strip():
@@ -298,13 +326,14 @@ def persist_applied_run_state(
     """将内存指纹与壁纸路径写回 settings.json。"""
     payload: dict[str, Any] = {}
     last = state.get("last")
-    if isinstance(last, tuple) and len(last) == 5:
+    if isinstance(last, tuple) and len(last) == 6:
         payload["last_run_key"] = [
             str(last[0]),
             str(last[1]),
             bool(last[2]),
             float(last[3]),
             float(last[4]),
+            bool(last[5]),
         ]
     wallpaper = state.get("wallpaper_path")
     if isinstance(wallpaper, str) and wallpaper.strip():

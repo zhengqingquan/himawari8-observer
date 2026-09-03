@@ -8,12 +8,18 @@ import math
 import os
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageChops, ImageFilter
 
 from src.metadata.soft_config import (
     DEFAULT_MARGIN_BOTTOM_PERCENT,
     DEFAULT_MARGIN_TOP_PERCENT,
 )
+
+# 去色带：邻域均值替换平坦量化区 + 微粒噪点；近黑（太空/黑边）保持原样。
+_DEBAND_BLUR_RADIUS = 10.0
+_DEBAND_DIFF_SCALE = 10
+_DEBAND_NOISE_SIGMA = 3.5
+_DEBAND_BLACK_LUMA_MAX = 2
 
 _SM_CXSCREEN = 0
 _SM_CYSCREEN = 1
@@ -74,17 +80,63 @@ def _paste_tiles(joint: Image.Image, pic, *, origin_x: int = 0, origin_y: int = 
             axis_y += 1
 
 
-def compose_equal_image(pic) -> None:
+def reduce_color_banding(image: Image.Image) -> Image.Image:
+    """减轻 8 bit 平滑渐变中的色带（posterization）。
+
+    用高斯邻域均值与原图像素差做软掩码：差小的平坦量化区靠向均值以打散台阶；
+    差大的纹理/边缘保留细节。再加微粒噪点；近黑像素（太空、修边黑边）保持原样。
+
+    Args:
+        image: RGB 图（其它模式会先转成 RGB）。
+
+    Returns:
+        处理后的新 RGB 图（调用方负责关闭）。
+    """
+    rgb = image.convert("RGB") if image.mode != "RGB" else image
+    avg = rgb.filter(ImageFilter.GaussianBlur(_DEBAND_BLUR_RADIUS))
+    diff = ImageChops.difference(rgb, avg).convert("L")
+    mask = diff.point(lambda p: max(0, min(255, 255 - p * _DEBAND_DIFF_SCALE)))
+    smoothed = Image.composite(avg, rgb, mask)
+    noise = Image.effect_noise(rgb.size, _DEBAND_NOISE_SIGMA).convert("RGB")
+    grained = ImageChops.add(smoothed, noise, scale=1.0, offset=-128)
+    keep_black = rgb.convert("L").point(lambda p: 0 if p <= _DEBAND_BLACK_LUMA_MAX else 255)
+    result = Image.composite(grained, rgb, keep_black)
+    avg.close()
+    diff.close()
+    mask.close()
+    smoothed.close()
+    noise.close()
+    grained.close()
+    keep_black.close()
+    if rgb is not image:
+        rgb.close()
+    return result
+
+
+def _save_rgb(image: Image.Image, path: Path | str, *, deband: bool = False) -> None:
+    """保存 RGB 壁纸图；``deband=True`` 时先做去色带再落盘。"""
+    if not deband:
+        image.save(path)
+        return
+    processed = reduce_color_banding(image)
+    try:
+        processed.save(path)
+    finally:
+        processed.close()
+
+
+def compose_equal_image(pic, *, deband: bool = False) -> None:
     """将多张瓦片合成为一张等分完整图，并保存到 ``pic.final_path_equal``。
 
     Args:
         pic: 等分瓦片图实例（需已下载完成）。
+        deband: 是否在保存前减轻色带；默认关闭。
     """
     joint = None
     try:
         joint = Image.new("RGB", (pic.pic_side, pic.pic_side))
         _paste_tiles(joint, pic)
-        joint.save(pic.final_path_equal)
+        _save_rgb(joint, pic.final_path_equal, deband=deband)
     except Exception:
         logging.exception("Failed to compose equal image for grade %s", pic.grade)
         raise
@@ -104,6 +156,7 @@ def compose_equal_image_with_margins(
     top_percent: float = DEFAULT_MARGIN_TOP_PERCENT,
     bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
     screen_size: tuple[int, int] | None = None,
+    deband: bool = False,
 ) -> Path:
     """将瓦片直接贴到修边画布并保存，避免先合成正方形再编解码。
 
@@ -113,6 +166,7 @@ def compose_equal_image_with_margins(
         top_percent: 顶边黑边占原图边长的百分比。
         bottom_percent: 底边黑边占原图边长的百分比。
         screen_size: 可选 ``(width, height)``；默认主屏 ``GetSystemMetrics`` 尺寸。
+        deband: 是否在保存前减轻色带；默认关闭。
 
     Returns:
         输出路径（``Path``）。
@@ -145,7 +199,7 @@ def compose_equal_image_with_margins(
         joint = Image.new("RGB", (canvas_width, canvas_height), color=(0, 0, 0))
         _paste_tiles(joint, pic, origin_x=image_x, origin_y=image_y)
         out.parent.mkdir(parents=True, exist_ok=True)
-        joint.save(out)
+        _save_rgb(joint, out, deband=deband)
     except Exception:
         logging.exception(
             "Failed to compose equal image with margins for grade %s -> %s",
@@ -168,6 +222,7 @@ def apply_margins(
     top_percent=DEFAULT_MARGIN_TOP_PERCENT,
     bottom_percent=DEFAULT_MARGIN_BOTTOM_PERCENT,
     screen_size: tuple[int, int] | None = None,
+    deband: bool = False,
 ) -> None:
     """将正方形等分合成图嵌入与屏幕同比例的黑边画布。
 
@@ -178,6 +233,7 @@ def apply_margins(
         top_percent: 顶边黑边占原图边长的百分比。
         bottom_percent: 底边黑边占原图边长的百分比。
         screen_size: 可选 ``(width, height)``；默认主屏尺寸。
+        deband: 是否在保存前减轻色带；默认关闭。
     """
     joint = None
     try:
@@ -206,7 +262,7 @@ def apply_margins(
         joint = Image.new("RGB", (canvas_width, canvas_height), color=(0, 0, 0))
         with Image.open(file) as img:
             joint.paste(img, (image_x, image_y))
-        joint.save(path)
+        _save_rgb(joint, path, deband=deband)
     except Exception:
         logging.exception("Failed to apply margins: src=%s out=%s", file, path)
         raise

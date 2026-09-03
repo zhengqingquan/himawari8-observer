@@ -217,6 +217,7 @@ def _persist_job_settings(job_ref: WallpaperJobRef) -> None:
             margin_bottom_percent=job_ref.margin_bottom_percent,
             cleanup_after_apply=job_ref.cleanup_after_apply,
             use_yesterday_local_time=job_ref.use_yesterday_local_time,
+            reduce_banding=job_ref.reduce_banding,
         )
     )
 
@@ -289,6 +290,16 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             "Use yesterday local time %s",
             "enabled" if enabled else "disabled",
         )
+        threading.Thread(
+            target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
+            daemon=True,
+        ).start()
+
+    def on_toggle_reduce_banding(icon, item):
+        enabled = not job_ref.reduce_banding
+        job_ref.set_reduce_banding(enabled)
+        _persist_job_settings(job_ref)
+        logging.info("Reduce banding %s", "enabled" if enabled else "disabled")
         threading.Thread(
             target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
             daemon=True,
@@ -406,6 +417,11 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             "按本地钟点使用昨日影像",
             on_toggle_use_yesterday_local_time,
             checked=lambda item: job_ref.use_yesterday_local_time,
+        ),
+        pystray.MenuItem(
+            "减轻色带",
+            on_toggle_reduce_banding,
+            checked=lambda item: job_ref.reduce_banding,
         ),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem(
