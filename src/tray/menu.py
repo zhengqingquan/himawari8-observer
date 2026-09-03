@@ -1,4 +1,4 @@
-"""系统托盘菜单：分辨率、修边、暂停、开机启动与关于。"""
+"""系统托盘菜单：分辨率、修边、暂停、开机启动、日志与关于。"""
 
 from __future__ import annotations
 
@@ -81,8 +81,8 @@ def on_quit(icon, item):
     request_shutdown()
 
 
-def on_official_website(icon, item):
-    """打开产品官网。"""
+def on_open_github(icon, item):
+    """在浏览器中打开 GitHub 仓库。"""
     webbrowser.open_new(WEBSITE)
 
 
@@ -134,9 +134,6 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
             daemon=True,
         ).start()
-
-    def pause_menu_text(item):
-        return "恢复更新壁纸" if is_paused() else "暂停更新壁纸"
 
     def on_toggle_pause(icon, item):
         if is_paused():
@@ -232,30 +229,43 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         pystray.Menu.SEPARATOR,
         *[make_margin_bottom_item(p) for p in MARGIN_PERCENT_CHOICES],
     )
-
-    icon.menu = pystray.Menu(
-        pystray.MenuItem("更新壁纸", on_update_wallpaper),
-        pystray.MenuItem(pause_menu_text, on_toggle_pause),
-        pystray.MenuItem("图片分辨率", resolution_menu),
-        pystray.MenuItem("黑边修边", margin_menu),
-        pystray.MenuItem(
-            "应用后清理缓存",
-            on_toggle_cleanup,
-            checked=lambda item: job_ref.cleanup_after_apply,
-        ),
-        pystray.MenuItem(
-            "开机启动",
-            on_startup,
-            checked=lambda item: is_startup_set(),
-        ),
+    log_menu = pystray.Menu(
         pystray.MenuItem(
             "启用日志",
             on_toggle_logging,
             checked=lambda item: is_logging_enabled(),
         ),
-        pystray.MenuItem("打开日志", on_open_log),
-        pystray.MenuItem("访问官网", on_official_website),
+        pystray.MenuItem("打开日志文件", on_open_log),
+    )
+    about_menu = pystray.Menu(
+        pystray.MenuItem("GitHub", on_open_github),
         pystray.MenuItem(f"关于 {PROGRAM_NAME}", on_clicked),
+    )
+
+    icon.menu = pystray.Menu(
+        pystray.MenuItem("立即更新壁纸", on_update_wallpaper),
+        pystray.MenuItem(
+            "暂停更新壁纸",
+            on_toggle_pause,
+            checked=lambda item: is_paused(),
+        ),
+        pystray.Menu.SEPARATOR,
+        pystray.MenuItem("图片分辨率", resolution_menu),
+        pystray.MenuItem("黑边修边", margin_menu),
+        pystray.MenuItem(
+            "自动清理图片缓存",
+            on_toggle_cleanup,
+            checked=lambda item: job_ref.cleanup_after_apply,
+        ),
+        pystray.Menu.SEPARATOR,
+        pystray.MenuItem(
+            "开机启动",
+            on_startup,
+            checked=lambda item: is_startup_set(),
+        ),
+        pystray.MenuItem("日志", log_menu),
+        pystray.MenuItem("关于", about_menu),
+        pystray.Menu.SEPARATOR,
         pystray.MenuItem("退出", on_quit),
     )
 
