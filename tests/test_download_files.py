@@ -35,13 +35,47 @@ class DownloadFilesTests(unittest.TestCase):
             self.assertEqual(urls["https://example.test/b.png"][1], 1)
 
     def test_failed_download_leaves_status_zero(self):
+        calls = []
+
         def boom(url, path):
+            calls.append(url)
             raise RuntimeError("network")
 
         with tempfile.TemporaryDirectory() as tmp:
             path = str(Path(tmp) / "a.png")
             urls = {"https://example.test/a.png": [path, 0]}
-            download_files(urls, download_one=boom)
+            download_files(urls, download_one=boom, retry_rounds=2)
+            self.assertEqual(urls["https://example.test/a.png"][1], 0)
+            self.assertEqual(len(calls), 3)  # pass-1 + 2 retries
+
+    def test_failed_tiles_retried_until_success(self):
+        attempts = {"https://example.test/a.png": 0}
+
+        def flaky(url, path):
+            attempts[url] += 1
+            if attempts[url] < 3:
+                raise RuntimeError("transient")
+            Path(path).write_bytes(b"ok")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "a.png")
+            urls = {"https://example.test/a.png": [path, 0]}
+            download_files(urls, download_one=flaky, retry_rounds=2)
+            self.assertEqual(urls["https://example.test/a.png"][1], 1)
+            self.assertEqual(attempts["https://example.test/a.png"], 3)
+
+    def test_retry_rounds_zero_does_not_retry(self):
+        calls = []
+
+        def boom(url, path):
+            calls.append(url)
+            raise RuntimeError("network")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "a.png")
+            urls = {"https://example.test/a.png": [path, 0]}
+            download_files(urls, download_one=boom, retry_rounds=0)
+            self.assertEqual(len(calls), 1)
             self.assertEqual(urls["https://example.test/a.png"][1], 0)
 
     def test_skips_existing_nonempty_file(self):

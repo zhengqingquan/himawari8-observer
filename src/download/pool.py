@@ -14,6 +14,9 @@ from urllib3.util import Retry
 
 DownloadOne = Callable[[str, Any], Any]
 
+# 首轮之外，对仍失败的瓦片再补下的轮数。
+_DEFAULT_RETRY_ROUNDS = 2
+
 
 def _build_session(*, pool_size: int = 16) -> requests.Session:
     """创建带 retry 的 Session；连接池大小与并发线程数对齐。"""
@@ -59,20 +62,53 @@ def _existing_tile_ok(path: Any) -> bool:
         return False
 
 
+def _run_download_round(
+    batch: Mapping[str, Any],
+    *,
+    download_one: DownloadOne,
+    max_workers: int,
+    round_label: str,
+) -> None:
+    """并发下载一批瓦片；成功则 ``status=1``，失败保持 ``0``。"""
+    if not batch:
+        return
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_entry = {
+            executor.submit(download_one, url, entry[0]): (url, entry)
+            for url, entry in batch.items()
+        }
+        for future in concurrent.futures.as_completed(future_to_entry):
+            url, entry = future_to_entry[future]
+            try:
+                future.result()
+                entry[1] = 1
+                logging.info("Downloaded tile (%s): %s", round_label, url)
+            except Exception as exc:
+                logging.warning(
+                    "Failed to download tile (%s) %s: %s",
+                    round_label,
+                    url,
+                    exc,
+                )
+
+
 def download_files(
     urls: Mapping[str, Any],
     *,
     download_one: DownloadOne | None = None,
     max_workers: int = 16,
+    retry_rounds: int = _DEFAULT_RETRY_ROUNDS,
 ) -> None:
     """使用线程池下载 urls（值为 ``[path, status]``）。成功则 status=1。
 
     已存在且非空的本地文件会直接标记成功并跳过网络请求。
+    首轮结束后，对仍失败的瓦片再补下最多 ``retry_rounds`` 轮。
 
     Args:
         urls: url → ``[path, status]`` 映射。
         download_one: 可选单瓦片下载回调 ``(url, path)``；默认走 Session/retry。
         max_workers: 线程池大小（同时作为 Session 连接池上限）。
+        retry_rounds: 首轮之外的失败补下轮数；``0`` 表示不补下。
     """
     pending: dict[str, Any] = {}
     for url, entry in urls.items():
@@ -91,15 +127,28 @@ def download_files(
         return download_file(url, path, session=session)
 
     one = download_one or default_one
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_entry = {
-            executor.submit(one, url, entry[0]): (url, entry) for url, entry in pending.items()
-        }
-        for future in concurrent.futures.as_completed(future_to_entry):
-            url, entry = future_to_entry[future]
-            try:
-                future.result()
-                entry[1] = 1
-                logging.info("Downloaded tile: %s", url)
-            except Exception as exc:
-                logging.warning("Failed to download tile %s: %s", url, exc)
+    rounds = max(0, int(retry_rounds))
+
+    _run_download_round(
+        pending,
+        download_one=one,
+        max_workers=max_workers,
+        round_label="pass-1",
+    )
+
+    for retry_index in range(1, rounds + 1):
+        failed = {url: entry for url, entry in pending.items() if entry[1] == 0}
+        if not failed:
+            break
+        logging.info(
+            "Retrying %s failed tile(s), round %s/%s",
+            len(failed),
+            retry_index,
+            rounds,
+        )
+        _run_download_round(
+            failed,
+            download_one=one,
+            max_workers=max_workers,
+            round_label=f"retry-{retry_index}",
+        )
