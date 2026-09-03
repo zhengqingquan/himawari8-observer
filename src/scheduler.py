@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import logging
 import sys
 from collections.abc import Callable
 
@@ -29,5 +30,6 @@ def start_scheduler(pipeline: Callable[[], None]) -> None:
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
+        logging.info("Scheduler shutting down")
         scheduler.shutdown(wait=False)
         sys.exit(0)

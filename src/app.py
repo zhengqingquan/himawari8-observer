@@ -33,5 +33,5 @@ def main() -> None:
         threading.Thread(target=lambda: start_scheduler(job_ref), daemon=True).start()
 
         wait_for_shutdown()
-    except Exception as e:
-        logging.error(e)
+    except Exception:
+        logging.exception("Application failed to start or crashed")

@@ -24,8 +24,13 @@ def create_folder(folder_path) -> None:
     Args:
         folder_path: 目标文件夹路径。
     """
-    if not os.path.exists(folder_path):
+    if os.path.exists(folder_path):
+        return
+    try:
         os.makedirs(folder_path)
+    except OSError:
+        logging.exception("Failed to create folder: %s", folder_path)
+        raise
 
 
 def create_pic_folders(pic: Pic) -> None:
@@ -36,4 +41,8 @@ def create_pic_folders(pic: Pic) -> None:
     """
     create_folders(pic.tile_dirs)
     create_folder(pic.folder_path)
-    logging.info("文件夹folder构建完成。")
+    logging.info(
+        "Created tile and compose folders for grade %s under %s",
+        pic.grade,
+        pic.base_dir / pic.folder_top / pic.folder_root,
+    )

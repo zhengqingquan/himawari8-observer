@@ -24,12 +24,13 @@ def is_startup_set() -> bool:
         value, reg_type = reg.QueryValueEx(reg_key, app_name)
         reg.CloseKey(reg_key)
         if value:
-            logging.info(f"Startup entry found: {value}")
+            logging.info("Startup entry found: %s", value)
             return True
+        logging.info("Startup entry exists but is empty")
     except FileNotFoundError:
-        logging.info("The startup entry does not exist.")
-    except Exception as e:
-        logging.error(f"Error checking startup entry: {e}")
+        logging.info("Startup entry not set")
+    except OSError:
+        logging.exception("Failed to check startup entry")
     return False
 
 
@@ -46,9 +47,9 @@ def add_to_startup_exe(exe_path=None) -> None:
         reg_key = reg.OpenKey(reg.HKEY_CURRENT_USER, key_value, 0, reg.KEY_ALL_ACCESS)
         reg.SetValueEx(reg_key, app_name, 0, reg.REG_SZ, exe_path)
         reg.CloseKey(reg_key)
-        logging.info(f"Successfully added {exe_path} to startup.")
-    except Exception as e:
-        logging.error(f"Failed to add to startup: {e}")
+        logging.info("Added startup entry: %s", exe_path)
+    except OSError:
+        logging.exception("Failed to add startup entry: %s", exe_path)
 
 
 def remove_from_startup_exe() -> None:
@@ -57,8 +58,8 @@ def remove_from_startup_exe() -> None:
         reg_key = reg.OpenKey(reg.HKEY_CURRENT_USER, key_value, 0, reg.KEY_ALL_ACCESS)
         reg.DeleteValue(reg_key, app_name)
         reg.CloseKey(reg_key)
-        logging.info("Successfully removed from startup.")
+        logging.info("Removed startup entry")
     except FileNotFoundError:
-        logging.info("The specified key does not exist.")
-    except Exception as e:
-        logging.error(f"Failed to remove from startup: {e}")
+        logging.info("Startup entry already absent")
+    except OSError:
+        logging.exception("Failed to remove startup entry")

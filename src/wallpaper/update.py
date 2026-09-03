@@ -20,14 +20,14 @@ def pause() -> None:
     global _paused
     with _pause_lock:
         _paused = True
-    logging.info("壁纸更新已暂停（定时触发将跳过）")
+    logging.info("Wallpaper updates paused (scheduled triggers will be skipped)")
 
 
 def resume() -> None:
     global _paused
     with _pause_lock:
         _paused = False
-    logging.info("壁纸更新已恢复")
+    logging.info("Wallpaper updates resumed")
 
 
 def run_wallpaper_update(
@@ -45,13 +45,16 @@ def run_wallpaper_update(
         True 若本次执行了流水线；False 若因互斥或暂停被跳过。
     """
     if respect_pause and is_paused():
-        logging.info("壁纸更新已暂停，忽略定时触发")
+        logging.info("Wallpaper update paused; ignoring scheduled trigger")
         return False
     if not _lock.acquire(blocking=False):
-        logging.info("壁纸更新已在进行，忽略本次触发")
+        logging.info("Wallpaper update already running; ignoring trigger")
         return False
     try:
         pipeline()
         return True
+    except Exception:
+        logging.exception("Wallpaper update failed")
+        raise
     finally:
         _lock.release()

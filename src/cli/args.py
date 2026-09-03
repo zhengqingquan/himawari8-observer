@@ -107,14 +107,14 @@ class Config:
 
         self._args = self._parser.parse_args()
 
-        logging.info(f"Download resolution: {self._args.download_resolution}")
-        logging.info(f"Is auto adjust picture: {self._args.is_auto_adjust_picture}")
+        logging.info("Download resolution (px): %s", self._args.download_resolution)
+        logging.info("Auto margin adjust: %s", self._args.is_auto_adjust_picture)
         logging.info(
             "Margin percents: top=%s bottom=%s",
             self._args.margin_top_percent,
             self._args.margin_bottom_percent,
         )
-        logging.info(f"Cleanup after apply: {self._args.cleanup_after_apply}")
+        logging.info("Cleanup after apply: %s", self._args.cleanup_after_apply)
 
     def get_download_resolution(self):
         return self._args.download_resolution

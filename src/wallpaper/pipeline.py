@@ -113,19 +113,23 @@ def run_wallpaper_pipeline(
         margin_bottom_percent=margin_bottom_percent,
     )
     if applied_run_state is not None and applied_run_state.get("last") == run_key:
-        logging.info("观测时间与当前参数未变化，跳过本次更新")
+        logging.info("Observation time and render params unchanged; skipping update")
         return
 
     pic = Pic(time_str, grade, base_dir=base_dir)
     create_pic_folders(pic)
     download(pic)
     if not pic.download_finish():
-        logging.warning("瓦片未全部下载完成，跳过合成与设壁纸")
+        logging.warning("Not all tiles downloaded; skipping compose and wallpaper apply")
         return
     compose(pic)
     wallpaper_path = adjust(pic) if auto_adjust else Path(pic.final_path_equal)
     applied = set_desktop(wallpaper_path)
     if applied is False:
+        logging.warning(
+            "Wallpaper apply failed or skipped; leaving run state and cache unchanged: %s",
+            wallpaper_path,
+        )
         return
     if applied_run_state is not None:
         applied_run_state["last"] = run_key
@@ -136,3 +140,4 @@ def run_wallpaper_pipeline(
             current_run_root=current_run_root,
             keep_file=Path(wallpaper_path),
         )
+    logging.info("Wallpaper pipeline finished: %s", wallpaper_path)

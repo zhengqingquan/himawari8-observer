@@ -26,12 +26,17 @@ def cleanup_after_wallpaper_apply(
         img_root = img_root.resolve()
         current_run_root = current_run_root.resolve()
         keep_file = keep_file.resolve()
-    except OSError as exc:
-        logging.warning("清理缓存：解析路径失败：%s", exc)
+    except OSError:
+        logging.exception(
+            "Cleanup skipped: failed to resolve paths (img=%s run=%s keep=%s)",
+            img_root,
+            current_run_root,
+            keep_file,
+        )
         return
 
     if not img_root.is_dir():
-        logging.info("清理缓存：img 根目录不存在，跳过：%s", img_root)
+        logging.info("Cleanup skipped: img root does not exist: %s", img_root)
         return
 
     try:
@@ -39,7 +44,7 @@ def cleanup_after_wallpaper_apply(
         keep_file.relative_to(img_root)
     except ValueError:
         logging.warning(
-            "清理缓存：路径不在 img 下，跳过（img=%s run=%s keep=%s）",
+            "Cleanup skipped: path outside img root (img=%s run=%s keep=%s)",
             img_root,
             current_run_root,
             keep_file,
@@ -49,7 +54,7 @@ def cleanup_after_wallpaper_apply(
     _delete_sibling_run_dirs(img_root, current_run_root)
     _delete_tile_trees(current_run_root)
     _delete_extra_complete_files(current_run_root, keep_file)
-    logging.info("清理缓存完成：保留 %s", keep_file)
+    logging.info("Cleanup finished; kept wallpaper file: %s", keep_file)
 
 
 def _delete_sibling_run_dirs(img_root: Path, current_run_root: Path) -> None:
@@ -60,12 +65,14 @@ def _delete_sibling_run_dirs(img_root: Path, current_run_root: Path) -> None:
             if child.resolve() == current_run_root:
                 continue
         except OSError:
+            logging.warning("Cleanup: failed to resolve sibling run dir: %s", child, exc_info=True)
             continue
         _rmtree(child)
 
 
 def _delete_tile_trees(current_run_root: Path) -> None:
     if not current_run_root.is_dir():
+        logging.warning("Cleanup: current run root is not a directory: %s", current_run_root)
         return
     for child in current_run_root.iterdir():
         if child.is_dir() and child.name != "complete":
@@ -83,6 +90,7 @@ def _delete_extra_complete_files(current_run_root: Path, keep_file: Path) -> Non
             if path.resolve() == keep_file:
                 continue
         except OSError:
+            logging.warning("Cleanup: failed to resolve compose file: %s", path, exc_info=True)
             continue
         _unlink(path)
 
@@ -90,14 +98,14 @@ def _delete_extra_complete_files(current_run_root: Path, keep_file: Path) -> Non
 def _rmtree(path: Path) -> None:
     try:
         shutil.rmtree(path)
-        logging.info("已删除目录：%s", path)
+        logging.info("Deleted directory: %s", path)
     except OSError as exc:
-        logging.warning("删除目录失败：%s (%s)", path, exc)
+        logging.warning("Failed to delete directory %s: %s", path, exc)
 
 
 def _unlink(path: Path) -> None:
     try:
         path.unlink()
-        logging.info("已删除文件：%s", path)
+        logging.info("Deleted file: %s", path)
     except OSError as exc:
-        logging.warning("删除文件失败：%s (%s)", path, exc)
+        logging.warning("Failed to delete file %s: %s", path, exc)

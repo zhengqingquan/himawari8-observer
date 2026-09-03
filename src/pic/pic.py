@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from time import strftime
 
@@ -55,7 +56,11 @@ class Pic:
 
     def build_tiles(self) -> None:
         """构建瓦片 url → [path, status] 映射。"""
-        print("正在构建url和path的映射字典。")
+        logging.info(
+            "Building tile URL/path map for grade %s (%s tiles)",
+            self.grade,
+            self.pic_chip,
+        )
         location_x = 0
         location_y = 0
         arr_url = []
@@ -91,7 +96,13 @@ class Pic:
         for key, val in self.tiles.items():
             self.tiles[key] = [val, 0]
         if self.pic_chip == len(self.tiles):
-            print("url和path的映射字典构建完成。")
+            logging.info("Tile URL/path map ready: %s entries", len(self.tiles))
+        else:
+            logging.error(
+                "Tile map size mismatch: expected %s, got %s",
+                self.pic_chip,
+                len(self.tiles),
+            )
 
     def download_finish(self) -> bool:
         """全部瓦片下载完成则返回 True。"""

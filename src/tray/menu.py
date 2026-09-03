@@ -45,7 +45,12 @@ def _tray_icon_path() -> Path:
 
 def create_image():
     """加载托盘图标图像。"""
-    return Image.open(_tray_icon_path())
+    icon_path = _tray_icon_path()
+    try:
+        return Image.open(icon_path)
+    except OSError:
+        logging.exception("Failed to load tray icon: %s", icon_path)
+        raise
 
 
 def on_clicked(icon, item):
@@ -119,7 +124,11 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
     def make_resolution_item(pixel_side: int):
         def on_select(icon, item):
             job_ref.set_pixel_side(pixel_side)
-            logging.info("分辨率档位已切换为 %spx（%s）", pixel_side, job_ref.resolution_grade)
+            logging.info(
+                "Resolution set to %spx (grade %s)",
+                pixel_side,
+                job_ref.resolution_grade,
+            )
             threading.Thread(
                 target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
                 daemon=True,
@@ -135,7 +144,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
     def on_toggle_adjust(icon, item):
         enabled = not job_ref.auto_adjust
         job_ref.set_auto_adjust(enabled)
-        logging.info("黑边修边已%s", "开启" if enabled else "关闭")
+        logging.info("Margin adjust %s", "enabled" if enabled else "disabled")
         threading.Thread(
             target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
             daemon=True,
@@ -144,12 +153,12 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
     def on_toggle_cleanup(icon, item):
         enabled = not job_ref.cleanup_after_apply
         job_ref.set_cleanup_after_apply(enabled)
-        logging.info("应用后清理缓存已%s", "开启" if enabled else "关闭")
+        logging.info("Cleanup after apply %s", "enabled" if enabled else "disabled")
 
     def make_margin_top_item(percent: float):
         def on_select(icon, item):
             job_ref.set_margin_top_percent(percent)
-            logging.info("顶边黑边已设为 %s%%", percent)
+            logging.info("Top margin set to %s%%", percent)
             threading.Thread(
                 target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
                 daemon=True,
@@ -165,7 +174,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
     def make_margin_bottom_item(percent: float):
         def on_select(icon, item):
             job_ref.set_margin_bottom_percent(percent)
-            logging.info("底边黑边已设为 %s%%", percent)
+            logging.info("Bottom margin set to %s%%", percent)
             threading.Thread(
                 target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
                 daemon=True,

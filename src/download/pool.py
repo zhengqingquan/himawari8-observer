@@ -72,6 +72,6 @@ def download_files(
             try:
                 future.result()
                 entry[1] = 1
-                logging.info("%s 下载完成", url)
+                logging.info("Downloaded tile: %s", url)
             except Exception as exc:
-                logging.warning("%s 下载时出错: %s", url, exc)
+                logging.warning("Failed to download tile %s: %s", url, exc)

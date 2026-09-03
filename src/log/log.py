@@ -17,7 +17,7 @@ def init_logging() -> None:
     console_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     logger.addHandler(console_handler)
 
-    logging.info(f"Log path：{LOG_PATH}")
+    logging.info("Log file: %s", LOG_PATH)
     file_handler = logging.FileHandler(LOG_PATH, encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(

@@ -15,24 +15,28 @@ def set_wallpaper(wallpaper_path: Path) -> bool:
         wallpaper_path: 壁纸图片路径（须存在；内部会转为绝对路径）。
 
     Returns:
-        成功为 True；文件不存在为 False。
+        成功为 True；失败为 False。
     """
     try:
-        if wallpaper_path.exists() is False:
-            raise FileNotFoundError
+        if not wallpaper_path.exists():
+            logging.warning("Wallpaper file not found: %s", wallpaper_path)
+            return False
 
-        logging.info(f"图片路径为：{wallpaper_path.resolve()}")
+        abs_path = os.path.abspath(wallpaper_path)
+        logging.info("Setting desktop wallpaper: %s", abs_path)
 
-        # 必须使用绝对路径，否则可能落到默认纯色背景。
+        # Absolute path is required; otherwise Windows may fall back to a solid color.
         SPI_SETDESKWALLPAPER = 20
         SPIF_UPDATEINIFILE = 1
-        ctypes.windll.user32.SystemParametersInfoW(
-            SPI_SETDESKWALLPAPER, 0, os.path.abspath(wallpaper_path), SPIF_UPDATEINIFILE
+        ok = ctypes.windll.user32.SystemParametersInfoW(
+            SPI_SETDESKWALLPAPER, 0, abs_path, SPIF_UPDATEINIFILE
         )
+        if not ok:
+            logging.error("SystemParametersInfoW failed for wallpaper: %s", abs_path)
+            return False
 
-        logging.info("图片替换完成。")
-
+        logging.info("Desktop wallpaper updated")
         return True
-    except FileNotFoundError:
-        logging.warning(f"图片不存在：{wallpaper_path}")
+    except OSError:
+        logging.exception("Failed to set desktop wallpaper: %s", wallpaper_path)
         return False
