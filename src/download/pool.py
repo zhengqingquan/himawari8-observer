@@ -16,6 +16,8 @@ DownloadOne = Callable[[str, Any], Any]
 
 # 首轮之外，对仍失败的瓦片再补下的轮数。
 _DEFAULT_RETRY_ROUNDS = 2
+_PART_SUFFIX = ".part"
+_PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
 
 def _build_session(*, pool_size: int = 16) -> requests.Session:
@@ -33,7 +35,7 @@ def _build_session(*, pool_size: int = 16) -> requests.Session:
 
 
 def download_file(url, path, *, session: requests.Session | None = None):
-    """下载单张瓦片到 path。
+    """下载单张瓦片到 path（先写 ``.part`` 再原子替换，避免半写入被当成成品）。
 
     Args:
         url: 瓦片 URL。
@@ -45,19 +47,34 @@ def download_file(url, path, *, session: requests.Session | None = None):
     """
     proxies = {"http": None, "https": None}
     client = session or requests
-    with client.get(url, stream=True, verify=True, proxies=proxies, timeout=(5, 14)) as r:
-        r.raise_for_status()
-        with open(path, "wb") as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                f.write(chunk)
+    dest = Path(path)
+    part = dest.with_name(dest.name + _PART_SUFFIX)
+    try:
+        with client.get(url, stream=True, verify=True, proxies=proxies, timeout=(5, 14)) as r:
+            r.raise_for_status()
+            with open(part, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        part.replace(dest)
+    except Exception:
+        try:
+            part.unlink(missing_ok=True)
+        except OSError:
+            logging.debug("Failed to remove partial tile: %s", part, exc_info=True)
+        raise
     return url.split("/")[-1]
 
 
 def _existing_tile_ok(path: Any) -> bool:
-    """本地瓦片文件已存在且非空时可跳过下载。"""
+    """本地瓦片已存在、非空且具有 PNG 文件头时可跳过下载。"""
     try:
         file_path = Path(path)
-        return file_path.is_file() and file_path.stat().st_size > 0
+        if not file_path.is_file():
+            return False
+        if file_path.stat().st_size < len(_PNG_MAGIC):
+            return False
+        with file_path.open("rb") as f:
+            return f.read(len(_PNG_MAGIC)) == _PNG_MAGIC
     except OSError:
         return False
 
@@ -101,7 +118,7 @@ def download_files(
 ) -> None:
     """使用线程池下载 urls（值为 ``[path, status]``）。成功则 status=1。
 
-    已存在且非空的本地文件会直接标记成功并跳过网络请求。
+    已存在且带 PNG 头的本地文件会直接标记成功并跳过网络请求。
     首轮结束后，对仍失败的瓦片再补下最多 ``retry_rounds`` 轮。
 
     Args:

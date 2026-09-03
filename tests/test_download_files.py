@@ -5,8 +5,9 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import MagicMock
 
-from src.download.pool import _build_session, download_files
+from src.download.pool import _PNG_MAGIC, _build_session, download_file, download_files
 
 
 class DownloadFilesTests(unittest.TestCase):
@@ -78,7 +79,7 @@ class DownloadFilesTests(unittest.TestCase):
             self.assertEqual(len(calls), 1)
             self.assertEqual(urls["https://example.test/a.png"][1], 0)
 
-    def test_skips_existing_nonempty_file(self):
+    def test_skips_existing_png_file(self):
         calls = []
 
         def fake_download_one(url, path):
@@ -86,7 +87,7 @@ class DownloadFilesTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             existing = Path(tmp) / "a.png"
-            existing.write_bytes(b"png")
+            existing.write_bytes(_PNG_MAGIC + b"rest")
             missing = Path(tmp) / "b.png"
             urls = {
                 "https://example.test/a.png": [str(existing), 0],
@@ -102,7 +103,7 @@ class DownloadFilesTests(unittest.TestCase):
 
         def fake_download_one(url, path):
             calls.append(url)
-            Path(path).write_bytes(b"x")
+            Path(path).write_bytes(_PNG_MAGIC)
 
         with tempfile.TemporaryDirectory() as tmp:
             empty = Path(tmp) / "a.png"
@@ -111,6 +112,75 @@ class DownloadFilesTests(unittest.TestCase):
             download_files(urls, download_one=fake_download_one)
             self.assertEqual(calls, ["https://example.test/a.png"])
             self.assertEqual(urls["https://example.test/a.png"][1], 1)
+
+    def test_non_png_existing_file_is_redownloaded(self):
+        calls = []
+
+        def fake_download_one(url, path):
+            calls.append(url)
+            Path(path).write_bytes(_PNG_MAGIC)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            garbage = Path(tmp) / "a.png"
+            garbage.write_bytes(b"half-written-garbage")
+            urls = {"https://example.test/a.png": [str(garbage), 0]}
+            download_files(urls, download_one=fake_download_one)
+            self.assertEqual(calls, ["https://example.test/a.png"])
+            self.assertEqual(urls["https://example.test/a.png"][1], 1)
+            self.assertTrue(garbage.read_bytes().startswith(_PNG_MAGIC))
+
+
+class DownloadFileAtomicTests(unittest.TestCase):
+    def test_writes_via_part_then_replace(self):
+        payload = _PNG_MAGIC + b"tile-body"
+
+        class _Resp:
+            def raise_for_status(self):
+                return None
+
+            def iter_content(self, chunk_size=8192):
+                yield payload
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        session = MagicMock()
+        session.get.return_value = _Resp()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "a.png"
+            name = download_file("https://example.test/a.png", dest, session=session)
+            self.assertEqual(name, "a.png")
+            self.assertEqual(dest.read_bytes(), payload)
+            self.assertFalse(dest.with_name("a.png.part").exists())
+
+    def test_failed_stream_leaves_no_final_or_part(self):
+        class _Resp:
+            def raise_for_status(self):
+                return None
+
+            def iter_content(self, chunk_size=8192):
+                yield _PNG_MAGIC
+                raise ConnectionError("cut mid-stream")
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        session = MagicMock()
+        session.get.return_value = _Resp()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "a.png"
+            with self.assertRaises(ConnectionError):
+                download_file("https://example.test/a.png", dest, session=session)
+            self.assertFalse(dest.exists())
+            self.assertFalse(dest.with_name("a.png.part").exists())
 
 
 class BuildSessionTests(unittest.TestCase):
