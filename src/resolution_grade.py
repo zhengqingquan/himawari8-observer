@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 _TILE_PIXEL = 550
-_DEFAULT_GRADE = "4d"
+_DEFAULT_GRADE = "20d"
 _GRADE_TO_GRID: dict[str, int] = {
     "1d": 1,
     "2d": 2,

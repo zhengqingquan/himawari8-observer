@@ -9,7 +9,7 @@ from tests.workdir_paths import temporary_base_dir
 
 
 class RunWallpaperPipelineTests(unittest.TestCase):
-    def test_runs_adapters_in_order_with_default_4d(self):
+    def test_runs_adapters_in_order_with_default_20d(self):
         events = []
 
         def fetch_observation_time():
@@ -41,9 +41,9 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             events,
             [
                 "fetch",
-                ("download", "4d"),
-                ("compose", "4d"),
-                ("set", "4d20210603052000.png"),
+                ("download", "20d"),
+                ("compose", "20d"),
+                ("set", "20d20210603052000.png"),
             ],
         )
 
@@ -113,7 +113,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 base_dir=base_dir,
             )
 
-        self.assertEqual(events, ["compose", ("set", "4d20210603052000.png")])
+        self.assertEqual(events, ["compose", ("set", "20d20210603052000.png")])
 
     def test_skips_compose_when_tiles_incomplete(self):
         events = []
@@ -222,10 +222,10 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             [
                 ("download", "20210603052000"),
                 "compose",
-                ("set", "4d20210603052000.png"),
+                ("set", "20d20210603052000.png"),
                 ("download", "20210603053000"),
                 "compose",
-                ("set", "4d20210603053000.png"),
+                ("set", "20d20210603053000.png"),
             ],
         )
 

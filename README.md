@@ -77,9 +77,9 @@ python -m src.main
 
 | 选项 | 说明 |
 |------|------|
-| `-r` / `--resolution` | 合成边长：`550` / `1100` / `2200`（默认）/ `4400` / `8800` / `11000` |
+| `-r` / `--resolution` | 合成边长：`550` / `1100` / `2200` / `4400` / `8800` / `11000`（默认） |
 | `-a` / `--adjust` | 黑边修边（默认开启；`--no-adjust` 关闭） |
-| `--margin-top` / `--margin-bottom` | 顶 / 底边黑边百分比（默认各 `5`） |
+| `--margin-top` / `--margin-bottom` | 顶 / 底边黑边百分比（默认顶 `0`、底 `5`） |
 | `--cleanup-after-apply` | 设壁纸后清理缓存（默认开启；`--no-cleanup-after-apply` 关闭） |
 | `--logging` | 启用日志（默认关闭；`--no-logging` 关闭） |
 | `-v` / `--version` | 打印版本后退出 |

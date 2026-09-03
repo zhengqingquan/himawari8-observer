@@ -72,6 +72,7 @@ class CleanupAfterApplyTests(unittest.TestCase):
                 return True
 
             run_wallpaper_pipeline(
+                resolution_grade="4d",
                 fetch_observation_time=fetch_observation_time,
                 download_tiles=download_tiles,
                 compose_equal=compose_equal,
@@ -111,6 +112,7 @@ class CleanupAfterApplyTests(unittest.TestCase):
                 return False
 
             run_wallpaper_pipeline(
+                resolution_grade="4d",
                 fetch_observation_time=fetch_observation_time,
                 download_tiles=download_tiles,
                 compose_equal=compose_equal,

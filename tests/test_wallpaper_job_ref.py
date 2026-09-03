@@ -57,7 +57,12 @@ class WallpaperJobRefTests(unittest.TestCase):
 
             return job
 
-        ref = WallpaperJobRef("4d", build_job=fake_build)
+        ref = WallpaperJobRef(
+            "4d",
+            margin_top_percent=5.0,
+            margin_bottom_percent=5.0,
+            build_job=fake_build,
+        )
         ref.set_margin_bottom_percent(12.0)
         ref.set_auto_adjust(False)
         self.assertEqual(ref.margin_bottom_percent, 12.0)

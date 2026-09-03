@@ -74,7 +74,7 @@ class Config:
             type=_percent,
             default=None,
             dest="margin_top_percent",
-            help="Top black-border percent of the square image side (default: 5).",
+            help="Top black-border percent of the square image side (default: 0).",
         )
 
         self._parser.add_argument(

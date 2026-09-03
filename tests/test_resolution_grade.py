@@ -15,8 +15,8 @@ class ResolutionGradeTests(unittest.TestCase):
     def test_tile_pixel_is_550(self):
         self.assertEqual(tile_pixel(), 550)
 
-    def test_default_grade_is_4d(self):
-        self.assertEqual(default_grade(), "4d")
+    def test_default_grade_is_20d(self):
+        self.assertEqual(default_grade(), "20d")
 
     def test_grade_to_grid(self):
         self.assertEqual(grade_to_grid("1d"), 1)

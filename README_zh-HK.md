@@ -77,9 +77,9 @@ python -m src.main
 
 | 選項 | 說明 |
 |------|------|
-| `-r` / `--resolution` | 合成邊長：`550` / `1100` / `2200`（預設）/ `4400` / `8800` / `11000` |
+| `-r` / `--resolution` | 合成邊長：`550` / `1100` / `2200` / `4400` / `8800` / `11000`（預設） |
 | `-a` / `--adjust` | 黑邊修邊（預設開啟；`--no-adjust` 關閉） |
-| `--margin-top` / `--margin-bottom` | 上／下邊黑邊百分比（預設各 `5`） |
+| `--margin-top` / `--margin-bottom` | 上／下邊黑邊百分比（預設上 `0`、下 `5`） |
 | `--cleanup-after-apply` | 設成桌布後清理快取（預設開啟；`--no-cleanup-after-apply` 關閉） |
 | `--logging` | 啟用日誌（預設關閉；`--no-logging` 關閉） |
 | `-v` / `--version` | 印出版本後結束 |

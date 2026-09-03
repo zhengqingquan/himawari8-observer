@@ -8,6 +8,11 @@ import os
 
 from PIL import Image, ImageGrab
 
+from src.metadata.soft_config import (
+    DEFAULT_MARGIN_BOTTOM_PERCENT,
+    DEFAULT_MARGIN_TOP_PERCENT,
+)
+
 
 def compose_equal_image(pic) -> None:
     """将多张瓦片合成为一张等分完整图，并保存到 ``pic.final_path_equal``。
@@ -36,7 +41,14 @@ def compose_equal_image(pic) -> None:
     )
 
 
-def apply_margins(file, margin, path, *, top_percent=5.0, bottom_percent=5.0) -> None:
+def apply_margins(
+    file,
+    margin,
+    path,
+    *,
+    top_percent=DEFAULT_MARGIN_TOP_PERCENT,
+    bottom_percent=DEFAULT_MARGIN_BOTTOM_PERCENT,
+) -> None:
     """将正方形等分合成图嵌入与屏幕同比例的黑边画布。
 
     Args:
