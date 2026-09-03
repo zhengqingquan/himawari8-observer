@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 _TILE_PIXEL = 550
-_DEFAULT_GRADE = "20d"
+_DEFAULT_GRADE = "4d"
 # 渐进更新预览边长（4d）；目标高于此值时先预览再拉目标档。
 PROGRESSIVE_PREVIEW_PIXEL = 2200
 _GRADE_TO_GRID: dict[str, int] = {

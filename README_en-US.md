@@ -77,7 +77,7 @@ Common options:
 
 | Option | Description |
 |------|------|
-| `-r` / `--resolution` | Composite side length: `550` / `1100` / `2200` / `4400` / `8800` / `11000` (default) |
+| `-r` / `--resolution` | Composite side length: `550` / `1100` / `2200` (default) / `4400` / `8800` / `11000` |
 | `-a` / `--adjust` | Black-border padding (on by default; `--no-adjust` to disable) |
 | `--margin-top` / `--margin-bottom` | Top / bottom black-border percent (default top `0`, bottom `5`) |
 | `--cleanup-after-apply` | Clean caches after applying wallpaper (on by default; `--no-cleanup-after-apply` to disable) |
