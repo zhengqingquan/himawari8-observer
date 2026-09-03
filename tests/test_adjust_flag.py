@@ -51,6 +51,18 @@ class AdjustFlagTests(unittest.TestCase):
         config = _fresh_config(["run.py", "--no-cleanup-after-apply"])
         self.assertFalse(config.is_cleanup_after_apply())
 
+    def test_default_use_yesterday_local_time_is_false(self):
+        config = _fresh_config(["run.py"])
+        self.assertFalse(config.is_use_yesterday_local_time())
+
+    def test_use_yesterday_local_time_enables(self):
+        config = _fresh_config(["run.py", "--use-yesterday-local-time"])
+        self.assertTrue(config.is_use_yesterday_local_time())
+
+    def test_no_use_yesterday_local_time_disables(self):
+        config = _fresh_config(["run.py", "--no-use-yesterday-local-time"])
+        self.assertFalse(config.is_use_yesterday_local_time())
+
     def test_default_margin_percents(self):
         config = _fresh_config(["run.py"])
         self.assertEqual(config.get_margin_top_percent(), 0.0)

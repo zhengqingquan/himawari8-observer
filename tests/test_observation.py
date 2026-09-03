@@ -1,13 +1,14 @@
-"""Observation time fetch from latest.json."""
+"""Observation time fetch from latest.json and yesterday-local slot."""
 
 from __future__ import annotations
 
 import json
 import time
 import unittest
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
-from src.download.observation import fetch_observation_time
+from src.download.observation import fetch_observation_time, observation_time_yesterday_local
 
 
 class FetchObservationTimeTests(unittest.TestCase):
@@ -30,6 +31,20 @@ class FetchObservationTimeTests(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             fetch_observation_time(session)
+
+
+class ObservationTimeYesterdayLocalTests(unittest.TestCase):
+    def test_beijing_1722_maps_to_utc_0920_previous_day(self):
+        china = timezone(timedelta(hours=8))
+        now = datetime(2026, 9, 3, 17, 22, tzinfo=china)
+        got = observation_time_yesterday_local(now=now)
+        self.assertEqual(got, time.strptime("2026-09-02 09:20:00", "%Y-%m-%d %H:%M:%S"))
+
+    def test_exact_ten_minute_boundary_unchanged(self):
+        china = timezone(timedelta(hours=8))
+        now = datetime(2026, 9, 3, 17, 20, tzinfo=china)
+        got = observation_time_yesterday_local(now=now)
+        self.assertEqual(got, time.strptime("2026-09-02 09:20:00", "%Y-%m-%d %H:%M:%S"))
 
 
 if __name__ == "__main__":

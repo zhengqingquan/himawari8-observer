@@ -96,6 +96,16 @@ class Config:
         )
 
         self._parser.add_argument(
+            "--use-yesterday-local-time",
+            dest="use_yesterday_local_time",
+            default=None,
+            action=argparse.BooleanOptionalAction,
+            help="Use yesterday's image at the same local clock time "
+            "(floored to 10 minutes UTC; default: off; "
+            "use --use-yesterday-local-time to enable).",
+        )
+
+        self._parser.add_argument(
             "--logging",
             dest="logging_enabled",
             default=None,
@@ -115,6 +125,7 @@ class Config:
             "margin_top_percent": self._args.margin_top_percent,
             "margin_bottom_percent": self._args.margin_bottom_percent,
             "cleanup_after_apply": self._args.cleanup_after_apply,
+            "use_yesterday_local_time": self._args.use_yesterday_local_time,
             "logging_enabled": self._args.logging_enabled,
         }
         self._resolved = resolve_runtime_settings(cli_values)
@@ -129,6 +140,10 @@ class Config:
             self._resolved["margin_bottom_percent"],
         )
         logging.info("Cleanup after apply: %s", self._resolved["cleanup_after_apply"])
+        logging.info(
+            "Use yesterday local time: %s",
+            self._resolved["use_yesterday_local_time"],
+        )
         logging.info("Logging enabled: %s", self._resolved["logging_enabled"])
 
     def get_download_resolution(self):
@@ -145,6 +160,9 @@ class Config:
 
     def is_cleanup_after_apply(self):
         return self._resolved["cleanup_after_apply"]
+
+    def is_use_yesterday_local_time(self):
+        return self._resolved["use_yesterday_local_time"]
 
     def is_logging_enabled(self):
         return self._resolved["logging_enabled"]

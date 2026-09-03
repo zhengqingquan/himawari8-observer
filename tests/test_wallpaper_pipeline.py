@@ -469,6 +469,56 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             ],
         )
 
+    def test_use_yesterday_local_time_skips_latest_fetch(self):
+        events = []
+        state = {"last": None, "wallpaper_path": None}
+
+        def fetch_observation_time():
+            events.append("fetch")
+            return time.strptime("2026-09-03 10:50:00", "%Y-%m-%d %H:%M:%S")
+
+        def download_tiles(pic):
+            events.append(("download", pic.year + pic.month + pic.day, pic.hour + pic.minute))
+            for entry in pic.tiles.values():
+                entry[1] = 1
+
+        def compose_equal(pic):
+            events.append("compose")
+
+        def set_wallpaper(path: Path):
+            events.append(("set", path.name))
+            return True
+
+        with (
+            temporary_base_dir() as base_dir,
+            patch(
+                "src.wallpaper.pipeline.observation_time_yesterday_local",
+                return_value=time.strptime("2026-09-02 09:20:00", "%Y-%m-%d %H:%M:%S"),
+            ),
+        ):
+            result = run_wallpaper_pipeline(
+                resolution_grade="4d",
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                set_wallpaper=set_wallpaper,
+                cleanup_after_apply=False,
+                use_yesterday_local_time=True,
+                applied_run_state=state,
+                base_dir=base_dir,
+            )
+
+        self.assertEqual(result, "2026-09-02 09:20:00")
+        self.assertEqual(
+            events,
+            [
+                ("download", "20260902", "0920"),
+                "compose",
+                ("set", "4d20260902092000.png"),
+            ],
+        )
+        self.assertEqual(state["last"][0], "2026-09-02 09:20:00")
+
 
 if __name__ == "__main__":
     unittest.main()

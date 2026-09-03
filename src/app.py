@@ -29,6 +29,7 @@ def main() -> None:
             margin_top_percent=config.get_margin_top_percent(),
             margin_bottom_percent=config.get_margin_bottom_percent(),
             cleanup_after_apply=config.is_cleanup_after_apply(),
+            use_yesterday_local_time=config.is_use_yesterday_local_time(),
             applied_run_state=applied_state,
         )
 

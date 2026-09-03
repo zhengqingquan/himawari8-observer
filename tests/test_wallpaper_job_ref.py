@@ -94,6 +94,23 @@ class WallpaperJobRefTests(unittest.TestCase):
         self.assertFalse(ref.cleanup_after_apply)
         self.assertEqual(flags, [True, False])
 
+    def test_set_use_yesterday_local_time_rebuilds_job(self):
+        flags = []
+
+        def fake_build(resolution_grade, *, use_yesterday_local_time=False, **_kwargs):
+            flags.append(use_yesterday_local_time)
+
+            def job():
+                return None
+
+            return job
+
+        ref = WallpaperJobRef("4d", build_job=fake_build, persist_state=False)
+        self.assertFalse(ref.use_yesterday_local_time)
+        ref.set_use_yesterday_local_time(True)
+        self.assertTrue(ref.use_yesterday_local_time)
+        self.assertEqual(flags, [False, True])
+
     def test_applied_observation_time_from_run_state_and_survives_rebuild(self):
         ref = WallpaperJobRef("4d", build_job=_noop_build, persist_state=False)
         self.assertIsNone(ref.applied_observation_time)

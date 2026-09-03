@@ -30,6 +30,7 @@ class SanitizeSettingsTests(unittest.TestCase):
                 "margin_top_percent": 8.0,
                 "margin_bottom_percent": 12.0,
                 "cleanup_after_apply": False,
+                "use_yesterday_local_time": True,
                 "logging_enabled": True,
             }
         )
@@ -38,6 +39,7 @@ class SanitizeSettingsTests(unittest.TestCase):
         self.assertEqual(cleaned["margin_top_percent"], 8.0)
         self.assertEqual(cleaned["margin_bottom_percent"], 12.0)
         self.assertFalse(cleaned["cleanup_after_apply"])
+        self.assertTrue(cleaned["use_yesterday_local_time"])
         self.assertTrue(cleaned["logging_enabled"])
 
     def test_skips_invalid_fields(self):
@@ -48,6 +50,7 @@ class SanitizeSettingsTests(unittest.TestCase):
                 "margin_top_percent": -1,
                 "margin_bottom_percent": 101,
                 "cleanup_after_apply": 1,
+                "use_yesterday_local_time": "yes",
                 "logging_enabled": "on",
                 "extra": True,
             }
@@ -68,6 +71,7 @@ class SettingsFileIoTests(unittest.TestCase):
                 "margin_top_percent": 10.0,
                 "margin_bottom_percent": 12.0,
                 "cleanup_after_apply": False,
+                "use_yesterday_local_time": True,
                 "logging_enabled": True,
             }
             self.assertTrue(save_settings(data, path=path))
@@ -77,6 +81,7 @@ class SettingsFileIoTests(unittest.TestCase):
             self.assertEqual(loaded["margin_top_percent"], 10.0)
             self.assertEqual(loaded["margin_bottom_percent"], 12.0)
             self.assertFalse(loaded["cleanup_after_apply"])
+            self.assertTrue(loaded["use_yesterday_local_time"])
             self.assertTrue(loaded["logging_enabled"])
 
     def test_missing_file_returns_empty(self):
@@ -98,6 +103,7 @@ class SettingsFileIoTests(unittest.TestCase):
             self.assertEqual(raw["resolution"], 1100)
             self.assertEqual(raw["auto_adjust"], default_settings()["auto_adjust"])
             self.assertFalse(raw["logging_enabled"])
+            self.assertFalse(raw["use_yesterday_local_time"])
 
     def test_partial_save_preserves_logging_flag(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -155,6 +161,7 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                 "margin_top_percent": None,
                 "margin_bottom_percent": None,
                 "cleanup_after_apply": None,
+                "use_yesterday_local_time": None,
             },
             file_settings={
                 "resolution": 8800,
@@ -162,6 +169,7 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                 "margin_top_percent": 8.0,
                 "margin_bottom_percent": 10.0,
                 "cleanup_after_apply": False,
+                "use_yesterday_local_time": True,
             },
         )
         self.assertEqual(resolved["resolution"], 8800)
@@ -169,6 +177,7 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
         self.assertEqual(resolved["margin_top_percent"], 8.0)
         self.assertEqual(resolved["margin_bottom_percent"], 10.0)
         self.assertFalse(resolved["cleanup_after_apply"])
+        self.assertTrue(resolved["use_yesterday_local_time"])
 
     def test_cli_overrides_file(self):
         resolved = resolve_runtime_settings(
@@ -178,6 +187,7 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                 "margin_top_percent": 3.0,
                 "margin_bottom_percent": None,
                 "cleanup_after_apply": None,
+                "use_yesterday_local_time": False,
             },
             file_settings={
                 "resolution": 8800,
@@ -185,6 +195,7 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                 "margin_top_percent": 8.0,
                 "margin_bottom_percent": 12.0,
                 "cleanup_after_apply": False,
+                "use_yesterday_local_time": True,
             },
         )
         self.assertEqual(resolved["resolution"], 550)
@@ -192,6 +203,7 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
         self.assertEqual(resolved["margin_top_percent"], 3.0)
         self.assertEqual(resolved["margin_bottom_percent"], 12.0)
         self.assertFalse(resolved["cleanup_after_apply"])
+        self.assertFalse(resolved["use_yesterday_local_time"])
 
     def test_absent_cli_keeps_file(self):
         resolved = resolve_runtime_settings(
@@ -201,6 +213,7 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                 "margin_top_percent": None,
                 "margin_bottom_percent": None,
                 "cleanup_after_apply": None,
+                "use_yesterday_local_time": None,
                 "logging_enabled": None,
             },
             file_settings={"resolution": 4400},
@@ -208,6 +221,7 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
         self.assertEqual(resolved["resolution"], 4400)
         self.assertEqual(resolved["auto_adjust"], default_settings()["auto_adjust"])
         self.assertFalse(resolved["logging_enabled"])
+        self.assertFalse(resolved["use_yesterday_local_time"])
 
     def test_default_logging_disabled(self):
         resolved = resolve_runtime_settings(
@@ -217,11 +231,13 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                 "margin_top_percent": None,
                 "margin_bottom_percent": None,
                 "cleanup_after_apply": None,
+                "use_yesterday_local_time": None,
                 "logging_enabled": None,
             },
             file_settings={},
         )
         self.assertFalse(resolved["logging_enabled"])
+        self.assertFalse(resolved["use_yesterday_local_time"])
 
 
 def _config_with_file(argv, file_settings):
@@ -258,21 +274,24 @@ class ConfigUsesSettingsFileTests(unittest.TestCase):
         self.assertFalse(config.is_auto_adjust_picture())
         self.assertEqual(config.get_margin_top_percent(), 8.0)
         self.assertFalse(config.is_cleanup_after_apply())
+        self.assertFalse(config.is_use_yesterday_local_time())
 
     def test_cli_overrides_resolved_file(self):
         config = _config_with_file(
-            ["run.py", "-r", "550", "--no-adjust"],
+            ["run.py", "-r", "550", "--no-adjust", "--use-yesterday-local-time"],
             {
                 "resolution": 4400,
                 "auto_adjust": True,
                 "margin_top_percent": 8.0,
                 "margin_bottom_percent": 10.0,
                 "cleanup_after_apply": True,
+                "use_yesterday_local_time": False,
             },
         )
         self.assertEqual(config.get_download_resolution(), 550)
         self.assertFalse(config.is_auto_adjust_picture())
         self.assertEqual(config.get_margin_top_percent(), 8.0)
+        self.assertTrue(config.is_use_yesterday_local_time())
 
 
 if __name__ == "__main__":

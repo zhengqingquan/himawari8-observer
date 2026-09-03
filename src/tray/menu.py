@@ -216,6 +216,7 @@ def _persist_job_settings(job_ref: WallpaperJobRef) -> None:
             margin_top_percent=job_ref.margin_top_percent,
             margin_bottom_percent=job_ref.margin_bottom_percent,
             cleanup_after_apply=job_ref.cleanup_after_apply,
+            use_yesterday_local_time=job_ref.use_yesterday_local_time,
         )
     )
 
@@ -279,6 +280,19 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         job_ref.set_cleanup_after_apply(enabled)
         _persist_job_settings(job_ref)
         logging.info("Cleanup after apply %s", "enabled" if enabled else "disabled")
+
+    def on_toggle_use_yesterday_local_time(icon, item):
+        enabled = not job_ref.use_yesterday_local_time
+        job_ref.set_use_yesterday_local_time(enabled)
+        _persist_job_settings(job_ref)
+        logging.info(
+            "Use yesterday local time %s",
+            "enabled" if enabled else "disabled",
+        )
+        threading.Thread(
+            target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
+            daemon=True,
+        ).start()
 
     def make_margin_top_item(percent: float):
         def on_select(icon, item):
@@ -387,6 +401,11 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             "自动清理图片缓存",
             on_toggle_cleanup,
             checked=lambda item: job_ref.cleanup_after_apply,
+        ),
+        pystray.MenuItem(
+            "按本地钟点使用昨日影像",
+            on_toggle_use_yesterday_local_time,
+            checked=lambda item: job_ref.use_yesterday_local_time,
         ),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem(

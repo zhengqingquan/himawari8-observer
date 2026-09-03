@@ -31,6 +31,7 @@ python run.py --version
 | — | `--margin-top` | `0`–`100` | `0` | 顶边黑边占原图边长的百分比 |
 | — | `--margin-bottom` | `0`–`100` | `5` | 底边黑边占原图边长的百分比 |
 | — | `--cleanup-after-apply` / `--no-cleanup-after-apply` | 布尔开关 | **开启** | 设壁纸后清理瓦片与旧目录，保留当前壁纸文件 |
+| — | `--use-yesterday-local-time` / `--no-use-yesterday-local-time` | 布尔开关 | **关闭** | 按本机当前钟点取昨日同时刻影像（UTC 向下取整到 10 分钟） |
 | `-v` | `--version` | — | — | 打印版本后退出 |
 | `-h` | `--help` | — | — | 打印帮助后退出 |
 
@@ -106,6 +107,21 @@ python run.py --margin-top 5 --margin-bottom 12
 ```bash
 python run.py
 python run.py --no-cleanup-after-apply
+```
+
+---
+
+### `--use-yesterday-local-time` / `--no-use-yesterday-local-time`
+
+开启后**不读** NICT `latest.json`，改为：本机当前时间减 1 天（钟点不变）→ 换算 UTC → 向下取整到 10 分钟，再下载该观测帧。用于当地昼夜观感与「此刻钟点」对齐（例如北京 17:22 使用昨日约 17:20 对应帧）。
+
+> **实现说明**：`BooleanOptionalAction`，**默认关闭**；`--use-yesterday-local-time` 开启。托盘菜单「按本地钟点使用昨日影像」可运行时切换。
+
+示例：
+
+```bash
+python run.py --use-yesterday-local-time
+python run.py --no-use-yesterday-local-time
 ```
 
 ---

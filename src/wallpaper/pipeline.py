@@ -12,6 +12,7 @@ from src.cleanup import cleanup_after_wallpaper_apply
 from src.compose.equal import apply_margins, compose_equal_image, compose_equal_image_with_margins
 from src.download.observation import create_session
 from src.download.observation import fetch_observation_time as fetch_latest_observation_time
+from src.download.observation import observation_time_yesterday_local
 from src.download.tiles import download_tiles
 from src.folder import create_pic_folders
 from src.metadata.soft_config import (
@@ -31,6 +32,8 @@ AdjustWallpaper = Callable[[Pic], Path]
 SetWallpaper = Callable[[Path], bool | None]
 GetDesktopWallpaper = Callable[[], str | None]
 AppliedRunState = MutableMapping[str, Any]
+
+_OBS_TIME_FMT = "%Y-%m-%d %H:%M:%S"
 
 
 def _default_fetch_observation_time() -> struct_time:
@@ -64,7 +67,7 @@ def build_applied_run_key(
 ) -> tuple[str, str, bool, float, float]:
     """用于判断是否可跳过重复下载的指纹（观测时间 + 影响成图的参数）。"""
     return (
-        strftime("%Y-%m-%d %H:%M:%S", observation_time),
+        strftime(_OBS_TIME_FMT, observation_time),
         resolution_grade,
         auto_adjust,
         float(margin_top_percent),
@@ -104,6 +107,7 @@ def run_wallpaper_pipeline(
     margin_top_percent: float = DEFAULT_MARGIN_TOP_PERCENT,
     margin_bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
     cleanup_after_apply: bool = True,
+    use_yesterday_local_time: bool = False,
     base_dir: Path | None = None,
     applied_run_state: AppliedRunState | None = None,
     record_run_key: bool = True,
@@ -143,7 +147,10 @@ def run_wallpaper_pipeline(
 
     adjust = adjust_wallpaper or default_adjust
 
-    time_str = fetch()
+    if use_yesterday_local_time:
+        time_str = observation_time_yesterday_local()
+    else:
+        time_str = fetch()
     run_key = build_applied_run_key(
         time_str,
         resolution_grade=grade,

@@ -26,6 +26,7 @@ _SETTINGS_KEYS = frozenset(
         "margin_top_percent",
         "margin_bottom_percent",
         "cleanup_after_apply",
+        "use_yesterday_local_time",
         "logging_enabled",
         "last_run_key",
         "last_wallpaper_path",
@@ -46,6 +47,7 @@ def default_settings() -> dict[str, Any]:
         "margin_top_percent": DEFAULT_MARGIN_TOP_PERCENT,
         "margin_bottom_percent": DEFAULT_MARGIN_BOTTOM_PERCENT,
         "cleanup_after_apply": True,
+        "use_yesterday_local_time": False,
         "logging_enabled": False,
     }
 
@@ -152,6 +154,16 @@ def sanitize_settings(raw: Any) -> dict[str, Any]:
         else:
             cleaned["cleanup_after_apply"] = cleanup
 
+    if "use_yesterday_local_time" in raw:
+        yesterday = _coerce_bool(raw["use_yesterday_local_time"])
+        if yesterday is None:
+            logging.warning(
+                "Ignoring invalid settings.use_yesterday_local_time: %r",
+                raw["use_yesterday_local_time"],
+            )
+        else:
+            cleaned["use_yesterday_local_time"] = yesterday
+
     if "logging_enabled" in raw:
         logging_enabled = _coerce_bool(raw["logging_enabled"])
         if logging_enabled is None:
@@ -245,6 +257,7 @@ def settings_dict_from_job(
     margin_top_percent: float,
     margin_bottom_percent: float,
     cleanup_after_apply: bool,
+    use_yesterday_local_time: bool = False,
 ) -> dict[str, Any]:
     """从壁纸任务字段组装可写入的 settings dict（不含 logging / 应用指纹）。"""
     return {
@@ -253,6 +266,7 @@ def settings_dict_from_job(
         "margin_top_percent": margin_top_percent,
         "margin_bottom_percent": margin_bottom_percent,
         "cleanup_after_apply": cleanup_after_apply,
+        "use_yesterday_local_time": use_yesterday_local_time,
     }
 
 
