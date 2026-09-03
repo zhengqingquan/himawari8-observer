@@ -21,9 +21,16 @@ from src.metadata.soft_config import (
     MARGIN_PERCENT_CHOICES,
     PROGRAM_DIR_ABS_PATH,
 )
-from src.metadata.soft_info import DESCRIPTION, PROGRAM_NAME, SOFTWARE_VERSION, WEBSITE
+from src.metadata.soft_info import (
+    DESCRIPTION,
+    PROGRAM_NAME,
+    RELEASES_URL,
+    SOFTWARE_VERSION,
+    WEBSITE,
+)
 from src.settings import save_settings, settings_dict_from_job
 from src.startup import add_to_startup_exe, is_startup_set, remove_from_startup_exe
+from src.update_check import UpdateStatus, check_for_update
 from src.wallpaper.job import WallpaperJobRef
 from src.wallpaper.update import (
     is_paused,
@@ -89,6 +96,40 @@ def on_quit(icon, item):
 def on_open_github(icon, item):
     """在浏览器中打开 GitHub 仓库。"""
     webbrowser.open_new(WEBSITE)
+
+
+def on_check_update(icon, item):
+    """检查 GitHub 是否有新版本（独立线程，避免卡住托盘）。"""
+
+    def run_check():
+        result = check_for_update()
+        if result.status is UpdateStatus.FAILED:
+            ctypes.windll.user32.MessageBoxW(
+                None,
+                "检查更新失败，请稍后重试或手动打开 GitHub Releases。",
+                "检查更新",
+                0x00050030,  # MB_OK | MB_ICONWARNING | MB_TOPMOST | MB_SETFOREGROUND
+            )
+            return
+        if result.status is UpdateStatus.UP_TO_DATE:
+            ctypes.windll.user32.MessageBoxW(
+                None,
+                f"当前已是最新版本（{result.current_version}）。",
+                "检查更新",
+                0x00050040,  # MB_OK | MB_ICONINFORMATION | ...
+            )
+            return
+        latest = result.latest_version or ""
+        answer = ctypes.windll.user32.MessageBoxW(
+            None,
+            f"发现新版本 {latest}（当前 {result.current_version}）。是否打开 Releases 下载？",
+            "检查更新",
+            0x00050024,  # MB_YESNO | MB_ICONQUESTION | MB_TOPMOST | MB_SETFOREGROUND
+        )
+        if answer == 6:  # IDYES
+            webbrowser.open_new(RELEASES_URL)
+
+    threading.Thread(target=run_check, daemon=True).start()
 
 
 def on_open_program_dir(icon, item):
@@ -253,6 +294,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         pystray.MenuItem("打开程序所在目录", on_open_program_dir),
         pystray.MenuItem("GitHub", on_open_github),
         pystray.MenuItem(f"关于 {PROGRAM_NAME}", on_clicked),
+        pystray.MenuItem("检查更新", on_check_update),
     )
 
     icon.menu = pystray.Menu(
