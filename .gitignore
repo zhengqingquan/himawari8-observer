@@ -44,6 +44,9 @@ debug_log.txt
 # 下载与合成的图片（程序默认目录为 img/）
 img/
 
+# 单元测试落盘目录（tests/workdir_paths.temporary_base_dir）
+tests/workdir/
+
 # 仓库内一般不提交影像；程序图标资源在 assets/ 例外入库
 *.png
 *.jpg

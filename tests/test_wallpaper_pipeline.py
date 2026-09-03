@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from src.wallpaper_pipeline import run_wallpaper_pipeline
+from tests.workdir_paths import temporary_base_dir
 
 
 class RunWallpaperPipelineTests(unittest.TestCase):
@@ -26,13 +27,15 @@ class RunWallpaperPipelineTests(unittest.TestCase):
         def set_wallpaper(path: Path):
             events.append(("set", path.name))
 
-        run_wallpaper_pipeline(
-            fetch_observation_time=fetch_observation_time,
-            download_tiles=download_tiles,
-            compose_equal=compose_equal,
-            set_wallpaper=set_wallpaper,
-            cleanup_after_apply=False,
-        )
+        with temporary_base_dir() as base_dir:
+            run_wallpaper_pipeline(
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                set_wallpaper=set_wallpaper,
+                cleanup_after_apply=False,
+                base_dir=base_dir,
+            )
 
         self.assertEqual(
             events,
@@ -64,15 +67,17 @@ class RunWallpaperPipelineTests(unittest.TestCase):
         def set_wallpaper(path: Path):
             events.append(("set", path.name))
 
-        run_wallpaper_pipeline(
-            fetch_observation_time=fetch_observation_time,
-            download_tiles=download_tiles,
-            compose_equal=compose_equal,
-            adjust_wallpaper=adjust_wallpaper,
-            set_wallpaper=set_wallpaper,
-            auto_adjust=True,
-            cleanup_after_apply=False,
-        )
+        with temporary_base_dir() as base_dir:
+            run_wallpaper_pipeline(
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                adjust_wallpaper=adjust_wallpaper,
+                set_wallpaper=set_wallpaper,
+                auto_adjust=True,
+                cleanup_after_apply=False,
+                base_dir=base_dir,
+            )
 
         self.assertEqual(events, ["compose", "adjust", ("set", "adjusted.png")])
 
@@ -96,15 +101,17 @@ class RunWallpaperPipelineTests(unittest.TestCase):
         def set_wallpaper(path: Path):
             events.append(("set", path.name))
 
-        run_wallpaper_pipeline(
-            fetch_observation_time=fetch_observation_time,
-            download_tiles=download_tiles,
-            compose_equal=compose_equal,
-            adjust_wallpaper=adjust_wallpaper,
-            set_wallpaper=set_wallpaper,
-            auto_adjust=False,
-            cleanup_after_apply=False,
-        )
+        with temporary_base_dir() as base_dir:
+            run_wallpaper_pipeline(
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                adjust_wallpaper=adjust_wallpaper,
+                set_wallpaper=set_wallpaper,
+                auto_adjust=False,
+                cleanup_after_apply=False,
+                base_dir=base_dir,
+            )
 
         self.assertEqual(events, ["compose", ("set", "4d20210603052000.png")])
 
@@ -124,13 +131,15 @@ class RunWallpaperPipelineTests(unittest.TestCase):
         def set_wallpaper(path: Path):
             events.append("set")
 
-        run_wallpaper_pipeline(
-            fetch_observation_time=fetch_observation_time,
-            download_tiles=download_tiles,
-            compose_equal=compose_equal,
-            set_wallpaper=set_wallpaper,
-            cleanup_after_apply=False,
-        )
+        with temporary_base_dir() as base_dir:
+            run_wallpaper_pipeline(
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                set_wallpaper=set_wallpaper,
+                cleanup_after_apply=False,
+                base_dir=base_dir,
+            )
 
         self.assertEqual(events, ["download"])
 
@@ -154,16 +163,18 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             events.append("set")
             return True
 
-        kwargs = dict(
-            fetch_observation_time=fetch_observation_time,
-            download_tiles=download_tiles,
-            compose_equal=compose_equal,
-            set_wallpaper=set_wallpaper,
-            cleanup_after_apply=False,
-            applied_run_state=state,
-        )
-        run_wallpaper_pipeline(**kwargs)
-        run_wallpaper_pipeline(**kwargs)
+        with temporary_base_dir() as base_dir:
+            kwargs = dict(
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                set_wallpaper=set_wallpaper,
+                cleanup_after_apply=False,
+                applied_run_state=state,
+                base_dir=base_dir,
+            )
+            run_wallpaper_pipeline(**kwargs)
+            run_wallpaper_pipeline(**kwargs)
 
         self.assertEqual(
             events,
@@ -193,16 +204,18 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             events.append(("set", path.name))
             return True
 
-        kwargs = dict(
-            fetch_observation_time=fetch_observation_time,
-            download_tiles=download_tiles,
-            compose_equal=compose_equal,
-            set_wallpaper=set_wallpaper,
-            cleanup_after_apply=False,
-            applied_run_state=state,
-        )
-        run_wallpaper_pipeline(**kwargs)
-        run_wallpaper_pipeline(**kwargs)
+        with temporary_base_dir() as base_dir:
+            kwargs = dict(
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                set_wallpaper=set_wallpaper,
+                cleanup_after_apply=False,
+                applied_run_state=state,
+                base_dir=base_dir,
+            )
+            run_wallpaper_pipeline(**kwargs)
+            run_wallpaper_pipeline(**kwargs)
 
         self.assertEqual(
             events,

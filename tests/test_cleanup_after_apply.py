@@ -1,18 +1,18 @@
 """Seam: cleanup_after_wallpaper_apply keeps wallpaper file and drops tiles/old runs."""
 
-import tempfile
 import time
 import unittest
 from pathlib import Path
 
 from src.cleanup import cleanup_after_wallpaper_apply
 from src.wallpaper_pipeline import run_wallpaper_pipeline
+from tests.workdir_paths import temporary_base_dir
 
 
 class CleanupAfterApplyTests(unittest.TestCase):
     def test_keeps_wallpaper_deletes_tiles_extras_and_old_runs(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            img_root = Path(tmp) / "img"
+        with temporary_base_dir() as tmp:
+            img_root = tmp / "img"
             current = img_root / "20210603052000"
             old = img_root / "20210603051000"
             tiles = current / "4d" / "0"
@@ -42,8 +42,7 @@ class CleanupAfterApplyTests(unittest.TestCase):
             self.assertTrue(complete.is_dir())
 
     def test_pipeline_cleans_when_enabled(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            base = Path(tmp)
+        with temporary_base_dir() as base:
             img_root = base / "img"
             keep_name = "4d20210603052000_adjust.png"
 
@@ -93,8 +92,7 @@ class CleanupAfterApplyTests(unittest.TestCase):
             )
 
     def test_pipeline_skips_cleanup_when_set_wallpaper_fails(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            base = Path(tmp)
+        with temporary_base_dir() as base:
 
             def fetch_observation_time():
                 return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
