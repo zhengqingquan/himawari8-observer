@@ -4,7 +4,7 @@ import sys
 import unittest
 from unittest.mock import patch
 
-from src.arg.arg import Config
+from src.cli.args import Config
 
 
 def _fresh_config(argv):

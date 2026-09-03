@@ -5,7 +5,7 @@ import time
 import unittest
 from pathlib import Path
 
-from src.cls.Pic import Pic
+from src.pic.Pic import Pic
 
 
 class PicEqualOnlyTests(unittest.TestCase):

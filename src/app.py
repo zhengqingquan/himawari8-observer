@@ -5,12 +5,12 @@ from __future__ import annotations
 import logging
 import threading
 
-from src.arg.arg import Config
+from src.cli.args import Config
 from src.event.event import wait_sys
 from src.log.log import log_init
 from src.resolution_grade import pixel_to_grade
 from src.timetask import stat_time_tast
-from src.UI.sysTray import setup_tray_icon
+from src.tray.sysTray import setup_tray_icon
 from src.wallpaper_job import WallpaperJobRef
 
 

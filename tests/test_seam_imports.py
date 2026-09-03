@@ -8,12 +8,12 @@ from pathlib import Path
 _FORBIDDEN_IMPORT_PREFIXES = (
     "src.wallpaper_pipeline",
     "src.download",
-    "src.picdeal",
-    "src.cls",
+    "src.compose",
+    "src.pic",
 )
 
 _GUARDED_FILES = (
-    Path("src/UI/sysTray.py"),
+    Path("src/tray/sysTray.py"),
     Path("src/timetask.py"),
 )
 

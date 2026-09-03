@@ -4,7 +4,7 @@
 
 import os
 import logging
-from src.cls.Pic import Pic
+from src.pic.Pic import Pic
 
 
 def arr_create_folder(arr):

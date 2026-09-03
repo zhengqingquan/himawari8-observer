@@ -9,7 +9,7 @@ from time import strftime, struct_time
 from typing import Any
 
 from src.cleanup import cleanup_after_wallpaper_apply
-from src.cls.Pic import Pic
+from src.compose.equal import cls_photo_composition, fix_pic
 from src.download.observation import dl_init, get_last_time
 from src.download.tiles import download_tiles
 from src.folder import cls_create_folder
@@ -17,7 +17,7 @@ from src.metadata.soft_config import (
     DEFAULT_MARGIN_BOTTOM_PERCENT,
     DEFAULT_MARGIN_TOP_PERCENT,
 )
-from src.picdeal.photofunia import cls_photo_composition, fix_pic
+from src.pic.Pic import Pic
 from src.resolution_grade import default_grade
 from src.set_wallpaper import path_wallpaper
 
@@ -80,7 +80,7 @@ def run_wallpaper_pipeline(
 ) -> None:
     """跑一次壁纸更新。副作用步骤可注入，便于测试。
 
-    UI / 定时器只应通过 WallpaperJobRef 触发，不要直接 import 本模块或 download/。
+    托盘 / 定时器只应通过 WallpaperJobRef 触发，不要直接 import 本模块或 download/。
     若传入 applied_run_state 且指纹与上次成功应用相同，则跳过下载与后续步骤。
     """
     fetch = fetch_observation_time or _default_fetch_observation_time

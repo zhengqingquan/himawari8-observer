@@ -7,7 +7,7 @@ main.py
 
 from __future__ import annotations
 
-from src.arg.arg import Config
+from src.cli.args import Config
 from src.resolution_grade import pixel_to_grade
 from src.wallpaper_job import build_wallpaper_job
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from src.cls.Pic import Pic
+from src.pic.Pic import Pic
 from src.download.pool import download_files
 
 DownloadFiles = Callable[..., None]

@@ -3,7 +3,7 @@
 import time
 import unittest
 
-from src.cls.Pic import Pic
+from src.pic.Pic import Pic
 from src.download.tiles import download_tiles
 
 

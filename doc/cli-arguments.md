@@ -1,6 +1,6 @@
 # 命令行参数说明
 
-程序入口为 `run.py`（薄封装，委托 `src.app.main`）。启动时通过 `src/arg/arg.py` 中的 `Config` 解析命令行参数。
+程序入口为 `run.py`（薄封装，委托 `src.app.main`）。启动时通过 `src/cli/args.py` 中的 `Config` 解析命令行参数。
 
 查看内置帮助：
 
@@ -157,7 +157,7 @@ himawari8-observer.exe -h
 |------|------|
 | `run.py` | 薄入口，委托 `src.app.main` |
 | `src/app.py` | 常驻启动：日志、`Config`、托盘、调度 |
-| `src/arg/arg.py` | 参数定义与读取接口 |
+| `src/cli/args.py` | 参数定义与读取接口 |
 | `src/resolution_grade.py` | 分辨率档位映射与默认 |
 | `src/metadata/soft_config.py` | 再导出分辨率列表与默认值 |
 | `src/metadata/soft_info.py` | 程序名、版本、描述与帮助 epilog |
