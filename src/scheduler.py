@@ -13,14 +13,8 @@ from src.metadata.soft_config import DOWNLOAD_INTERVAL_TIME
 from src.wallpaper.update import run_wallpaper_update
 
 
-def start_scheduler(pipeline: Callable[[], None]) -> None:
-    """阻塞运行间隔调度；启动后立即执行一次，之后按 ``DOWNLOAD_INTERVAL_TIME`` 周期触发。
-
-    进程内第一次触发使用渐进分辨率；后续周期触发直接跑目标档。
-
-    Args:
-        pipeline: 零参壁纸任务（通常为 WallpaperJobRef）。
-    """
+def build_scheduler_tick(pipeline: Callable[[], None]) -> Callable[[], None]:
+    """构造调度回调：进程内第一次 ``progressive=True``，之后为 ``False``。"""
     first_run = {"progressive": True}
 
     def tick() -> None:
@@ -32,6 +26,18 @@ def start_scheduler(pipeline: Callable[[], None]) -> None:
             progressive=progressive,
         )
 
+    return tick
+
+
+def start_scheduler(pipeline: Callable[[], None]) -> None:
+    """阻塞运行间隔调度；启动后立即执行一次，之后按 ``DOWNLOAD_INTERVAL_TIME`` 周期触发。
+
+    进程内第一次触发使用渐进分辨率；后续周期触发直接跑目标档。
+
+    Args:
+        pipeline: 零参壁纸任务（通常为 WallpaperJobRef）。
+    """
+    tick = build_scheduler_tick(pipeline)
     scheduler = BlockingScheduler()
     scheduler.add_job(
         tick,

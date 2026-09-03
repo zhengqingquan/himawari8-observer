@@ -14,8 +14,36 @@ from src.compose.equal import (
     apply_margins,
     compose_equal_image,
     compose_equal_image_with_margins,
+    compute_margin_layout,
     get_primary_screen_size,
 )
+
+
+class ComputeMarginLayoutTests(unittest.TestCase):
+    def test_zero_margins_centers_on_wider_canvas(self):
+        canvas_w, canvas_h, image_x, image_y = compute_margin_layout(
+            100,
+            200,
+            100,
+            top_percent=0.0,
+            bottom_percent=0.0,
+        )
+        self.assertEqual((canvas_w, canvas_h), (200, 100))
+        self.assertEqual((image_x, image_y), (50, 0))
+
+    def test_top_and_bottom_percent_expand_height_and_offset(self):
+        canvas_w, canvas_h, image_x, image_y = compute_margin_layout(
+            100,
+            100,
+            100,
+            top_percent=10.0,
+            bottom_percent=20.0,
+        )
+        # content_height = 100 + 10 + 20 = 130; scale = 1.3; canvas_w = ceil(130)=130
+        self.assertEqual(canvas_h, 130)
+        self.assertEqual(canvas_w, 130)
+        self.assertEqual(image_y, 10)
+        self.assertEqual(image_x, 15)
 
 
 class GetPrimaryScreenSizeTests(unittest.TestCase):
