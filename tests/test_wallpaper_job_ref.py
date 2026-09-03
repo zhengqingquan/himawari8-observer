@@ -246,8 +246,10 @@ class WallpaperJobRefProgressiveTests(unittest.TestCase):
             record_run_key=True,
             **_kwargs,
         ):
-            if applied_run_state is not None and record_run_key:
-                applied_run_state["last"] = (obs, resolution_grade, False, 0.0, 5.0)
+            if applied_run_state is not None:
+                applied_run_state["applied_grade"] = resolution_grade
+                if record_run_key:
+                    applied_run_state["last"] = (obs, resolution_grade, False, 0.0, 5.0)
             return obs
 
         ref = WallpaperJobRef(
@@ -256,17 +258,22 @@ class WallpaperJobRefProgressiveTests(unittest.TestCase):
             build_job=_noop_build,
             persist_state=False,
         )
-        ref.set_on_applied(lambda: notifies.append(ref.applied_observation_time))
+        ref.set_on_applied(
+            lambda: notifies.append((ref.applied_observation_time, ref.applied_resolution_grade))
+        )
         ref.run_progressive()
 
-        self.assertEqual(notifies, [obs, obs])
+        self.assertEqual(notifies, [(obs, "4d"), (obs, "20d")])
         self.assertEqual(ref.applied_observation_time, obs)
+        self.assertEqual(ref.applied_resolution_grade, "20d")
+        self.assertEqual(ref.applied_pixel_side, 11000)
         self.assertEqual(ref._applied_run_state["last"][0], obs)
 
     def test_progressive_preview_notify_before_target_without_writing_last(self):
         obs = "2026-09-03 02:10:00"
         mid_last = []
         mid_time = []
+        mid_grade = []
 
         def fake_pipeline(
             *,
@@ -276,11 +283,16 @@ class WallpaperJobRefProgressiveTests(unittest.TestCase):
             **_kwargs,
         ):
             if resolution_grade == "4d":
+                if applied_run_state is not None:
+                    applied_run_state["applied_grade"] = resolution_grade
                 return obs
             mid_last.append(applied_run_state.get("last") if applied_run_state else None)
             mid_time.append(ref.applied_observation_time)
-            if applied_run_state is not None and record_run_key:
-                applied_run_state["last"] = (obs, resolution_grade, False, 0.0, 5.0)
+            mid_grade.append(ref.applied_resolution_grade)
+            if applied_run_state is not None:
+                applied_run_state["applied_grade"] = resolution_grade
+                if record_run_key:
+                    applied_run_state["last"] = (obs, resolution_grade, False, 0.0, 5.0)
             return obs
 
         ref = WallpaperJobRef(
@@ -296,6 +308,7 @@ class WallpaperJobRefProgressiveTests(unittest.TestCase):
         self.assertEqual(notifies[0], obs)
         self.assertIsNone(mid_last[0])
         self.assertEqual(mid_time[0], obs)
+        self.assertEqual(mid_grade[0], "4d")
 
 
 def _noop_build(resolution_grade, **_kwargs):

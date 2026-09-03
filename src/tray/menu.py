@@ -66,9 +66,10 @@ def format_observation_local_time(
 def format_tray_icon_title(
     obs_time: str | None,
     *,
+    pixel_side: int | None = None,
     local_tz: tzinfo | None = None,
 ) -> str:
-    """托盘悬停标题：有观测时间时附带本地时间，否则仅程序名。"""
+    """托盘悬停标题：有观测时间时附带本地/UTC 与上墙分辨率，否则仅程序名。"""
     if not obs_time:
         return PROGRAM_NAME
     try:
@@ -76,7 +77,14 @@ def format_tray_icon_title(
     except (ValueError, OSError):
         logging.exception("Failed to format tray icon title for observation time: %s", obs_time)
         return PROGRAM_NAME
-    return f"{PROGRAM_NAME}\n壁纸时间（本地）：{local}"
+    lines = [
+        PROGRAM_NAME,
+        f"壁纸时间（本地）：{local}",
+        f"壁纸时间（UTC）：{obs_time}",
+    ]
+    if pixel_side is not None:
+        lines.append(f"分辨率：{pixel_side}")
+    return "\n".join(lines)
 
 
 def _tray_icon_path() -> Path:
@@ -312,7 +320,10 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
 
     def refresh_tray_display() -> None:
         """刷新悬停标题，并重建菜单（Win32 会缓存，需 update_menu 才能看到新时间）。"""
-        icon.title = format_tray_icon_title(job_ref.applied_observation_time)
+        icon.title = format_tray_icon_title(
+            job_ref.applied_observation_time,
+            pixel_side=job_ref.applied_pixel_side,
+        )
         icon.update_menu()
 
     resolution_menu = pystray.Menu(*[make_resolution_item(res) for res in IMAGE_RESOLUTION])

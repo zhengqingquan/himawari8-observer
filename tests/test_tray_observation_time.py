@@ -27,11 +27,35 @@ class FormatTrayIconTitleTests(unittest.TestCase):
     def test_none_returns_program_name(self):
         self.assertEqual(format_tray_icon_title(None), PROGRAM_NAME)
 
-    def test_includes_local_time(self):
+    def test_includes_local_utc_and_resolution(self):
+        china = timezone(timedelta(hours=8))
+        self.assertEqual(
+            format_tray_icon_title(
+                "2026-09-03 02:10:00",
+                pixel_side=11000,
+                local_tz=china,
+            ),
+            "\n".join(
+                [
+                    PROGRAM_NAME,
+                    "壁纸时间（本地）：2026-09-03 10:10:00",
+                    "壁纸时间（UTC）：2026-09-03 02:10:00",
+                    "分辨率：11000",
+                ]
+            ),
+        )
+
+    def test_omits_resolution_when_missing(self):
         china = timezone(timedelta(hours=8))
         self.assertEqual(
             format_tray_icon_title("2026-09-03 02:10:00", local_tz=china),
-            f"{PROGRAM_NAME}\n壁纸时间（本地）：2026-09-03 10:10:00",
+            "\n".join(
+                [
+                    PROGRAM_NAME,
+                    "壁纸时间（本地）：2026-09-03 10:10:00",
+                    "壁纸时间（UTC）：2026-09-03 02:10:00",
+                ]
+            ),
         )
 
 

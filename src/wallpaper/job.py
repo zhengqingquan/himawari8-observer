@@ -99,11 +99,17 @@ class WallpaperJobRef:
         )
         if "wallpaper_path" not in self._applied_run_state:
             self._applied_run_state["wallpaper_path"] = None
-        # 上次成功上墙的观测时间；换参重建 job 清空指纹时仍保留，供托盘展示。
+        # 上次成功上墙的观测时间与档位；换参重建 job 清空指纹时仍保留，供托盘展示。
         self._last_observation_time: str | None = None
+        self._last_applied_grade: str | None = None
         last = self._applied_run_state.get("last")
         if isinstance(last, tuple) and last:
             self._last_observation_time = str(last[0])
+            if len(last) > 1:
+                self._last_applied_grade = str(last[1])
+        applied_grade = self._applied_run_state.get("applied_grade")
+        if isinstance(applied_grade, str) and applied_grade:
+            self._last_applied_grade = applied_grade
         self._on_applied: Callable[[], None] | None = None
         self._job = self._build_initial_job()
 
@@ -260,6 +266,26 @@ class WallpaperJobRef:
                 self._last_observation_time = str(last[0])
             return self._last_observation_time
 
+    @property
+    def applied_resolution_grade(self) -> str | None:
+        """当前桌面壁纸对应的分辨率档位；尚未成功应用则为 ``None``。"""
+        with self._lock:
+            last = self._applied_run_state.get("last")
+            if isinstance(last, tuple) and len(last) > 1:
+                self._last_applied_grade = str(last[1])
+            applied_grade = self._applied_run_state.get("applied_grade")
+            if isinstance(applied_grade, str) and applied_grade:
+                self._last_applied_grade = applied_grade
+            return self._last_applied_grade
+
+    @property
+    def applied_pixel_side(self) -> int | None:
+        """当前桌面壁纸对应的像素边长；尚未成功应用则为 ``None``。"""
+        grade = self.applied_resolution_grade
+        if grade is None:
+            return None
+        return grade_to_pixel(grade)
+
     def set_resolution_grade(self, resolution_grade: str) -> None:
         with self._lock:
             self._grade = resolution_grade
@@ -292,10 +318,16 @@ class WallpaperJobRef:
         last = self._applied_run_state.get("last")
         if isinstance(last, tuple) and last:
             self._last_observation_time = str(last[0])
+            if len(last) > 1:
+                self._last_applied_grade = str(last[1])
+        applied_grade = self._applied_run_state.get("applied_grade")
+        if isinstance(applied_grade, str) and applied_grade:
+            self._last_applied_grade = applied_grade
         wallpaper_path = self._applied_run_state.get("wallpaper_path")
         self._applied_run_state = {
             "last": None,
             "wallpaper_path": wallpaper_path,
+            "applied_grade": self._last_applied_grade,
         }
         self._job = self._build_job(
             self._grade,

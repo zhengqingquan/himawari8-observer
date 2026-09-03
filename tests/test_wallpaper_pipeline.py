@@ -81,6 +81,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
         self.assertEqual(result, "2021-06-03 05:20:00")
         self.assertIsNone(state["last"])
+        self.assertEqual(state["applied_grade"], "4d")
         self.assertIsNotNone(state["wallpaper_path"])
 
     def test_auto_adjust_runs_before_set_wallpaper(self):

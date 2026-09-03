@@ -81,6 +81,8 @@ def _remember_applied(
 ) -> None:
     if applied_run_state is None:
         return
+    # 展示用：即使不写跳过指纹，也记下实际上墙档位。
+    applied_run_state["applied_grade"] = run_key[1]
     if record_run_key:
         applied_run_state["last"] = run_key
     try:
