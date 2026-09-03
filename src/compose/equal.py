@@ -20,13 +20,14 @@ def compose_equal_image(pic) -> None:
     Args:
         pic: 等分瓦片图实例（需已下载完成）。
     """
+    joint = None
     try:
         axis_x = 0
         axis_y = 0
         joint = Image.new("RGB", (pic.pic_side, pic.pic_side))
-        for key, val in pic.tiles.items():
-            img = Image.open(val[0])
-            joint.paste(img, (pic.pic_pixel * axis_x, pic.pic_pixel * axis_y))
+        for _key, val in pic.tiles.items():
+            with Image.open(val[0]) as tile:
+                joint.paste(tile, (pic.pic_pixel * axis_x, pic.pic_pixel * axis_y))
             axis_x += 1
             if axis_x >= pic.grid_size:
                 axis_x = 0
@@ -35,6 +36,9 @@ def compose_equal_image(pic) -> None:
     except Exception:
         logging.exception("Failed to compose equal image for grade %s", pic.grade)
         raise
+    finally:
+        if joint is not None:
+            joint.close()
     logging.info(
         "Composed equal image saved: %s",
         os.path.abspath(pic.final_path_equal),
@@ -58,6 +62,7 @@ def apply_margins(
         top_percent: 顶边黑边占原图边长的百分比。
         bottom_percent: 底边黑边占原图边长的百分比。
     """
+    joint = None
     try:
         screen_width, screen_height = ImageGrab.grab().size
         logging.info("Screen resolution: %sx%s", screen_width, screen_height)
@@ -88,4 +93,7 @@ def apply_margins(
     except Exception:
         logging.exception("Failed to apply margins: src=%s out=%s", file, path)
         raise
+    finally:
+        if joint is not None:
+            joint.close()
     logging.info("Margin-adjusted wallpaper saved: %s", path)
