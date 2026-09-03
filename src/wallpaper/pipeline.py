@@ -105,7 +105,7 @@ def run_wallpaper_pipeline(
     base_dir: Path | None = None,
     applied_run_state: AppliedRunState | None = None,
     record_run_key: bool = True,
-) -> None:
+) -> str | None:
     """跑一次壁纸更新。副作用步骤可注入，便于测试。
 
     托盘 / 定时器只应通过 WallpaperJobRef 触发，不要直接 import 本模块或 download/。
@@ -114,6 +114,11 @@ def run_wallpaper_pipeline(
     - 指纹相同且桌面仍是上次壁纸文件 → 整段跳过；
     - 指纹相同但桌面已换、成品仍在 → 仅重设壁纸；
     - 否则走完整流水线。
+
+    Returns:
+        成功上墙（含仅重设）时返回观测时间 ``YYYY-MM-DD HH:MM:SS``（UTC）；
+        跳过或失败时返回 ``None``。``record_run_key=False`` 时仍可能返回时间（供展示），
+        但不写入跳过指纹。
     """
     fetch = fetch_observation_time or _default_fetch_observation_time
     download = download_tiles or _default_download_tiles
@@ -144,6 +149,7 @@ def run_wallpaper_pipeline(
         margin_top_percent=margin_top_percent,
         margin_bottom_percent=margin_bottom_percent,
     )
+    observation_time = run_key[0]
     if applied_run_state is not None and applied_run_state.get("last") == run_key:
         last_path_raw = applied_run_state.get("wallpaper_path")
         last_path = Path(last_path_raw) if last_path_raw else None
@@ -153,7 +159,7 @@ def run_wallpaper_pipeline(
                 logging.info(
                     "Observation params unchanged and desktop wallpaper still ours; skipping update"
                 )
-                return
+                return None
             logging.info(
                 "Observation params unchanged but desktop wallpaper differs; re-applying %s",
                 last_path,
@@ -164,21 +170,21 @@ def run_wallpaper_pipeline(
                     "Wallpaper re-apply failed; leaving run state unchanged: %s",
                     last_path,
                 )
-                return
+                return None
             _remember_applied(
                 applied_run_state,
                 run_key=run_key,
                 wallpaper_path=last_path,
                 record_run_key=True,
             )
-            return
+            return observation_time
 
     pic = Pic(time_str, grade, base_dir=base_dir)
     create_pic_folders(pic)
     download(pic)
     if not pic.download_finish():
         logging.warning("Not all tiles downloaded; skipping compose and wallpaper apply")
-        return
+        return None
     if use_direct_margin_compose:
         wallpaper_path = compose_equal_image_with_margins(
             pic,
@@ -195,7 +201,7 @@ def run_wallpaper_pipeline(
             "Wallpaper apply failed or skipped; leaving run state and cache unchanged: %s",
             wallpaper_path,
         )
-        return
+        return None
     _remember_applied(
         applied_run_state,
         run_key=run_key,
@@ -210,3 +216,4 @@ def run_wallpaper_pipeline(
             keep_file=Path(wallpaper_path),
         )
     logging.info("Wallpaper pipeline finished: %s", wallpaper_path)
+    return observation_time

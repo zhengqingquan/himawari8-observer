@@ -29,7 +29,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             events.append(("set", path.name))
 
         with temporary_base_dir() as base_dir:
-            run_wallpaper_pipeline(
+            result = run_wallpaper_pipeline(
                 fetch_observation_time=fetch_observation_time,
                 download_tiles=download_tiles,
                 compose_equal=compose_equal,
@@ -38,6 +38,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 base_dir=base_dir,
             )
 
+        self.assertEqual(result, "2021-06-03 05:20:00")
         self.assertEqual(
             events,
             [
@@ -47,6 +48,40 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 ("set", "20d20210603052000.png"),
             ],
         )
+
+    def test_record_run_key_false_returns_time_without_fingerprint(self):
+        state = {"last": None, "wallpaper_path": None}
+
+        def fetch_observation_time():
+            return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
+
+        def download_tiles(pic):
+            for entry in pic.tiles.values():
+                entry[1] = 1
+
+        def compose_equal(pic):
+            Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
+            Path(pic.final_path_equal).write_bytes(b"img")
+
+        def set_wallpaper(path: Path):
+            return True
+
+        with temporary_base_dir() as base_dir:
+            result = run_wallpaper_pipeline(
+                resolution_grade="4d",
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                set_wallpaper=set_wallpaper,
+                cleanup_after_apply=False,
+                applied_run_state=state,
+                record_run_key=False,
+                base_dir=base_dir,
+            )
+
+        self.assertEqual(result, "2021-06-03 05:20:00")
+        self.assertIsNone(state["last"])
+        self.assertIsNotNone(state["wallpaper_path"])
 
     def test_auto_adjust_runs_before_set_wallpaper(self):
         events = []
@@ -257,7 +292,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             def get_desktop_wallpaper():
                 return str(wall.resolve())
 
-            run_wallpaper_pipeline(
+            skipped = run_wallpaper_pipeline(
                 resolution_grade="4d",
                 fetch_observation_time=fetch_observation_time,
                 download_tiles=download_tiles,
@@ -273,6 +308,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             )
 
         self.assertEqual(events, ["fetch"])
+        self.assertIsNone(skipped)
 
     def test_reapplies_when_fingerprint_same_but_desktop_changed(self):
         events = []

@@ -63,6 +63,22 @@ def format_observation_local_time(
     return local_dt.strftime(_OBS_TIME_FMT)
 
 
+def format_tray_icon_title(
+    obs_time: str | None,
+    *,
+    local_tz: tzinfo | None = None,
+) -> str:
+    """托盘悬停标题：有观测时间时附带本地时间，否则仅程序名。"""
+    if not obs_time:
+        return PROGRAM_NAME
+    try:
+        local = format_observation_local_time(obs_time, local_tz=local_tz)
+    except (ValueError, OSError):
+        logging.exception("Failed to format tray icon title for observation time: %s", obs_time)
+        return PROGRAM_NAME
+    return f"{PROGRAM_NAME}\n壁纸时间（本地）：{local}"
+
+
 def _tray_icon_path() -> Path:
     """解析托盘图标路径。
 
@@ -293,7 +309,11 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
     global icon
     icon = pystray.Icon(f"{PROGRAM_NAME}_tray_icon")
     icon.icon = create_image()
-    icon.title = PROGRAM_NAME
+
+    def refresh_tray_display() -> None:
+        """刷新悬停标题，并重建菜单（Win32 会缓存，需 update_menu 才能看到新时间）。"""
+        icon.title = format_tray_icon_title(job_ref.applied_observation_time)
+        icon.update_menu()
 
     resolution_menu = pystray.Menu(*[make_resolution_item(res) for res in IMAGE_RESOLUTION])
     margin_menu = pystray.Menu(
@@ -369,4 +389,6 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         pystray.MenuItem("退出", on_quit),
     )
 
+    job_ref.set_on_applied(refresh_tray_display)
+    refresh_tray_display()
     icon.run_detached()

@@ -128,6 +128,22 @@ class WallpaperJobRefTests(unittest.TestCase):
         self.assertEqual(ref.applied_observation_time, "2026-09-03 02:10:00")
         self.assertEqual(ref._applied_run_state["wallpaper_path"], r"E:\app\img\wall.png")
 
+    def test_on_applied_called_after_call(self):
+        calls = []
+
+        ref = WallpaperJobRef("4d", build_job=_noop_build, persist_state=False)
+        ref.set_on_applied(lambda: calls.append(1))
+        ref()
+        self.assertEqual(calls, [1])
+
+    def test_on_applied_exception_does_not_raise(self):
+        def boom():
+            raise RuntimeError("title refresh failed")
+
+        ref = WallpaperJobRef("4d", build_job=_noop_build, persist_state=False)
+        ref.set_on_applied(boom)
+        ref()  # must not raise
+
 
 class WallpaperJobRefProgressiveTests(unittest.TestCase):
     def test_progressive_runs_preview_then_target(self):
@@ -202,6 +218,84 @@ class WallpaperJobRefProgressiveTests(unittest.TestCase):
         )
         ref.run_progressive()
         self.assertEqual(grades, ["4d", "20d"])
+
+    def test_on_applied_called_after_progressive(self):
+        calls = []
+
+        def fake_pipeline(**_kwargs):
+            return None
+
+        ref = WallpaperJobRef(
+            "20d",
+            run_pipeline=fake_pipeline,
+            build_job=_noop_build,
+            persist_state=False,
+        )
+        ref.set_on_applied(lambda: calls.append(1))
+        ref.run_progressive()
+        self.assertEqual(calls, [1])
+
+    def test_progressive_preview_refreshes_display_time_without_fingerprint(self):
+        obs = "2026-09-03 02:10:00"
+        notifies = []
+
+        def fake_pipeline(
+            *,
+            resolution_grade=None,
+            applied_run_state=None,
+            record_run_key=True,
+            **_kwargs,
+        ):
+            if applied_run_state is not None and record_run_key:
+                applied_run_state["last"] = (obs, resolution_grade, False, 0.0, 5.0)
+            return obs
+
+        ref = WallpaperJobRef(
+            "20d",
+            run_pipeline=fake_pipeline,
+            build_job=_noop_build,
+            persist_state=False,
+        )
+        ref.set_on_applied(lambda: notifies.append(ref.applied_observation_time))
+        ref.run_progressive()
+
+        self.assertEqual(notifies, [obs, obs])
+        self.assertEqual(ref.applied_observation_time, obs)
+        self.assertEqual(ref._applied_run_state["last"][0], obs)
+
+    def test_progressive_preview_notify_before_target_without_writing_last(self):
+        obs = "2026-09-03 02:10:00"
+        mid_last = []
+        mid_time = []
+
+        def fake_pipeline(
+            *,
+            resolution_grade=None,
+            applied_run_state=None,
+            record_run_key=True,
+            **_kwargs,
+        ):
+            if resolution_grade == "4d":
+                return obs
+            mid_last.append(applied_run_state.get("last") if applied_run_state else None)
+            mid_time.append(ref.applied_observation_time)
+            if applied_run_state is not None and record_run_key:
+                applied_run_state["last"] = (obs, resolution_grade, False, 0.0, 5.0)
+            return obs
+
+        ref = WallpaperJobRef(
+            "20d",
+            run_pipeline=fake_pipeline,
+            build_job=_noop_build,
+            persist_state=False,
+        )
+        notifies = []
+        ref.set_on_applied(lambda: notifies.append(ref.applied_observation_time))
+        ref.run_progressive()
+
+        self.assertEqual(notifies[0], obs)
+        self.assertIsNone(mid_last[0])
+        self.assertEqual(mid_time[0], obs)
 
 
 def _noop_build(resolution_grade, **_kwargs):
