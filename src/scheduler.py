@@ -16,12 +16,25 @@ from src.wallpaper.update import run_wallpaper_update
 def start_scheduler(pipeline: Callable[[], None]) -> None:
     """阻塞运行间隔调度；启动后立即执行一次，之后按 ``DOWNLOAD_INTERVAL_TIME`` 周期触发。
 
+    进程内第一次触发使用渐进分辨率；后续周期触发直接跑目标档。
+
     Args:
         pipeline: 零参壁纸任务（通常为 WallpaperJobRef）。
     """
+    first_run = {"progressive": True}
+
+    def tick() -> None:
+        progressive = first_run["progressive"]
+        first_run["progressive"] = False
+        run_wallpaper_update(
+            pipeline=pipeline,
+            respect_pause=True,
+            progressive=progressive,
+        )
+
     scheduler = BlockingScheduler()
     scheduler.add_job(
-        lambda: run_wallpaper_update(pipeline=pipeline, respect_pause=True),
+        tick,
         "interval",
         seconds=DOWNLOAD_INTERVAL_TIME,
         next_run_time=datetime.datetime.now(),

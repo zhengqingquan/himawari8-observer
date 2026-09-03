@@ -184,7 +184,11 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
 
     def on_update_wallpaper(icon, item):
         threading.Thread(
-            target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
+            target=lambda: run_wallpaper_update(
+                pipeline=job_ref,
+                respect_pause=False,
+                progressive=True,
+            ),
             daemon=True,
         ).start()
 

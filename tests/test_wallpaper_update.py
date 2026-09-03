@@ -90,6 +90,29 @@ class RunWallpaperUpdateTests(unittest.TestCase):
         release.set()
         worker.join(timeout=2)
 
+    def test_progressive_uses_run_progressive_when_available(self):
+        calls = []
+
+        class ProgressivePipeline:
+            def __call__(self):
+                calls.append("call")
+
+            def run_progressive(self):
+                calls.append("progressive")
+
+        self.assertTrue(run_wallpaper_update(pipeline=ProgressivePipeline(), progressive=True))
+        self.assertEqual(calls, ["progressive"])
+
+    def test_progressive_falls_back_to_call(self):
+        calls = []
+        self.assertTrue(
+            run_wallpaper_update(
+                pipeline=lambda: calls.append("call"),
+                progressive=True,
+            )
+        )
+        self.assertEqual(calls, ["call"])
+
 
 if __name__ == "__main__":
     unittest.main()

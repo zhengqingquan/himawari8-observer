@@ -2,18 +2,26 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from src.metadata.soft_config import (
     DEFAULT_MARGIN_BOTTOM_PERCENT,
     DEFAULT_MARGIN_TOP_PERCENT,
 )
-from src.resolution_grade import grade_to_pixel, pixel_to_grade
+from src.resolution_grade import (
+    PROGRESSIVE_PREVIEW_PIXEL,
+    grade_to_pixel,
+    pixel_to_grade,
+    progressive_preview_grade,
+)
 from src.wallpaper.pipeline import run_wallpaper_pipeline
 
 BuildJob = Callable[..., Callable[[], None]]
+RunPipeline = Callable[..., None]
 
 
 def build_wallpaper_job(
@@ -24,7 +32,8 @@ def build_wallpaper_job(
     margin_bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
     cleanup_after_apply: bool = True,
     base_dir: Path | None = None,
-    run_pipeline: Callable[..., None] | None = None,
+    run_pipeline: RunPipeline | None = None,
+    applied_run_state: dict[str, Any] | None = None,
 ) -> Callable[[], None]:
     """返回零参 callable；每次调用使用构造时冻结的参数。
 
@@ -32,7 +41,7 @@ def build_wallpaper_job(
     换档 / 改修边等会重建 job，从而清空指纹并强制再跑一轮。
     """
     pipeline = run_pipeline or run_wallpaper_pipeline
-    applied_run_state: dict[str, object] = {"last": None}
+    state = applied_run_state if applied_run_state is not None else {"last": None}
 
     def job() -> None:
         pipeline(
@@ -42,7 +51,7 @@ def build_wallpaper_job(
             margin_bottom_percent=margin_bottom_percent,
             cleanup_after_apply=cleanup_after_apply,
             base_dir=base_dir,
-            applied_run_state=applied_run_state,
+            applied_run_state=state,
         )
 
     return job
@@ -64,6 +73,7 @@ class WallpaperJobRef:
         cleanup_after_apply: bool = True,
         base_dir: Path | None = None,
         build_job: BuildJob | None = None,
+        run_pipeline: RunPipeline | None = None,
     ) -> None:
         self._lock = threading.Lock()
         self._auto_adjust = auto_adjust
@@ -72,20 +82,76 @@ class WallpaperJobRef:
         self._cleanup_after_apply = cleanup_after_apply
         self._base_dir = base_dir
         self._build_job = build_job or build_wallpaper_job
+        self._run_pipeline = run_pipeline or run_wallpaper_pipeline
         self._grade = resolution_grade
-        self._job = self._build_job(
-            resolution_grade,
-            auto_adjust=auto_adjust,
-            margin_top_percent=margin_top_percent,
-            margin_bottom_percent=margin_bottom_percent,
-            cleanup_after_apply=cleanup_after_apply,
-            base_dir=base_dir,
+        self._applied_run_state: dict[str, Any] = {"last": None}
+        self._job = self._build_initial_job()
+
+    def _build_initial_job(self) -> Callable[[], None]:
+        return self._build_job(
+            self._grade,
+            auto_adjust=self._auto_adjust,
+            margin_top_percent=self._margin_top_percent,
+            margin_bottom_percent=self._margin_bottom_percent,
+            cleanup_after_apply=self._cleanup_after_apply,
+            base_dir=self._base_dir,
+            run_pipeline=self._run_pipeline,
+            applied_run_state=self._applied_run_state,
         )
 
     def __call__(self) -> None:
         with self._lock:
             job = self._job
         job()
+
+    def run_progressive(
+        self,
+        preview_pixel: int = PROGRESSIVE_PREVIEW_PIXEL,
+    ) -> None:
+        """先预览档上墙再跑目标档（目标边长大于预览时）；否则只跑目标档。
+
+        两轮共用同一 ``applied_run_state``。预览轮软失败不中断目标轮。
+        """
+        with self._lock:
+            target_grade = self._grade
+            auto_adjust = self._auto_adjust
+            margin_top_percent = self._margin_top_percent
+            margin_bottom_percent = self._margin_bottom_percent
+            cleanup_after_apply = self._cleanup_after_apply
+            base_dir = self._base_dir
+            state = self._applied_run_state
+            pipeline = self._run_pipeline
+
+        common = {
+            "auto_adjust": auto_adjust,
+            "margin_top_percent": margin_top_percent,
+            "margin_bottom_percent": margin_bottom_percent,
+            "cleanup_after_apply": cleanup_after_apply,
+            "base_dir": base_dir,
+            "applied_run_state": state,
+        }
+        if grade_to_pixel(target_grade) <= preview_pixel:
+            pipeline(resolution_grade=target_grade, **common)
+            return
+
+        preview_grade = (
+            progressive_preview_grade()
+            if preview_pixel == PROGRESSIVE_PREVIEW_PIXEL
+            else pixel_to_grade(preview_pixel)
+        )
+        logging.info(
+            "Progressive wallpaper: preview %s then target %s",
+            preview_grade,
+            target_grade,
+        )
+        try:
+            pipeline(resolution_grade=preview_grade, **common)
+        except Exception:
+            logging.exception(
+                "Progressive preview failed; continuing to target grade %s",
+                target_grade,
+            )
+        pipeline(resolution_grade=target_grade, **common)
 
     @property
     def resolution_grade(self) -> str:
@@ -145,6 +211,7 @@ class WallpaperJobRef:
             self._rebuild_job_locked()
 
     def _rebuild_job_locked(self) -> None:
+        self._applied_run_state = {"last": None}
         self._job = self._build_job(
             self._grade,
             auto_adjust=self._auto_adjust,
@@ -152,4 +219,6 @@ class WallpaperJobRef:
             margin_bottom_percent=self._margin_bottom_percent,
             cleanup_after_apply=self._cleanup_after_apply,
             base_dir=self._base_dir,
+            run_pipeline=self._run_pipeline,
+            applied_run_state=self._applied_run_state,
         )

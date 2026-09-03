@@ -4,6 +4,8 @@ from __future__ import annotations
 
 _TILE_PIXEL = 550
 _DEFAULT_GRADE = "20d"
+# 渐进更新预览边长（4d）；目标高于此值时先预览再拉目标档。
+PROGRESSIVE_PREVIEW_PIXEL = 2200
 _GRADE_TO_GRID: dict[str, int] = {
     "1d": 1,
     "2d": 2,
@@ -25,6 +27,11 @@ def tile_pixel() -> int:
 def default_grade() -> str:
     """真路径默认分辨率档位。"""
     return _DEFAULT_GRADE
+
+
+def progressive_preview_grade() -> str:
+    """渐进更新预览档位（对应 ``PROGRESSIVE_PREVIEW_PIXEL``）。"""
+    return pixel_to_grade(PROGRESSIVE_PREVIEW_PIXEL)
 
 
 def grade_to_grid(grade: str) -> int:

@@ -94,5 +94,54 @@ class WallpaperJobRefTests(unittest.TestCase):
         self.assertEqual(flags, [True, False])
 
 
+class WallpaperJobRefProgressiveTests(unittest.TestCase):
+    def test_progressive_runs_preview_then_target(self):
+        grades = []
+        states = []
+
+        def fake_pipeline(*, resolution_grade=None, applied_run_state=None, **_kwargs):
+            grades.append(resolution_grade)
+            states.append(applied_run_state)
+
+        ref = WallpaperJobRef("20d", run_pipeline=fake_pipeline, build_job=_noop_build)
+        ref.run_progressive()
+        self.assertEqual(grades, ["4d", "20d"])
+        self.assertIs(states[0], states[1])
+
+    def test_progressive_skips_preview_when_target_not_higher(self):
+        grades = []
+
+        def fake_pipeline(*, resolution_grade=None, **_kwargs):
+            grades.append(resolution_grade)
+
+        ref = WallpaperJobRef("4d", run_pipeline=fake_pipeline, build_job=_noop_build)
+        ref.run_progressive()
+        self.assertEqual(grades, ["4d"])
+
+        grades.clear()
+        ref.set_resolution_grade("2d")
+        ref.run_progressive()
+        self.assertEqual(grades, ["2d"])
+
+    def test_progressive_continues_after_preview_raises(self):
+        grades = []
+
+        def fake_pipeline(*, resolution_grade=None, **_kwargs):
+            grades.append(resolution_grade)
+            if resolution_grade == "4d":
+                raise RuntimeError("preview failed")
+
+        ref = WallpaperJobRef("20d", run_pipeline=fake_pipeline, build_job=_noop_build)
+        ref.run_progressive()
+        self.assertEqual(grades, ["4d", "20d"])
+
+
+def _noop_build(resolution_grade, **_kwargs):
+    def job():
+        return None
+
+    return job
+
+
 if __name__ == "__main__":
     unittest.main()
