@@ -9,10 +9,9 @@
 # himawari8-observer
 
 Set Himawari-8 satellite imagery as your Windows desktop wallpaper on a schedule<br>
-Lightweight system-tray app · Local Python compositing
+Lightweight system-tray app · Local compositing · Current version **v1.3.1**
 
-[Issues](https://github.com/zhengqingquan/himawari8-observer/issues) · [Releases](https://github.com/zhengqingquan/himawari8-observer/releases)<br>
-[Features](#features) · [Usage](#usage) · [Packaging](#packaging) · [CLI docs](doc/cli-arguments.md)
+[Issues](https://github.com/zhengqingquan/himawari8-observer/issues) · [Releases](https://github.com/zhengqingquan/himawari8-observer/releases) · [Changelog](CHANGELOG.md)
 
 [![Version](https://img.shields.io/github/v/release/zhengqingquan/himawari8-observer)](https://github.com/zhengqingquan/himawari8-observer/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -30,21 +29,31 @@ Data sources: [himawari8.nict.go.jp](https://himawari8.nict.go.jp/) · [himawari
 
 </div>
 
-## Features
+## Overview
 
-- Download 550×550 tiles at resolution grades from 550 to 11000 and composite locally
+Fetches the latest Himawari-8 imagery on a schedule, composites it into a desktop wallpaper, and runs quietly in the Windows system tray.
+
+- Multiple resolution grades, switchable anytime
 - Updates about every 20 minutes by default; runs once immediately on startup
-- Skips download when observation time and compositing params are unchanged (changing resolution/padding forces a refresh)
-- Black-border padding on by default to reduce taskbar occlusion (top/bottom margins adjustable)
-- After applying wallpaper, cleans tiles and old caches by default (keeps the current wallpaper file)
-- Tray menu: manual update, pause schedule, change resolution, padding, cleanup toggle, start on boot, and more
+- Skips redundant downloads when imagery and settings are unchanged
+- Optional black-border padding to reduce taskbar occlusion
+- Tray menu for manual update, pause schedule, change resolution, start on boot, and more
 
-## Requirements
+For daily use, download a prebuilt package from [Releases](https://github.com/zhengqingquan/himawari8-observer/releases/latest), extract, and run.
+
+## Development environment
 
 - Windows 10 / 11
-- See `requirements.txt` for Python dependencies
+- Python 3.10+
+- Install dependencies:
 
-## Usage
+```bash
+pip install -r requirements.txt
+```
+
+## Development commands
+
+Resident tray app:
 
 ```bash
 python run.py
@@ -53,19 +62,35 @@ python run.py --margin-bottom 12
 python run.py --no-adjust -r 2200
 python run.py --no-cleanup-after-apply
 python run.py -h
+python run.py -v
 ```
+
+One-shot run (no tray / scheduler):
+
+```bash
+python -m src.main
+```
+
+Common options:
 
 | Option | Description |
 |------|------|
 | `-r` / `--resolution` | Composite side length: `550` / `1100` / `2200` (default) / `4400` / `8800` / `11000` |
-| `-a` / `--adjust` | Black-border padding (**on** by default; `--no-adjust` to disable) |
-| `--margin-top` / `--margin-bottom` | Top/bottom black-border percent (default `5` each) |
-| `--cleanup-after-apply` | Clean caches after applying wallpaper (**on** by default; `--no-cleanup-after-apply` to disable) |
+| `-a` / `--adjust` | Black-border padding (on by default; `--no-adjust` to disable) |
+| `--margin-top` / `--margin-bottom` | Top / bottom black-border percent (default `5` each) |
+| `--cleanup-after-apply` | Clean caches after applying wallpaper (on by default; `--no-cleanup-after-apply` to disable) |
 | `-v` / `--version` | Print version and exit |
 
-Full CLI reference: [`doc/cli-arguments.md`](doc/cli-arguments.md).
-
 ## Packaging
+
+```cmd
+pip install pyinstaller
+pyinstaller --noconfirm himawari8-observer.spec
+```
+
+Output: `dist/himawari8-observer.exe` (windowed).
+
+Equivalent CLI:
 
 ```cmd
 pyinstaller --noconsole --onefile --icon assets/app.ico --add-data "assets/tray_icon.png;assets" --name himawari8-observer run.py

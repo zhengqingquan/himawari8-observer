@@ -9,10 +9,9 @@
 # himawari8-observer
 
 定時將葵花 8 號（Himawari-8）衛星影像設為 Windows 桌面桌布<br>
-輕量系統匣常駐 · Python 本機合成
+輕量系統匣常駐 · 本機合成 · 目前版本 **v1.3.1**
 
-[回報問題](https://github.com/zhengqingquan/himawari8-observer/issues) · [Releases](https://github.com/zhengqingquan/himawari8-observer/releases)<br>
-[功能](#功能) · [使用](#使用) · [打包](#打包) · [參數說明](doc/cli-arguments.md)
+[回報問題](https://github.com/zhengqingquan/himawari8-observer/issues) · [Releases](https://github.com/zhengqingquan/himawari8-observer/releases) · [更新紀錄](CHANGELOG.md)
 
 [![Version](https://img.shields.io/github/v/release/zhengqingquan/himawari8-observer)](https://github.com/zhengqingquan/himawari8-observer/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -30,21 +29,31 @@
 
 </div>
 
-## 功能
+## 簡介
 
-- 依解析度檔位（550～11000）下載 550×550 圖磚並本機合成
-- 預設約每 20 分鐘更新；啟動時立即更新一次
-- 觀測時間與成圖參數未變時跳過下載（切換解析度／修邊會重新拉取）
-- 預設黑邊修邊，減輕工作列遮擋（上／下邊距可調）
-- 預設設成桌布後清理圖磚與舊快取（保留目前桌布圖）
-- 系統匣：手動更新、暫停定時、切換解析度、修邊、清理開關、開機啟動等
+在 Windows 上定時拉取葵花 8 號最新影像，合成為桌面桌布，並以系統匣方式常駐執行。
 
-## 環境
+- 支援多種解析度檔位，可依需求切換
+- 預設約每 20 分鐘自動更新，啟動時立即更新一次
+- 影像與參數未變時可跳過重複下載
+- 可選黑邊修邊，減輕工作列遮擋
+- 系統匣可手動更新、暫停定時、切換解析度、開機啟動等
+
+日常使用可從 [Releases](https://github.com/zhengqingquan/himawari8-observer/releases/latest) 下載預編譯包，解壓後直接執行。
+
+## 開發環境
 
 - Windows 10 / 11
-- Python 依賴見 `requirements.txt`
+- Python 3.10+
+- 安裝依賴：
 
-## 使用
+```bash
+pip install -r requirements.txt
+```
+
+## 開發命令
+
+常駐系統匣：
 
 ```bash
 python run.py
@@ -53,19 +62,35 @@ python run.py --margin-bottom 12
 python run.py --no-adjust -r 2200
 python run.py --no-cleanup-after-apply
 python run.py -h
+python run.py -v
 ```
+
+只跑一輪（不掛系統匣／排程）：
+
+```bash
+python -m src.main
+```
+
+常用選項：
 
 | 選項 | 說明 |
 |------|------|
 | `-r` / `--resolution` | 合成邊長：`550` / `1100` / `2200`（預設）/ `4400` / `8800` / `11000` |
-| `-a` / `--adjust` | 黑邊修邊（**預設開啟**；`--no-adjust` 關閉） |
+| `-a` / `--adjust` | 黑邊修邊（預設開啟；`--no-adjust` 關閉） |
 | `--margin-top` / `--margin-bottom` | 上／下邊黑邊百分比（預設各 `5`） |
-| `--cleanup-after-apply` | 設成桌布後清理快取（**預設開啟**；`--no-cleanup-after-apply` 關閉） |
+| `--cleanup-after-apply` | 設成桌布後清理快取（預設開啟；`--no-cleanup-after-apply` 關閉） |
 | `-v` / `--version` | 印出版本後結束 |
 
-完整參數說明見 [`doc/cli-arguments.md`](doc/cli-arguments.md)。
-
 ## 打包
+
+```cmd
+pip install pyinstaller
+pyinstaller --noconfirm himawari8-observer.spec
+```
+
+產物在 `dist/himawari8-observer.exe`（無主控台視窗）。
+
+等價命令列：
 
 ```cmd
 pyinstaller --noconsole --onefile --icon assets/app.ico --add-data "assets/tray_icon.png;assets" --name himawari8-observer run.py

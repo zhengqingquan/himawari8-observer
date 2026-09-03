@@ -21,3 +21,7 @@ def main() -> None:
         margin_bottom_percent=config.get_margin_bottom_percent(),
         cleanup_after_apply=config.is_cleanup_after_apply(),
     )()
+
+
+if __name__ == "__main__":
+    main()
