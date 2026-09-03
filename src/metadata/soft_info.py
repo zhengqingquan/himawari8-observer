@@ -1,5 +1,5 @@
 PROGRAM_NAME = "himawari8-observer"
-SOFTWARE_VERSION = "v1.3.0"
+SOFTWARE_VERSION = "v1.3.1"
 DESCRIPTION = """Regularly set the images from the Himawari8 satellite as desktop wallpaper."""
 WEBSITE = "https://github.com/zhengqingquan/himawari8-observer"
 EPILOG = f"""Github: {WEBSITE}"""
