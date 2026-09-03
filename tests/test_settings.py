@@ -28,6 +28,7 @@ class SanitizeSettingsTests(unittest.TestCase):
                 "margin_top_percent": 8.0,
                 "margin_bottom_percent": 12.0,
                 "cleanup_after_apply": False,
+                "logging_enabled": True,
             }
         )
         self.assertEqual(cleaned["resolution"], 4400)
@@ -35,6 +36,7 @@ class SanitizeSettingsTests(unittest.TestCase):
         self.assertEqual(cleaned["margin_top_percent"], 8.0)
         self.assertEqual(cleaned["margin_bottom_percent"], 12.0)
         self.assertFalse(cleaned["cleanup_after_apply"])
+        self.assertTrue(cleaned["logging_enabled"])
 
     def test_skips_invalid_fields(self):
         cleaned = sanitize_settings(
@@ -44,6 +46,7 @@ class SanitizeSettingsTests(unittest.TestCase):
                 "margin_top_percent": -1,
                 "margin_bottom_percent": 101,
                 "cleanup_after_apply": 1,
+                "logging_enabled": "on",
                 "extra": True,
             }
         )
@@ -63,6 +66,7 @@ class SettingsFileIoTests(unittest.TestCase):
                 "margin_top_percent": 10.0,
                 "margin_bottom_percent": 12.0,
                 "cleanup_after_apply": False,
+                "logging_enabled": True,
             }
             self.assertTrue(save_settings(data, path=path))
             loaded = load_settings(path)
@@ -71,6 +75,7 @@ class SettingsFileIoTests(unittest.TestCase):
             self.assertEqual(loaded["margin_top_percent"], 10.0)
             self.assertEqual(loaded["margin_bottom_percent"], 12.0)
             self.assertFalse(loaded["cleanup_after_apply"])
+            self.assertTrue(loaded["logging_enabled"])
 
     def test_missing_file_returns_empty(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -90,6 +95,16 @@ class SettingsFileIoTests(unittest.TestCase):
             raw = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(raw["resolution"], 1100)
             self.assertEqual(raw["auto_adjust"], default_settings()["auto_adjust"])
+            self.assertFalse(raw["logging_enabled"])
+
+    def test_partial_save_preserves_logging_flag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "settings.json"
+            self.assertTrue(save_settings({"logging_enabled": True}, path=path))
+            self.assertTrue(save_settings({"resolution": 4400}, path=path))
+            loaded = load_settings(path)
+            self.assertEqual(loaded["resolution"], 4400)
+            self.assertTrue(loaded["logging_enabled"])
 
 
 class ResolveRuntimeSettingsTests(unittest.TestCase):
@@ -147,11 +162,27 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                 "margin_top_percent": None,
                 "margin_bottom_percent": None,
                 "cleanup_after_apply": None,
+                "logging_enabled": None,
             },
             file_settings={"resolution": 4400},
         )
         self.assertEqual(resolved["resolution"], 4400)
         self.assertEqual(resolved["auto_adjust"], default_settings()["auto_adjust"])
+        self.assertFalse(resolved["logging_enabled"])
+
+    def test_default_logging_disabled(self):
+        resolved = resolve_runtime_settings(
+            {
+                "resolution": None,
+                "auto_adjust": None,
+                "margin_top_percent": None,
+                "margin_bottom_percent": None,
+                "cleanup_after_apply": None,
+                "logging_enabled": None,
+            },
+            file_settings={},
+        )
+        self.assertFalse(resolved["logging_enabled"])
 
 
 def _config_with_file(argv, file_settings):

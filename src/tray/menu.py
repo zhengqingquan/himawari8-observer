@@ -14,6 +14,7 @@ import webbrowser
 from PIL import Image
 
 from src.event.event import request_shutdown
+from src.log.log import is_logging_enabled, set_logging_enabled
 from src.metadata.soft_config import IMAGE_RESOLUTION, LOG_PATH, MARGIN_PERCENT_CHOICES
 from src.metadata.soft_info import DESCRIPTION, PROGRAM_NAME, SOFTWARE_VERSION, WEBSITE
 from src.settings import save_settings, settings_dict_from_job
@@ -98,6 +99,14 @@ def on_open_log(icon, item):
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     LOG_PATH.touch(exist_ok=True)
     os.startfile(LOG_PATH)
+
+
+def on_toggle_logging(icon, item):
+    """切换日志开关并写入 settings.json。"""
+    enabled = not is_logging_enabled()
+    set_logging_enabled(enabled)
+    save_settings({"logging_enabled": enabled})
+    logging.info("Logging %s", "enabled" if enabled else "disabled")
 
 
 def _persist_job_settings(job_ref: WallpaperJobRef) -> None:
@@ -238,6 +247,11 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             "开机启动",
             on_startup,
             checked=lambda item: is_startup_set(),
+        ),
+        pystray.MenuItem(
+            "启用日志",
+            on_toggle_logging,
+            checked=lambda item: is_logging_enabled(),
         ),
         pystray.MenuItem("打开日志", on_open_log),
         pystray.MenuItem("访问官网", on_official_website),

@@ -16,9 +16,10 @@ from src.wallpaper.job import WallpaperJobRef
 
 def main() -> None:
     try:
-        init_logging()
-
         config = Config()
+        init_logging(enabled=config.is_logging_enabled())
+        config.log_resolved()
+
         grade = pixel_to_grade(config.get_download_resolution())
         job_ref = WallpaperJobRef(
             grade,

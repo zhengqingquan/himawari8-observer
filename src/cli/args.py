@@ -96,6 +96,14 @@ class Config:
         )
 
         self._parser.add_argument(
+            "--logging",
+            dest="logging_enabled",
+            default=None,
+            action=argparse.BooleanOptionalAction,
+            help="Enable console and file logging (default: off; use --logging to enable).",
+        )
+
+        self._parser.add_argument(
             "-v", "--version", action="version", version=f"%(prog)s {SOFTWARE_VERSION}"
         )
 
@@ -107,9 +115,12 @@ class Config:
             "margin_top_percent": self._args.margin_top_percent,
             "margin_bottom_percent": self._args.margin_bottom_percent,
             "cleanup_after_apply": self._args.cleanup_after_apply,
+            "logging_enabled": self._args.logging_enabled,
         }
         self._resolved = resolve_runtime_settings(cli_values)
 
+    def log_resolved(self) -> None:
+        """在日志已初始化后输出合并后的配置。"""
         logging.info("Download resolution (px): %s", self._resolved["resolution"])
         logging.info("Auto margin adjust: %s", self._resolved["auto_adjust"])
         logging.info(
@@ -118,6 +129,7 @@ class Config:
             self._resolved["margin_bottom_percent"],
         )
         logging.info("Cleanup after apply: %s", self._resolved["cleanup_after_apply"])
+        logging.info("Logging enabled: %s", self._resolved["logging_enabled"])
 
     def get_download_resolution(self):
         return self._resolved["resolution"]
@@ -133,3 +145,6 @@ class Config:
 
     def is_cleanup_after_apply(self):
         return self._resolved["cleanup_after_apply"]
+
+    def is_logging_enabled(self):
+        return self._resolved["logging_enabled"]

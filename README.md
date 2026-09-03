@@ -39,6 +39,7 @@
 - 可选黑边修边，减轻任务栏遮挡
 - 托盘可手动更新、暂停定时、换分辨率、开机启动等
 - 托盘修改的设置保存在程序目录 `settings.json`，重启后自动恢复
+- 日志默认关闭，可在托盘或用 `--logging` 开启
 
 日常使用可从 [Releases](https://github.com/zhengqingquan/himawari8-observer/releases/latest) 下载预编译包，解压后直接运行。
 
@@ -80,6 +81,7 @@ python -m src.main
 | `-a` / `--adjust` | 黑边修边（默认开启；`--no-adjust` 关闭） |
 | `--margin-top` / `--margin-bottom` | 顶 / 底边黑边百分比（默认各 `5`） |
 | `--cleanup-after-apply` | 设壁纸后清理缓存（默认开启；`--no-cleanup-after-apply` 关闭） |
+| `--logging` | 启用日志（默认关闭；`--no-logging` 关闭） |
 | `-v` / `--version` | 打印版本后退出 |
 
 ## 打包

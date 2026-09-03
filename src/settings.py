@@ -26,6 +26,7 @@ _SETTINGS_KEYS = frozenset(
         "margin_top_percent",
         "margin_bottom_percent",
         "cleanup_after_apply",
+        "logging_enabled",
     }
 )
 
@@ -43,6 +44,7 @@ def default_settings() -> dict[str, Any]:
         "margin_top_percent": DEFAULT_MARGIN_TOP_PERCENT,
         "margin_bottom_percent": DEFAULT_MARGIN_BOTTOM_PERCENT,
         "cleanup_after_apply": True,
+        "logging_enabled": False,
     }
 
 
@@ -123,6 +125,16 @@ def sanitize_settings(raw: Any) -> dict[str, Any]:
         else:
             cleaned["cleanup_after_apply"] = cleanup
 
+    if "logging_enabled" in raw:
+        logging_enabled = _coerce_bool(raw["logging_enabled"])
+        if logging_enabled is None:
+            logging.warning(
+                "Ignoring invalid settings.logging_enabled: %r",
+                raw["logging_enabled"],
+            )
+        else:
+            cleaned["logging_enabled"] = logging_enabled
+
     unknown = set(raw) - _SETTINGS_KEYS
     if unknown:
         logging.info("Ignoring unknown settings keys: %s", sorted(unknown))
@@ -149,16 +161,13 @@ def load_settings(path: Path | None = None) -> dict[str, Any]:
 
 
 def save_settings(data: dict[str, Any], path: Path | None = None) -> bool:
-    """原子写入 settings.json；成功返回 True。"""
-    settings_path = path if path is not None else default_settings_path()
-    cleaned = sanitize_settings(data)
-    if not cleaned:
-        # 允许只写部分字段时仍落盘完整合法子集；空则仍写空对象无意义，合并默认再写
-        cleaned = {}
+    """原子写入 settings.json；成功返回 True。
 
-    payload = {**default_settings(), **cleaned}
-    # 再 sanitize 一次保证默认也被校验
-    payload = sanitize_settings(payload)
+    合并顺序：内置默认 → 已有文件 → 本次写入，避免部分更新冲掉其它键。
+    """
+    settings_path = path if path is not None else default_settings_path()
+    existing = load_settings(settings_path) if settings_path.is_file() else {}
+    payload = sanitize_settings({**default_settings(), **existing, **sanitize_settings(data)})
 
     try:
         settings_path.parent.mkdir(parents=True, exist_ok=True)
@@ -193,7 +202,7 @@ def settings_dict_from_job(
     margin_bottom_percent: float,
     cleanup_after_apply: bool,
 ) -> dict[str, Any]:
-    """从运行时字段组装可写入的 settings dict。"""
+    """从壁纸任务字段组装可写入的 settings dict（不含 logging）。"""
     return {
         "resolution": resolution,
         "auto_adjust": auto_adjust,

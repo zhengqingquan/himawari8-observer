@@ -61,6 +61,18 @@ class AdjustFlagTests(unittest.TestCase):
         self.assertEqual(config.get_margin_top_percent(), 3.0)
         self.assertEqual(config.get_margin_bottom_percent(), 12.5)
 
+    def test_default_logging_is_disabled(self):
+        config = _fresh_config(["run.py"])
+        self.assertFalse(config.is_logging_enabled())
+
+    def test_logging_flag_enables(self):
+        config = _fresh_config(["run.py", "--logging"])
+        self.assertTrue(config.is_logging_enabled())
+
+    def test_no_logging_flag_disables(self):
+        config = _fresh_config(["run.py", "--no-logging"])
+        self.assertFalse(config.is_logging_enabled())
+
 
 if __name__ == "__main__":
     unittest.main()

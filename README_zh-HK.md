@@ -39,6 +39,7 @@
 - 可選黑邊修邊，減輕工作列遮擋
 - 系統匣可手動更新、暫停定時、切換解析度、開機啟動等
 - 系統匣修改的設定會寫入程式目錄 `settings.json`，重啟後自動還原
+- 日誌預設關閉，可在系統匣或以 `--logging` 開啟
 
 日常使用可從 [Releases](https://github.com/zhengqingquan/himawari8-observer/releases/latest) 下載預編譯包，解壓後直接執行。
 
@@ -80,6 +81,7 @@ python -m src.main
 | `-a` / `--adjust` | 黑邊修邊（預設開啟；`--no-adjust` 關閉） |
 | `--margin-top` / `--margin-bottom` | 上／下邊黑邊百分比（預設各 `5`） |
 | `--cleanup-after-apply` | 設成桌布後清理快取（預設開啟；`--no-cleanup-after-apply` 關閉） |
+| `--logging` | 啟用日誌（預設關閉；`--no-logging` 關閉） |
 | `-v` / `--version` | 印出版本後結束 |
 
 ## 打包

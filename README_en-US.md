@@ -39,6 +39,7 @@ Fetches the latest Himawari-8 imagery on a schedule, composites it into a deskto
 - Optional black-border padding to reduce taskbar occlusion
 - Tray menu for manual update, pause schedule, change resolution, start on boot, and more
 - Tray changes are saved to `settings.json` next to the program and restored on restart
+- Logging is off by default; enable from the tray or with `--logging`
 
 For daily use, download a prebuilt package from [Releases](https://github.com/zhengqingquan/himawari8-observer/releases/latest), extract, and run.
 
@@ -80,6 +81,7 @@ Common options:
 | `-a` / `--adjust` | Black-border padding (on by default; `--no-adjust` to disable) |
 | `--margin-top` / `--margin-bottom` | Top / bottom black-border percent (default `5` each) |
 | `--cleanup-after-apply` | Clean caches after applying wallpaper (on by default; `--no-cleanup-after-apply` to disable) |
+| `--logging` | Enable logging (off by default; `--no-logging` to disable) |
 | `-v` / `--version` | Print version and exit |
 
 ## Packaging

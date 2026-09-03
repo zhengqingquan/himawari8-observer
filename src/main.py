@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from src.cli.args import Config
+from src.log.log import init_logging
 from src.resolution_grade import pixel_to_grade
 from src.wallpaper.job import build_wallpaper_job
 
@@ -13,6 +14,8 @@ from src.wallpaper.job import build_wallpaper_job
 def main() -> None:
     """读取 CLI 配置并同步跑完一轮壁纸流水线。"""
     config = Config()
+    init_logging(enabled=config.is_logging_enabled())
+    config.log_resolved()
     grade = pixel_to_grade(config.get_download_resolution())
     build_wallpaper_job(
         grade,
