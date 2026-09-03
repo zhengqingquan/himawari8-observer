@@ -18,6 +18,7 @@ from src.resolution_grade import (
     pixel_to_grade,
     progressive_preview_grade,
 )
+from src.settings import persist_applied_run_state
 from src.wallpaper.pipeline import run_wallpaper_pipeline
 
 BuildJob = Callable[..., Callable[[], None]]
@@ -41,7 +42,11 @@ def build_wallpaper_job(
     换档 / 改修边等会重建 job，从而清空指纹并强制再跑一轮。
     """
     pipeline = run_pipeline or run_wallpaper_pipeline
-    state = applied_run_state if applied_run_state is not None else {"last": None}
+    state = (
+        applied_run_state
+        if applied_run_state is not None
+        else {"last": None, "wallpaper_path": None}
+    )
 
     def job() -> None:
         pipeline(
@@ -74,6 +79,8 @@ class WallpaperJobRef:
         base_dir: Path | None = None,
         build_job: BuildJob | None = None,
         run_pipeline: RunPipeline | None = None,
+        applied_run_state: dict[str, Any] | None = None,
+        persist_state: bool = True,
     ) -> None:
         self._lock = threading.Lock()
         self._auto_adjust = auto_adjust
@@ -84,9 +91,19 @@ class WallpaperJobRef:
         self._build_job = build_job or build_wallpaper_job
         self._run_pipeline = run_pipeline or run_wallpaper_pipeline
         self._grade = resolution_grade
-        self._applied_run_state: dict[str, Any] = {"last": None}
+        self._persist_state = persist_state
+        self._applied_run_state: dict[str, Any] = (
+            dict(applied_run_state)
+            if applied_run_state is not None
+            else {"last": None, "wallpaper_path": None}
+        )
+        if "wallpaper_path" not in self._applied_run_state:
+            self._applied_run_state["wallpaper_path"] = None
         # 上次成功上墙的观测时间；换参重建 job 清空指纹时仍保留，供托盘展示。
         self._last_observation_time: str | None = None
+        last = self._applied_run_state.get("last")
+        if isinstance(last, tuple) and last:
+            self._last_observation_time = str(last[0])
         self._job = self._build_initial_job()
 
     def _build_initial_job(self) -> Callable[[], None]:
@@ -101,10 +118,17 @@ class WallpaperJobRef:
             applied_run_state=self._applied_run_state,
         )
 
+    def _persist_applied_state_unlocked(self) -> None:
+        if not self._persist_state:
+            return
+        persist_applied_run_state(self._applied_run_state)
+
     def __call__(self) -> None:
         with self._lock:
             job = self._job
         job()
+        with self._lock:
+            self._persist_applied_state_unlocked()
 
     def run_progressive(
         self,
@@ -112,7 +136,7 @@ class WallpaperJobRef:
     ) -> None:
         """先预览档上墙再跑目标档（目标边长大于预览时）；否则只跑目标档。
 
-        两轮共用同一 ``applied_run_state``。预览轮软失败不中断目标轮。
+        两轮共用同一 ``applied_run_state``。预览轮不写指纹、不清理；目标轮再落盘。
         """
         with self._lock:
             target_grade = self._grade
@@ -128,12 +152,18 @@ class WallpaperJobRef:
             "auto_adjust": auto_adjust,
             "margin_top_percent": margin_top_percent,
             "margin_bottom_percent": margin_bottom_percent,
-            "cleanup_after_apply": cleanup_after_apply,
             "base_dir": base_dir,
             "applied_run_state": state,
         }
         if grade_to_pixel(target_grade) <= preview_pixel:
-            pipeline(resolution_grade=target_grade, **common)
+            pipeline(
+                resolution_grade=target_grade,
+                cleanup_after_apply=cleanup_after_apply,
+                record_run_key=True,
+                **common,
+            )
+            with self._lock:
+                self._persist_applied_state_unlocked()
             return
 
         preview_grade = (
@@ -147,13 +177,25 @@ class WallpaperJobRef:
             target_grade,
         )
         try:
-            pipeline(resolution_grade=preview_grade, **common)
+            pipeline(
+                resolution_grade=preview_grade,
+                cleanup_after_apply=False,
+                record_run_key=False,
+                **common,
+            )
         except Exception:
             logging.exception(
                 "Progressive preview failed; continuing to target grade %s",
                 target_grade,
             )
-        pipeline(resolution_grade=target_grade, **common)
+        pipeline(
+            resolution_grade=target_grade,
+            cleanup_after_apply=cleanup_after_apply,
+            record_run_key=True,
+            **common,
+        )
+        with self._lock:
+            self._persist_applied_state_unlocked()
 
     @property
     def resolution_grade(self) -> str:
@@ -225,7 +267,11 @@ class WallpaperJobRef:
         last = self._applied_run_state.get("last")
         if isinstance(last, tuple) and last:
             self._last_observation_time = str(last[0])
-        self._applied_run_state = {"last": None}
+        wallpaper_path = self._applied_run_state.get("wallpaper_path")
+        self._applied_run_state = {
+            "last": None,
+            "wallpaper_path": wallpaper_path,
+        }
         self._job = self._build_job(
             self._grade,
             auto_adjust=self._auto_adjust,

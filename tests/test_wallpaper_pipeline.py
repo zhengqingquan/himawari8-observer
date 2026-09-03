@@ -143,9 +143,10 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
         self.assertEqual(events, ["download"])
 
-    def test_skips_when_applied_run_unchanged(self):
+    def test_skips_when_applied_run_unchanged_and_desktop_ours(self):
         events = []
-        state = {"last": None}
+        state = {"last": None, "wallpaper_path": None}
+        desktop = {"path": None}
 
         def fetch_observation_time():
             events.append("fetch")
@@ -158,10 +159,16 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
         def compose_equal(pic):
             events.append("compose")
+            Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
+            Path(pic.final_path_equal).write_bytes(b"img")
 
         def set_wallpaper(path: Path):
             events.append("set")
+            desktop["path"] = str(path.resolve())
             return True
+
+        def get_desktop_wallpaper():
+            return desktop["path"]
 
         with temporary_base_dir() as base_dir:
             kwargs = dict(
@@ -169,6 +176,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 download_tiles=download_tiles,
                 compose_equal=compose_equal,
                 set_wallpaper=set_wallpaper,
+                get_desktop_wallpaper=get_desktop_wallpaper,
                 cleanup_after_apply=False,
                 applied_run_state=state,
                 base_dir=base_dir,
@@ -179,6 +187,59 @@ class RunWallpaperPipelineTests(unittest.TestCase):
         self.assertEqual(
             events,
             ["fetch", "download", "compose", "set", "fetch"],
+        )
+        self.assertIsNotNone(state.get("wallpaper_path"))
+
+    def test_reapplies_when_fingerprint_same_but_desktop_changed(self):
+        events = []
+        state = {"last": None, "wallpaper_path": None}
+
+        def fetch_observation_time():
+            events.append("fetch")
+            return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
+
+        def download_tiles(pic):
+            events.append("download")
+            for entry in pic.tiles.values():
+                entry[1] = 1
+
+        def compose_equal(pic):
+            events.append("compose")
+            Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
+            Path(pic.final_path_equal).write_bytes(b"img")
+
+        def set_wallpaper(path: Path):
+            events.append(("set", path.name))
+            return True
+
+        def get_desktop_wallpaper():
+            return r"C:\other\wallpaper.bmp"
+
+        with temporary_base_dir() as base_dir:
+            kwargs = dict(
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                set_wallpaper=set_wallpaper,
+                get_desktop_wallpaper=get_desktop_wallpaper,
+                cleanup_after_apply=False,
+                applied_run_state=state,
+                base_dir=base_dir,
+            )
+            run_wallpaper_pipeline(**kwargs)
+            first_name = events[-1][1]
+            run_wallpaper_pipeline(**kwargs)
+
+        self.assertEqual(
+            events,
+            [
+                "fetch",
+                "download",
+                "compose",
+                ("set", first_name),
+                "fetch",
+                ("set", first_name),
+            ],
         )
 
     def test_reruns_when_observation_time_changes(self):

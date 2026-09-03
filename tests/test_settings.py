@@ -11,8 +11,10 @@ from unittest.mock import patch
 
 from src.cli.args import Config
 from src.settings import (
+    applied_run_state_from_settings,
     default_settings,
     load_settings,
+    persist_applied_run_state,
     resolve_runtime_settings,
     sanitize_settings,
     save_settings,
@@ -105,6 +107,43 @@ class SettingsFileIoTests(unittest.TestCase):
             loaded = load_settings(path)
             self.assertEqual(loaded["resolution"], 4400)
             self.assertTrue(loaded["logging_enabled"])
+
+    def test_persists_and_loads_applied_run_fingerprint(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "settings.json"
+            self.assertTrue(
+                save_settings(
+                    {
+                        "last_run_key": [
+                            "2026-09-03 02:10:00",
+                            "20d",
+                            True,
+                            0.0,
+                            5.0,
+                        ],
+                        "last_wallpaper_path": r"E:\app\img\wall.png",
+                    },
+                    path=path,
+                )
+            )
+            loaded = load_settings(path)
+            self.assertEqual(
+                loaded["last_run_key"],
+                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0],
+            )
+            self.assertEqual(loaded["last_wallpaper_path"], r"E:\app\img\wall.png")
+            state = applied_run_state_from_settings(loaded)
+            self.assertEqual(
+                state["last"],
+                ("2026-09-03 02:10:00", "20d", True, 0.0, 5.0),
+            )
+            self.assertEqual(state["wallpaper_path"], r"E:\app\img\wall.png")
+
+            state["wallpaper_path"] = r"E:\app\img\wall2.png"
+            self.assertTrue(persist_applied_run_state(state, path=path))
+            loaded_again = load_settings(path)
+            self.assertEqual(loaded_again["last_wallpaper_path"], r"E:\app\img\wall2.png")
+            self.assertEqual(loaded_again["resolution"], default_settings()["resolution"])
 
 
 class ResolveRuntimeSettingsTests(unittest.TestCase):

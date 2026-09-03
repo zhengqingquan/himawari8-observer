@@ -20,13 +20,16 @@ from src.metadata.soft_config import (
 )
 from src.pic.pic import Pic
 from src.resolution_grade import default_grade
+from src.set_wallpaper import get_desktop_wallpaper as read_desktop_wallpaper
 from src.set_wallpaper import set_wallpaper as apply_desktop_wallpaper
+from src.set_wallpaper import wallpaper_paths_match
 
 FetchObservationTime = Callable[[], struct_time]
 DownloadTiles = Callable[[Pic], None]
 ComposeEqual = Callable[[Pic], None]
 AdjustWallpaper = Callable[[Pic], Path]
 SetWallpaper = Callable[[Path], bool | None]
+GetDesktopWallpaper = Callable[[], str | None]
 AppliedRunState = MutableMapping[str, Any]
 
 
@@ -64,6 +67,23 @@ def build_applied_run_key(
     )
 
 
+def _remember_applied(
+    applied_run_state: AppliedRunState | None,
+    *,
+    run_key: tuple[str, str, bool, float, float],
+    wallpaper_path: Path,
+    record_run_key: bool,
+) -> None:
+    if applied_run_state is None:
+        return
+    if record_run_key:
+        applied_run_state["last"] = run_key
+    try:
+        applied_run_state["wallpaper_path"] = str(wallpaper_path.resolve())
+    except OSError:
+        applied_run_state["wallpaper_path"] = str(wallpaper_path)
+
+
 def run_wallpaper_pipeline(
     *,
     fetch_observation_time: FetchObservationTime | None = None,
@@ -71,6 +91,7 @@ def run_wallpaper_pipeline(
     compose_equal: ComposeEqual | None = None,
     adjust_wallpaper: AdjustWallpaper | None = None,
     set_wallpaper: SetWallpaper | None = None,
+    get_desktop_wallpaper: GetDesktopWallpaper | None = None,
     resolution_grade: str | None = None,
     auto_adjust: bool = False,
     margin_top_percent: float = DEFAULT_MARGIN_TOP_PERCENT,
@@ -78,16 +99,22 @@ def run_wallpaper_pipeline(
     cleanup_after_apply: bool = True,
     base_dir: Path | None = None,
     applied_run_state: AppliedRunState | None = None,
+    record_run_key: bool = True,
 ) -> None:
     """跑一次壁纸更新。副作用步骤可注入，便于测试。
 
     托盘 / 定时器只应通过 WallpaperJobRef 触发，不要直接 import 本模块或 download/。
-    若传入 applied_run_state 且指纹与上次成功应用相同，则跳过下载与后续步骤。
+
+    跳过策略（需 ``applied_run_state``）：
+    - 指纹相同且桌面仍是上次壁纸文件 → 整段跳过；
+    - 指纹相同但桌面已换、成品仍在 → 仅重设壁纸；
+    - 否则走完整流水线。
     """
     fetch = fetch_observation_time or _default_fetch_observation_time
     download = download_tiles or _default_download_tiles
     compose = compose_equal or _default_compose_equal
     set_desktop = set_wallpaper or _default_set_wallpaper
+    read_desktop = get_desktop_wallpaper or read_desktop_wallpaper
     grade = resolution_grade if resolution_grade is not None else default_grade()
 
     def default_adjust(pic: Pic) -> Path:
@@ -113,8 +140,33 @@ def run_wallpaper_pipeline(
         margin_bottom_percent=margin_bottom_percent,
     )
     if applied_run_state is not None and applied_run_state.get("last") == run_key:
-        logging.info("Observation time and render params unchanged; skipping update")
-        return
+        last_path_raw = applied_run_state.get("wallpaper_path")
+        last_path = Path(last_path_raw) if last_path_raw else None
+        if last_path is not None and last_path.is_file():
+            current_desktop = read_desktop()
+            if wallpaper_paths_match(current_desktop, last_path):
+                logging.info(
+                    "Observation params unchanged and desktop wallpaper still ours; skipping update"
+                )
+                return
+            logging.info(
+                "Observation params unchanged but desktop wallpaper differs; re-applying %s",
+                last_path,
+            )
+            applied = set_desktop(last_path)
+            if applied is False:
+                logging.warning(
+                    "Wallpaper re-apply failed; leaving run state unchanged: %s",
+                    last_path,
+                )
+                return
+            _remember_applied(
+                applied_run_state,
+                run_key=run_key,
+                wallpaper_path=last_path,
+                record_run_key=True,
+            )
+            return
 
     pic = Pic(time_str, grade, base_dir=base_dir)
     create_pic_folders(pic)
@@ -131,8 +183,12 @@ def run_wallpaper_pipeline(
             wallpaper_path,
         )
         return
-    if applied_run_state is not None:
-        applied_run_state["last"] = run_key
+    _remember_applied(
+        applied_run_state,
+        run_key=run_key,
+        wallpaper_path=Path(wallpaper_path),
+        record_run_key=record_run_key,
+    )
     if cleanup_after_apply:
         current_run_root = Path(pic.folder_path).parent
         cleanup_after_wallpaper_apply(

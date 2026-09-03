@@ -27,6 +27,8 @@ _SETTINGS_KEYS = frozenset(
         "margin_bottom_percent",
         "cleanup_after_apply",
         "logging_enabled",
+        "last_run_key",
+        "last_wallpaper_path",
     }
 )
 
@@ -72,6 +74,31 @@ def _coerce_bool(value: Any) -> bool | None:
     if isinstance(value, bool):
         return value
     return None
+
+
+def _coerce_last_run_key(value: Any) -> list[Any] | None:
+    """校验指纹列表：``[obs_time, grade, auto_adjust, top%, bottom%]``。"""
+    if not isinstance(value, (list, tuple)) or len(value) != 5:
+        return None
+    obs_time, grade, auto_adjust, top, bottom = value
+    if not isinstance(obs_time, str) or not obs_time.strip():
+        return None
+    if not isinstance(grade, str) or not grade.strip():
+        return None
+    if not isinstance(auto_adjust, bool):
+        return None
+    top_f = _coerce_percent(top)
+    bottom_f = _coerce_percent(bottom)
+    if top_f is None or bottom_f is None:
+        return None
+    return [obs_time.strip(), grade.strip(), auto_adjust, top_f, bottom_f]
+
+
+def _coerce_wallpaper_path(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    return text or None
 
 
 def sanitize_settings(raw: Any) -> dict[str, Any]:
@@ -134,6 +161,23 @@ def sanitize_settings(raw: Any) -> dict[str, Any]:
             )
         else:
             cleaned["logging_enabled"] = logging_enabled
+
+    if "last_run_key" in raw:
+        run_key = _coerce_last_run_key(raw["last_run_key"])
+        if run_key is None:
+            logging.warning("Ignoring invalid settings.last_run_key: %r", raw["last_run_key"])
+        else:
+            cleaned["last_run_key"] = run_key
+
+    if "last_wallpaper_path" in raw:
+        wallpaper_path = _coerce_wallpaper_path(raw["last_wallpaper_path"])
+        if wallpaper_path is None:
+            logging.warning(
+                "Ignoring invalid settings.last_wallpaper_path: %r",
+                raw["last_wallpaper_path"],
+            )
+        else:
+            cleaned["last_wallpaper_path"] = wallpaper_path
 
     unknown = set(raw) - _SETTINGS_KEYS
     if unknown:
@@ -202,7 +246,7 @@ def settings_dict_from_job(
     margin_bottom_percent: float,
     cleanup_after_apply: bool,
 ) -> dict[str, Any]:
-    """从壁纸任务字段组装可写入的 settings dict（不含 logging）。"""
+    """从壁纸任务字段组装可写入的 settings dict（不含 logging / 应用指纹）。"""
     return {
         "resolution": resolution,
         "auto_adjust": auto_adjust,
@@ -210,6 +254,50 @@ def settings_dict_from_job(
         "margin_bottom_percent": margin_bottom_percent,
         "cleanup_after_apply": cleanup_after_apply,
     }
+
+
+def applied_run_state_from_settings(settings: dict[str, Any] | None) -> dict[str, Any]:
+    """从 settings 字段还原内存中的 ``applied_run_state``。"""
+    state: dict[str, Any] = {"last": None, "wallpaper_path": None}
+    if not settings:
+        return state
+    run_key = settings.get("last_run_key")
+    if isinstance(run_key, list) and len(run_key) == 5:
+        state["last"] = (
+            str(run_key[0]),
+            str(run_key[1]),
+            bool(run_key[2]),
+            float(run_key[3]),
+            float(run_key[4]),
+        )
+    path = settings.get("last_wallpaper_path")
+    if isinstance(path, str) and path.strip():
+        state["wallpaper_path"] = path.strip()
+    return state
+
+
+def persist_applied_run_state(
+    state: dict[str, Any],
+    *,
+    path: Path | None = None,
+) -> bool:
+    """将内存指纹与壁纸路径写回 settings.json。"""
+    payload: dict[str, Any] = {}
+    last = state.get("last")
+    if isinstance(last, tuple) and len(last) == 5:
+        payload["last_run_key"] = [
+            str(last[0]),
+            str(last[1]),
+            bool(last[2]),
+            float(last[3]),
+            float(last[4]),
+        ]
+    wallpaper = state.get("wallpaper_path")
+    if isinstance(wallpaper, str) and wallpaper.strip():
+        payload["last_wallpaper_path"] = wallpaper.strip()
+    if not payload:
+        return False
+    return save_settings(payload, path=path)
 
 
 def resolve_runtime_settings(

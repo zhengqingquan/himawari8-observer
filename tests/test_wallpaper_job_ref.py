@@ -15,7 +15,7 @@ class WallpaperJobRefTests(unittest.TestCase):
 
             return job
 
-        ref = WallpaperJobRef("4d", auto_adjust=True, build_job=fake_build)
+        ref = WallpaperJobRef("4d", auto_adjust=True, build_job=fake_build, persist_state=False)
         ref()
         ref.set_resolution_grade("8d")
         ref()
@@ -30,7 +30,7 @@ class WallpaperJobRefTests(unittest.TestCase):
 
             return job
 
-        ref = WallpaperJobRef("4d", build_job=fake_build)
+        ref = WallpaperJobRef("4d", build_job=fake_build, persist_state=False)
         ref.set_pixel_side(8800)
         self.assertEqual(ref.resolution_grade, "16d")
         self.assertEqual(ref.pixel_side, 8800)
@@ -62,6 +62,7 @@ class WallpaperJobRefTests(unittest.TestCase):
             margin_top_percent=5.0,
             margin_bottom_percent=5.0,
             build_job=fake_build,
+            persist_state=False,
         )
         ref.set_margin_bottom_percent(12.0)
         ref.set_auto_adjust(False)
@@ -87,14 +88,14 @@ class WallpaperJobRefTests(unittest.TestCase):
 
             return job
 
-        ref = WallpaperJobRef("4d", build_job=fake_build)
+        ref = WallpaperJobRef("4d", build_job=fake_build, persist_state=False)
         self.assertTrue(ref.cleanup_after_apply)
         ref.set_cleanup_after_apply(False)
         self.assertFalse(ref.cleanup_after_apply)
         self.assertEqual(flags, [True, False])
 
     def test_applied_observation_time_from_run_state_and_survives_rebuild(self):
-        ref = WallpaperJobRef("4d", build_job=_noop_build)
+        ref = WallpaperJobRef("4d", build_job=_noop_build, persist_state=False)
         self.assertIsNone(ref.applied_observation_time)
 
         ref._applied_run_state["last"] = (
@@ -115,15 +116,38 @@ class WallpaperJobRefProgressiveTests(unittest.TestCase):
     def test_progressive_runs_preview_then_target(self):
         grades = []
         states = []
+        flags = []
 
-        def fake_pipeline(*, resolution_grade=None, applied_run_state=None, **_kwargs):
+        def fake_pipeline(
+            *,
+            resolution_grade=None,
+            applied_run_state=None,
+            cleanup_after_apply=True,
+            record_run_key=True,
+            **_kwargs,
+        ):
             grades.append(resolution_grade)
             states.append(applied_run_state)
+            flags.append(
+                {
+                    "cleanup_after_apply": cleanup_after_apply,
+                    "record_run_key": record_run_key,
+                }
+            )
 
-        ref = WallpaperJobRef("20d", run_pipeline=fake_pipeline, build_job=_noop_build)
+        ref = WallpaperJobRef(
+            "20d",
+            run_pipeline=fake_pipeline,
+            build_job=_noop_build,
+            persist_state=False,
+        )
         ref.run_progressive()
         self.assertEqual(grades, ["4d", "20d"])
         self.assertIs(states[0], states[1])
+        self.assertFalse(flags[0]["cleanup_after_apply"])
+        self.assertFalse(flags[0]["record_run_key"])
+        self.assertTrue(flags[1]["cleanup_after_apply"])
+        self.assertTrue(flags[1]["record_run_key"])
 
     def test_progressive_skips_preview_when_target_not_higher(self):
         grades = []
@@ -131,7 +155,12 @@ class WallpaperJobRefProgressiveTests(unittest.TestCase):
         def fake_pipeline(*, resolution_grade=None, **_kwargs):
             grades.append(resolution_grade)
 
-        ref = WallpaperJobRef("4d", run_pipeline=fake_pipeline, build_job=_noop_build)
+        ref = WallpaperJobRef(
+            "4d",
+            run_pipeline=fake_pipeline,
+            build_job=_noop_build,
+            persist_state=False,
+        )
         ref.run_progressive()
         self.assertEqual(grades, ["4d"])
 
@@ -148,7 +177,12 @@ class WallpaperJobRefProgressiveTests(unittest.TestCase):
             if resolution_grade == "4d":
                 raise RuntimeError("preview failed")
 
-        ref = WallpaperJobRef("20d", run_pipeline=fake_pipeline, build_job=_noop_build)
+        ref = WallpaperJobRef(
+            "20d",
+            run_pipeline=fake_pipeline,
+            build_job=_noop_build,
+            persist_state=False,
+        )
         ref.run_progressive()
         self.assertEqual(grades, ["4d", "20d"])
 

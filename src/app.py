@@ -10,6 +10,7 @@ from src.event.event import wait_for_shutdown
 from src.log.log import init_logging
 from src.resolution_grade import pixel_to_grade
 from src.scheduler import start_scheduler
+from src.settings import applied_run_state_from_settings, load_settings
 from src.tray.menu import setup_tray_icon
 from src.wallpaper.job import WallpaperJobRef
 
@@ -21,12 +22,14 @@ def main() -> None:
         config.log_resolved()
 
         grade = pixel_to_grade(config.get_download_resolution())
+        applied_state = applied_run_state_from_settings(load_settings())
         job_ref = WallpaperJobRef(
             grade,
             auto_adjust=config.is_auto_adjust_picture(),
             margin_top_percent=config.get_margin_top_percent(),
             margin_bottom_percent=config.get_margin_bottom_percent(),
             cleanup_after_apply=config.is_cleanup_after_apply(),
+            applied_run_state=applied_state,
         )
 
         # 托盘与调度共享同一任务引用（托盘可运行中换档）
