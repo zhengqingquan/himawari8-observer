@@ -6,11 +6,14 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
 
 from PIL import Image
 
-from src.compose.equal import apply_margins, compose_equal_image
+from src.compose.equal import (
+    apply_margins,
+    compose_equal_image,
+    compose_equal_image_with_margins,
+)
 
 
 class ComposeEqualImageTests(unittest.TestCase):
@@ -42,6 +45,39 @@ class ComposeEqualImageTests(unittest.TestCase):
                 self.assertEqual(composed.getpixel((0, 10)), (0, 0, 255))
                 self.assertEqual(composed.getpixel((10, 10)), (255, 255, 0))
 
+    def test_composes_tiles_directly_onto_margin_canvas(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            tiles = {}
+            colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)]
+            for index, color in enumerate(colors):
+                path = root / f"{index}.png"
+                Image.new("RGB", (10, 10), color=color).save(path)
+                tiles[f"url-{index}"] = [str(path), 1]
+
+            pic = SimpleNamespace(
+                pic_side=20,
+                pic_pixel=10,
+                grid_size=2,
+                grade="2d",
+                tiles=tiles,
+            )
+            out = root / "adjusted.png"
+            result = compose_equal_image_with_margins(
+                pic,
+                out,
+                top_percent=0.0,
+                bottom_percent=0.0,
+                screen_size=(40, 20),
+            )
+            self.assertEqual(result, out)
+            with Image.open(out) as composed:
+                self.assertEqual(composed.size, (40, 20))
+                # content centered: offset x = 10
+                self.assertEqual(composed.getpixel((10, 0)), (255, 0, 0))
+                self.assertEqual(composed.getpixel((20, 0)), (0, 255, 0))
+                self.assertEqual(composed.getpixel((0, 0)), (0, 0, 0))
+
 
 class ApplyMarginsTests(unittest.TestCase):
     def test_saves_margin_canvas_and_closes(self):
@@ -49,15 +85,14 @@ class ApplyMarginsTests(unittest.TestCase):
             src = Path(tmp) / "src.png"
             out = Path(tmp) / "out.png"
             Image.new("RGB", (100, 100), color=(10, 20, 30)).save(src)
-            with patch("src.compose.equal.ImageGrab.grab") as grab:
-                grab.return_value = SimpleNamespace(size=(200, 100))
-                apply_margins(
-                    str(src),
-                    100,
-                    str(out),
-                    top_percent=0.0,
-                    bottom_percent=0.0,
-                )
+            apply_margins(
+                str(src),
+                100,
+                str(out),
+                top_percent=0.0,
+                bottom_percent=0.0,
+                screen_size=(200, 100),
+            )
             self.assertTrue(out.is_file())
             with Image.open(out) as result:
                 self.assertEqual(result.size, (200, 100))

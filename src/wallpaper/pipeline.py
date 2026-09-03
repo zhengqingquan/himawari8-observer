@@ -9,7 +9,7 @@ from time import strftime, struct_time
 from typing import Any
 
 from src.cleanup import cleanup_after_wallpaper_apply
-from src.compose.equal import apply_margins, compose_equal_image
+from src.compose.equal import apply_margins, compose_equal_image, compose_equal_image_with_margins
 from src.download.observation import create_session
 from src.download.observation import fetch_observation_time as fetch_latest_observation_time
 from src.download.tiles import download_tiles
@@ -47,6 +47,11 @@ def _default_compose_equal(pic: Pic) -> None:
 
 def _default_set_wallpaper(path: Path) -> bool | None:
     return apply_desktop_wallpaper(path)
+
+
+def _adjusted_output_path(pic: Pic) -> Path:
+    src = Path(pic.final_path_equal)
+    return src.with_name(f"{src.stem}_adjust{src.suffix}")
 
 
 def build_applied_run_key(
@@ -116,12 +121,12 @@ def run_wallpaper_pipeline(
     set_desktop = set_wallpaper or _default_set_wallpaper
     read_desktop = get_desktop_wallpaper or read_desktop_wallpaper
     grade = resolution_grade if resolution_grade is not None else default_grade()
+    use_direct_margin_compose = auto_adjust and compose_equal is None and adjust_wallpaper is None
 
     def default_adjust(pic: Pic) -> Path:
-        src = Path(pic.final_path_equal)
-        out = src.with_name(f"{src.stem}_adjust{src.suffix}")
+        out = _adjusted_output_path(pic)
         apply_margins(
-            str(src),
+            str(pic.final_path_equal),
             pic.pic_side,
             str(out),
             top_percent=margin_top_percent,
@@ -174,8 +179,16 @@ def run_wallpaper_pipeline(
     if not pic.download_finish():
         logging.warning("Not all tiles downloaded; skipping compose and wallpaper apply")
         return
-    compose(pic)
-    wallpaper_path = adjust(pic) if auto_adjust else Path(pic.final_path_equal)
+    if use_direct_margin_compose:
+        wallpaper_path = compose_equal_image_with_margins(
+            pic,
+            _adjusted_output_path(pic),
+            top_percent=margin_top_percent,
+            bottom_percent=margin_bottom_percent,
+        )
+    else:
+        compose(pic)
+        wallpaper_path = adjust(pic) if auto_adjust else Path(pic.final_path_equal)
     applied = set_desktop(wallpaper_path)
     if applied is False:
         logging.warning(

@@ -3,6 +3,7 @@
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from src.wallpaper.pipeline import run_wallpaper_pipeline
 from tests.workdir_paths import temporary_base_dir
@@ -80,6 +81,44 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             )
 
         self.assertEqual(events, ["compose", "adjust", ("set", "adjusted.png")])
+
+    def test_default_auto_adjust_uses_direct_margin_compose(self):
+        events = []
+
+        def fetch_observation_time():
+            return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
+
+        def download_tiles(pic):
+            for entry in pic.tiles.values():
+                entry[1] = 1
+
+        def set_wallpaper(path: Path):
+            events.append(("set", path.name))
+            return True
+
+        def fake_direct(pic, output_path, **_kwargs):
+            events.append("direct")
+            out = Path(output_path)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(b"img")
+            return out
+
+        with temporary_base_dir() as base_dir:
+            with patch(
+                "src.wallpaper.pipeline.compose_equal_image_with_margins",
+                side_effect=fake_direct,
+            ):
+                run_wallpaper_pipeline(
+                    resolution_grade="4d",
+                    fetch_observation_time=fetch_observation_time,
+                    download_tiles=download_tiles,
+                    set_wallpaper=set_wallpaper,
+                    auto_adjust=True,
+                    cleanup_after_apply=False,
+                    base_dir=base_dir,
+                )
+
+        self.assertEqual(events, ["direct", ("set", "4d20210603052000_adjust.png")])
 
     def test_skips_adjust_when_auto_adjust_false(self):
         events = []
