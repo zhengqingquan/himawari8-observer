@@ -116,10 +116,6 @@ class Config:
         )
         logging.info(f"Cleanup after apply: {self._args.cleanup_after_apply}")
 
-    # TODO 可以重新解析参数。
-    def parse_known_args(self, args):
-        self._parser.parse_known_args(args)
-
     def get_download_resolution(self):
         return self._args.download_resolution
 

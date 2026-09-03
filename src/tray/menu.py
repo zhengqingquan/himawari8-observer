@@ -81,7 +81,6 @@ def on_official_website(icon, item):
 
 def on_startup(icon, item):
     """切换开机启动注册表项。"""
-    # TODO 需要判断是否有同名的，但执行路径不一样的，若有就删掉重新设置。
     if is_startup_set():
         remove_from_startup_exe()
     else:
@@ -218,5 +217,4 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         pystray.MenuItem("退出", on_quit),
     )
 
-    # 启动图标。
     icon.run_detached()

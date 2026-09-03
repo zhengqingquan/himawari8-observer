@@ -41,7 +41,6 @@ class Pic:
         self.pic_side = self.pic_pixel * self.grid_size
 
         self.folder_top = "img"
-        # 合成输出子目录名（历史命名，与已废弃的 complete 下载无关）
         self.compose_subdir = "complete"
         self.folder_root = (
             f"{self.year}{self.month}{self.day}{self.hour}{self.minute}{self.seconds}"

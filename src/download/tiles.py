@@ -1,4 +1,4 @@
-"""瓦片下载：pipeline 与遗留调用方共用的唯一 live interface。"""
+"""瓦片下载：pipeline 对外 seam。"""
 
 from __future__ import annotations
 
