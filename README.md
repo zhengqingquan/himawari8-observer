@@ -38,6 +38,7 @@
 - 影像与参数未变时可跳过重复下载
 - 可选黑边修边，减轻任务栏遮挡
 - 托盘可手动更新、暂停定时、换分辨率、开机启动等
+- 托盘修改的设置保存在程序目录 `settings.json`，重启后自动恢复
 
 日常使用可从 [Releases](https://github.com/zhengqingquan/himawari8-observer/releases/latest) 下载预编译包，解压后直接运行。
 

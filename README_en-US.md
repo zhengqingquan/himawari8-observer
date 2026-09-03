@@ -38,6 +38,7 @@ Fetches the latest Himawari-8 imagery on a schedule, composites it into a deskto
 - Skips redundant downloads when imagery and settings are unchanged
 - Optional black-border padding to reduce taskbar occlusion
 - Tray menu for manual update, pause schedule, change resolution, start on boot, and more
+- Tray changes are saved to `settings.json` next to the program and restored on restart
 
 For daily use, download a prebuilt package from [Releases](https://github.com/zhengqingquan/himawari8-observer/releases/latest), extract, and run.
 

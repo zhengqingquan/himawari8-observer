@@ -37,6 +37,7 @@ graphify-out/
 
 # ========== App runtime / test sandboxes ==========
 debug_log.txt
+settings.json
 *.log
 *.pid
 

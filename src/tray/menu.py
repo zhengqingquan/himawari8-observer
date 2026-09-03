@@ -16,6 +16,7 @@ from PIL import Image
 from src.event.event import request_shutdown
 from src.metadata.soft_config import IMAGE_RESOLUTION, LOG_PATH, MARGIN_PERCENT_CHOICES
 from src.metadata.soft_info import DESCRIPTION, PROGRAM_NAME, SOFTWARE_VERSION, WEBSITE
+from src.settings import save_settings, settings_dict_from_job
 from src.startup import add_to_startup_exe, is_startup_set, remove_from_startup_exe
 from src.wallpaper.job import WallpaperJobRef
 from src.wallpaper.update import (
@@ -99,6 +100,19 @@ def on_open_log(icon, item):
     os.startfile(LOG_PATH)
 
 
+def _persist_job_settings(job_ref: WallpaperJobRef) -> None:
+    """将当前托盘可改项写入程序旁 settings.json。"""
+    save_settings(
+        settings_dict_from_job(
+            resolution=job_ref.pixel_side,
+            auto_adjust=job_ref.auto_adjust,
+            margin_top_percent=job_ref.margin_top_percent,
+            margin_bottom_percent=job_ref.margin_bottom_percent,
+            cleanup_after_apply=job_ref.cleanup_after_apply,
+        )
+    )
+
+
 def setup_tray_icon(job_ref: WallpaperJobRef):
     """创建并阻塞运行系统托盘图标。
 
@@ -124,6 +138,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
     def make_resolution_item(pixel_side: int):
         def on_select(icon, item):
             job_ref.set_pixel_side(pixel_side)
+            _persist_job_settings(job_ref)
             logging.info(
                 "Resolution set to %spx (grade %s)",
                 pixel_side,
@@ -144,6 +159,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
     def on_toggle_adjust(icon, item):
         enabled = not job_ref.auto_adjust
         job_ref.set_auto_adjust(enabled)
+        _persist_job_settings(job_ref)
         logging.info("Margin adjust %s", "enabled" if enabled else "disabled")
         threading.Thread(
             target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
@@ -153,11 +169,13 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
     def on_toggle_cleanup(icon, item):
         enabled = not job_ref.cleanup_after_apply
         job_ref.set_cleanup_after_apply(enabled)
+        _persist_job_settings(job_ref)
         logging.info("Cleanup after apply %s", "enabled" if enabled else "disabled")
 
     def make_margin_top_item(percent: float):
         def on_select(icon, item):
             job_ref.set_margin_top_percent(percent)
+            _persist_job_settings(job_ref)
             logging.info("Top margin set to %s%%", percent)
             threading.Thread(
                 target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
@@ -174,6 +192,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
     def make_margin_bottom_item(percent: float):
         def on_select(icon, item):
             job_ref.set_margin_bottom_percent(percent)
+            _persist_job_settings(job_ref)
             logging.info("Bottom margin set to %s%%", percent)
             threading.Thread(
                 target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),

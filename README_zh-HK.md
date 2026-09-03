@@ -38,6 +38,7 @@
 - 影像與參數未變時可跳過重複下載
 - 可選黑邊修邊，減輕工作列遮擋
 - 系統匣可手動更新、暫停定時、切換解析度、開機啟動等
+- 系統匣修改的設定會寫入程式目錄 `settings.json`，重啟後自動還原
 
 日常使用可從 [Releases](https://github.com/zhengqingquan/himawari8-observer/releases/latest) 下載預編譯包，解壓後直接執行。
 

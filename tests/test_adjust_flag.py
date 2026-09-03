@@ -5,11 +5,21 @@ import unittest
 from unittest.mock import patch
 
 from src.cli.args import Config
+from src.settings import resolve_runtime_settings
 
 
 def _fresh_config(argv):
     Config._instance = None
-    with patch.object(sys, "argv", argv):
+    with (
+        patch.object(sys, "argv", argv),
+        patch(
+            "src.cli.args.resolve_runtime_settings",
+            side_effect=lambda cli_values, **kwargs: resolve_runtime_settings(
+                cli_values,
+                file_settings={},
+            ),
+        ),
+    ):
         return Config()
 
 

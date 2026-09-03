@@ -1,17 +1,13 @@
-"""CLI 参数解析：单例 Config。"""
+"""CLI 参数解析：单例 Config（默认 → settings.json → 显式 CLI）。"""
 
 from __future__ import annotations
 
 import argparse
 import logging
 
-from src.metadata.soft_config import (
-    DEFAULT_MARGIN_BOTTOM_PERCENT,
-    DEFAULT_MARGIN_TOP_PERCENT,
-    DEFAULT_RESOLUTION,
-    IMAGE_RESOLUTION,
-)
+from src.metadata.soft_config import IMAGE_RESOLUTION
 from src.metadata.soft_info import DESCRIPTION, EPILOG, PROGRAM_NAME, SOFTWARE_VERSION
+from src.settings import resolve_runtime_settings
 
 
 def _percent(value: str) -> float:
@@ -26,11 +22,12 @@ def _percent(value: str) -> float:
 
 
 class Config:
-    """进程内单例：解析并缓存命令行参数。"""
+    """进程内单例：解析 CLI，并与 settings.json 合并为运行时配置。"""
 
     _instance = None
     _parser = None
     _args = None
+    _resolved = None
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
@@ -45,7 +42,7 @@ class Config:
         self._initialized = True
 
     def parse_arguments(self):
-        """定义并解析 CLI 参数。"""
+        """定义并解析 CLI；未传选项为 None，再与文件合并。"""
         self._parser = argparse.ArgumentParser(
             prog=PROGRAM_NAME,
             description=DESCRIPTION,
@@ -57,11 +54,8 @@ class Config:
             "--resolution",
             type=int,
             choices=IMAGE_RESOLUTION,
-            default=DEFAULT_RESOLUTION,
-            const=DEFAULT_RESOLUTION,
-            action="store",
+            default=None,
             dest="download_resolution",
-            nargs="?",
             help='"equal" represents how many 550-pixel images one side of an image is equal to.',
         )
 
@@ -69,7 +63,7 @@ class Config:
             "-a",
             "--adjust",
             dest="is_auto_adjust_picture",
-            default=True,
+            default=None,
             action=argparse.BooleanOptionalAction,
             help="Pad wallpaper with black borders so the taskbar covers the margin "
             "(default: on; use --no-adjust to disable).",
@@ -78,7 +72,7 @@ class Config:
         self._parser.add_argument(
             "--margin-top",
             type=_percent,
-            default=DEFAULT_MARGIN_TOP_PERCENT,
+            default=None,
             dest="margin_top_percent",
             help="Top black-border percent of the square image side (default: 5).",
         )
@@ -86,7 +80,7 @@ class Config:
         self._parser.add_argument(
             "--margin-bottom",
             type=_percent,
-            default=DEFAULT_MARGIN_BOTTOM_PERCENT,
+            default=None,
             dest="margin_bottom_percent",
             help="Bottom black-border percent of the square image side (default: 5).",
         )
@@ -94,7 +88,7 @@ class Config:
         self._parser.add_argument(
             "--cleanup-after-apply",
             dest="cleanup_after_apply",
-            default=True,
+            default=None,
             action=argparse.BooleanOptionalAction,
             help="After setting wallpaper, delete tiles and old img folders "
             "but keep the current wallpaper file (default: on; "
@@ -107,26 +101,35 @@ class Config:
 
         self._args = self._parser.parse_args()
 
-        logging.info("Download resolution (px): %s", self._args.download_resolution)
-        logging.info("Auto margin adjust: %s", self._args.is_auto_adjust_picture)
+        cli_values = {
+            "resolution": self._args.download_resolution,
+            "auto_adjust": self._args.is_auto_adjust_picture,
+            "margin_top_percent": self._args.margin_top_percent,
+            "margin_bottom_percent": self._args.margin_bottom_percent,
+            "cleanup_after_apply": self._args.cleanup_after_apply,
+        }
+        self._resolved = resolve_runtime_settings(cli_values)
+
+        logging.info("Download resolution (px): %s", self._resolved["resolution"])
+        logging.info("Auto margin adjust: %s", self._resolved["auto_adjust"])
         logging.info(
             "Margin percents: top=%s bottom=%s",
-            self._args.margin_top_percent,
-            self._args.margin_bottom_percent,
+            self._resolved["margin_top_percent"],
+            self._resolved["margin_bottom_percent"],
         )
-        logging.info("Cleanup after apply: %s", self._args.cleanup_after_apply)
+        logging.info("Cleanup after apply: %s", self._resolved["cleanup_after_apply"])
 
     def get_download_resolution(self):
-        return self._args.download_resolution
+        return self._resolved["resolution"]
 
     def is_auto_adjust_picture(self):
-        return self._args.is_auto_adjust_picture
+        return self._resolved["auto_adjust"]
 
     def get_margin_top_percent(self):
-        return self._args.margin_top_percent
+        return self._resolved["margin_top_percent"]
 
     def get_margin_bottom_percent(self):
-        return self._args.margin_bottom_percent
+        return self._resolved["margin_bottom_percent"]
 
     def is_cleanup_after_apply(self):
-        return self._args.cleanup_after_apply
+        return self._resolved["cleanup_after_apply"]
