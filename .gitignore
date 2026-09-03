@@ -8,7 +8,6 @@ __pycache__/
 
 # Packaging / install
 build/
-dist/
 wheels/
 *.egg
 *.egg-info/
@@ -18,8 +17,8 @@ pip-log.txt
 pip-delete-this-directory.txt
 
 # Virtual environments
-.venv
-venv
+.venv/
+venv/
 env/
 ENV/
 
@@ -34,43 +33,43 @@ coverage.xml
 .tox/
 .nox/
 .cache/
+graphify-out/
 
-# ========== App runtime / downloads ==========
-# 运行日志与进程文件
+# ========== App runtime / test sandboxes ==========
 debug_log.txt
 *.log
 *.pid
 
-# 下载与合成的图片（程序默认目录为 img/）
+# Downloaded / composed imagery (default tree under program dir)
 img/
 
-# 单元测试落盘目录（tests/workdir_paths.temporary_base_dir）
+# Unit-test filesystem sandbox (tests/workdir_paths.temporary_base_dir)
 tests/workdir/
 
-# 仓库内一般不提交影像；程序图标资源在 assets/ 例外入库
+# Keep program icons; ignore other image dumps in the repo
 *.png
 *.jpg
 *.jpeg
 *.webp
 *.bmp
 *.gif
+*.ico
 !assets/tray_icon.png
 !assets/app.ico
 
 # ========== PyInstaller ==========
-# 本地生成的打包配置与中间产物（需要提交 .spec 时再加例外）
-*.spec
+dist/
 *.manifest
 *.exe
+# Ignore ad-hoc specs; keep the project packaging recipe
+*.spec
+!himawari8-observer.spec
 
-# ========== Agent / local skill config（不入库）==========
-AGENTS.md
-.scratch/
-
-# ========== Local as-is architecture snapshot（不入库）==========
-# 供本地 agent 消费；见 .scratch/as-is-architecture/map.md
-/CONTEXT.md
-/ARCHITECTURE.md
+# ========== Captures / large binaries ==========
+# Local browser captures; APIs are documented in doc/himawari-asia-api.md
+*.har
+har/
+*.zip
 
 # ========== Secrets / local env ==========
 .env
@@ -80,14 +79,14 @@ credentials.json
 *.pem
 *.key
 
-# ========== Captures / large binaries ==========
-*.har
-har/
-
-# ========== IDE / editor ==========
-# Cursor 本地配置与规则（整目录不入库）
+# ========== Local agent / architecture notes（不入库）==========
+AGENTS.md
+.scratch/
+/CONTEXT.md
+/ARCHITECTURE.md
 .cursor/
 
+# ========== IDE / editor ==========
 .idea/
 .vscode/
 *.swp

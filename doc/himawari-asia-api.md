@@ -1,6 +1,6 @@
 # himawari.asia API 文档
 
-> 来源：`har/himawari.asia.har`（页面 `https://himawari.asia/`，抓取时间约 2026-07-16）  
+> 来源：历史上对 `https://himawari.asia/` 的浏览器抓包整理（约 2026-07-16；另对照过 `himawari8.nict.go.jp` 同源页面）  
 > 站点配置：`https://himawari.asia/js/env.js`（appVersion `6.4.1k4`）
 
 本文档整理该 HAR 中**实际请求到的接口**，以及 `env.js` 中定义、用于拼装瓦片/缩略图的 URL 模板。静态资源（CSS/JS/图标字体等）仅作分类索引，不逐条展开。
@@ -405,4 +405,4 @@ https://jh190005-4.kudpc.kyoto-u.ac.jp/himawari/img/D531106/...
 
 ---
 
-*文档根据 `har/himawari.asia.har` 与 `har/himawari8.nict.go.jp.har` 整理，镜像主机名可能随站点配置变更，以 `env.js` 中 `imgBaseUrl` 为准。*
+*文档根据 himawari.asia / NICT 同源页面的历史抓包整理；镜像主机名可能随站点配置变更，以 `env.js` 中 `imgBaseUrl` 为准。*
