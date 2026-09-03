@@ -71,6 +71,23 @@ class WallpaperJobRefTests(unittest.TestCase):
             ],
         )
 
+    def test_set_cleanup_after_apply_rebuilds_job(self):
+        flags = []
+
+        def fake_build(resolution_grade, *, cleanup_after_apply=True, **_kwargs):
+            flags.append(cleanup_after_apply)
+
+            def job():
+                return None
+
+            return job
+
+        ref = WallpaperJobRef("4d", build_job=fake_build)
+        self.assertTrue(ref.cleanup_after_apply)
+        ref.set_cleanup_after_apply(False)
+        self.assertFalse(ref.cleanup_after_apply)
+        self.assertEqual(flags, [True, False])
+
 
 if __name__ == "__main__":
     unittest.main()

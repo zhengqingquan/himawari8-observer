@@ -1,4 +1,4 @@
-"""组装壁纸更新任务：在 assembly 冻结分辨率档位、修边开关与边距百分比；运行中可替换档位。"""
+"""组装壁纸更新任务：在 assembly 冻结分辨率档位、修边、边距与清理开关；运行中可替换。"""
 
 from __future__ import annotations
 
@@ -21,9 +21,10 @@ def build_wallpaper_job(
     auto_adjust: bool = False,
     margin_top_percent: float = DEFAULT_MARGIN_TOP_PERCENT,
     margin_bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
+    cleanup_after_apply: bool = True,
     run_pipeline: Callable[..., None] | None = None,
 ) -> Callable[[], None]:
-    """返回零参 callable；每次调用使用构造时冻结的 grade / auto_adjust / 边距。"""
+    """返回零参 callable；每次调用使用构造时冻结的参数。"""
     pipeline = run_pipeline or run_wallpaper_pipeline
 
     def job() -> None:
@@ -32,6 +33,7 @@ def build_wallpaper_job(
             auto_adjust=auto_adjust,
             margin_top_percent=margin_top_percent,
             margin_bottom_percent=margin_bottom_percent,
+            cleanup_after_apply=cleanup_after_apply,
         )
 
     return job
@@ -47,12 +49,14 @@ class WallpaperJobRef:
         auto_adjust: bool = False,
         margin_top_percent: float = DEFAULT_MARGIN_TOP_PERCENT,
         margin_bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
+        cleanup_after_apply: bool = True,
         build_job: BuildJob | None = None,
     ) -> None:
         self._lock = threading.Lock()
         self._auto_adjust = auto_adjust
         self._margin_top_percent = margin_top_percent
         self._margin_bottom_percent = margin_bottom_percent
+        self._cleanup_after_apply = cleanup_after_apply
         self._build_job = build_job or build_wallpaper_job
         self._grade = resolution_grade
         self._job = self._build_job(
@@ -60,6 +64,7 @@ class WallpaperJobRef:
             auto_adjust=auto_adjust,
             margin_top_percent=margin_top_percent,
             margin_bottom_percent=margin_bottom_percent,
+            cleanup_after_apply=cleanup_after_apply,
         )
 
     def __call__(self) -> None:
@@ -88,6 +93,10 @@ class WallpaperJobRef:
     def margin_bottom_percent(self) -> float:
         return self._margin_bottom_percent
 
+    @property
+    def cleanup_after_apply(self) -> bool:
+        return self._cleanup_after_apply
+
     def set_resolution_grade(self, resolution_grade: str) -> None:
         with self._lock:
             self._grade = resolution_grade
@@ -111,10 +120,16 @@ class WallpaperJobRef:
             self._margin_bottom_percent = percent
             self._rebuild_job_locked()
 
+    def set_cleanup_after_apply(self, cleanup_after_apply: bool) -> None:
+        with self._lock:
+            self._cleanup_after_apply = cleanup_after_apply
+            self._rebuild_job_locked()
+
     def _rebuild_job_locked(self) -> None:
         self._job = self._build_job(
             self._grade,
             auto_adjust=self._auto_adjust,
             margin_top_percent=self._margin_top_percent,
             margin_bottom_percent=self._margin_bottom_percent,
+            cleanup_after_apply=self._cleanup_after_apply,
         )

@@ -31,6 +31,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             download_tiles=download_tiles,
             compose_equal=compose_equal,
             set_wallpaper=set_wallpaper,
+            cleanup_after_apply=False,
         )
 
         self.assertEqual(
@@ -70,6 +71,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             adjust_wallpaper=adjust_wallpaper,
             set_wallpaper=set_wallpaper,
             auto_adjust=True,
+            cleanup_after_apply=False,
         )
 
         self.assertEqual(events, ["compose", "adjust", ("set", "adjusted.png")])
@@ -101,6 +103,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             adjust_wallpaper=adjust_wallpaper,
             set_wallpaper=set_wallpaper,
             auto_adjust=False,
+            cleanup_after_apply=False,
         )
 
         self.assertEqual(events, ["compose", ("set", "4d20210603052000.png")])
@@ -126,6 +129,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             download_tiles=download_tiles,
             compose_equal=compose_equal,
             set_wallpaper=set_wallpaper,
+            cleanup_after_apply=False,
         )
 
         self.assertEqual(events, ["download"])

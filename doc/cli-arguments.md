@@ -30,6 +30,7 @@ python run.py --version
 | `-a` | `--adjust` / `--no-adjust` | 布尔开关 | **开启** | 是否加黑边修边，避免被任务栏遮挡 |
 | — | `--margin-top` | `0`–`100` | `5` | 顶边黑边占原图边长的百分比 |
 | — | `--margin-bottom` | `0`–`100` | `5` | 底边黑边占原图边长的百分比 |
+| — | `--cleanup-after-apply` / `--no-cleanup-after-apply` | 布尔开关 | **开启** | 设壁纸后清理瓦片与旧目录，保留当前壁纸文件 |
 | `-v` | `--version` | — | — | 打印版本后退出 |
 | `-h` | `--help` | — | — | 打印帮助后退出 |
 
@@ -93,6 +94,21 @@ python run.py --no-adjust
 
 ```bash
 python run.py --margin-top 5 --margin-bottom 12
+```
+
+---
+
+### `--cleanup-after-apply` / `--no-cleanup-after-apply`
+
+设壁纸成功后清理本地 `img/` 缓存：**保留当前壁纸文件**，删除本次瓦片、同目录其它中间图，以及其它旧观测时间目录。
+
+> **实现说明**：`BooleanOptionalAction`，**默认开启**；`--no-cleanup-after-apply` 关闭。托盘菜单「应用后清理缓存」可运行时切换。
+
+示例：
+
+```bash
+python run.py
+python run.py --no-cleanup-after-apply
 ```
 
 ---

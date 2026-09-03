@@ -129,6 +129,11 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             daemon=True,
         ).start()
 
+    def on_toggle_cleanup(icon, item):
+        enabled = not job_ref.cleanup_after_apply
+        job_ref.set_cleanup_after_apply(enabled)
+        logging.info("应用后清理缓存已%s", "开启" if enabled else "关闭")
+
     def make_margin_top_item(percent: float):
         def on_select(icon, item):
             job_ref.set_margin_top_percent(percent)
@@ -184,6 +189,11 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         pystray.MenuItem(pause_menu_text, on_toggle_pause),
         pystray.MenuItem("图片分辨率", resolution_menu),
         pystray.MenuItem("黑边修边", margin_menu),
+        pystray.MenuItem(
+            "应用后清理缓存",
+            on_toggle_cleanup,
+            checked=lambda item: job_ref.cleanup_after_apply,
+        ),
         pystray.MenuItem(
             "开机启动",
             on_startup,

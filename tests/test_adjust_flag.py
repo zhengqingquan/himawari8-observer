@@ -33,6 +33,14 @@ class AdjustFlagTests(unittest.TestCase):
         config = _fresh_config(["run.py", "--no-adjust"])
         self.assertFalse(config.is_auto_adjust_picture())
 
+    def test_default_cleanup_after_apply_is_true(self):
+        config = _fresh_config(["run.py"])
+        self.assertTrue(config.is_cleanup_after_apply())
+
+    def test_no_cleanup_after_apply_disables(self):
+        config = _fresh_config(["run.py", "--no-cleanup-after-apply"])
+        self.assertFalse(config.is_cleanup_after_apply())
+
     def test_default_margin_percents_are_five(self):
         config = _fresh_config(["run.py"])
         self.assertEqual(config.get_margin_top_percent(), 5.0)

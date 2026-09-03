@@ -86,6 +86,16 @@ class Config:
         )
 
         self._parser.add_argument(
+            "--cleanup-after-apply",
+            dest="cleanup_after_apply",
+            default=True,
+            action=argparse.BooleanOptionalAction,
+            help="After setting wallpaper, delete tiles and old img folders "
+            "but keep the current wallpaper file (default: on; "
+            "use --no-cleanup-after-apply to disable).",
+        )
+
+        self._parser.add_argument(
             "-v", "--version", action="version", version=f"%(prog)s {SOFTWARE_VERSION}"
         )
 
@@ -99,6 +109,7 @@ class Config:
             self._args.margin_top_percent,
             self._args.margin_bottom_percent,
         )
+        logging.info(f"Cleanup after apply: {self._args.cleanup_after_apply}")
 
     # TODO 可以重新解析参数。
     def parse_known_args(self, args):
@@ -115,3 +126,6 @@ class Config:
 
     def get_margin_bottom_percent(self):
         return self._args.margin_bottom_percent
+
+    def is_cleanup_after_apply(self):
+        return self._args.cleanup_after_apply
