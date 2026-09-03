@@ -86,9 +86,7 @@ class CleanupAfterApplyTests(unittest.TestCase):
             self.assertTrue(keep.is_file())
             self.assertFalse((img_root / "20210603052000" / "4d").exists())
             self.assertFalse(
-                (
-                    img_root / "20210603052000" / "complete" / "4d20210603052000.png"
-                ).exists()
+                (img_root / "20210603052000" / "complete" / "4d20210603052000.png").exists()
             )
 
     def test_pipeline_skips_cleanup_when_set_wallpaper_fails(self):

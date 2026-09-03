@@ -1,17 +1,22 @@
+"""系统托盘菜单：分辨率、修边、暂停、开机启动与关于。"""
+
+from __future__ import annotations
+
+import ctypes
 import logging
 import os
 import sys
 import threading
-import ctypes
 from pathlib import Path
 
 import pystray
 import webbrowser
 from PIL import Image
+
 from src.event.event import end_main_sys
 from src.metadata.soft_config import IMAGE_RESOLUTION, LOG_PATH, MARGIN_PERCENT_CHOICES
 from src.metadata.soft_info import DESCRIPTION, PROGRAM_NAME, SOFTWARE_VERSION, WEBSITE
-from src.startup import add_to_startup_exe, remove_from_startup_exe, is_startup_set
+from src.startup import add_to_startup_exe, is_startup_set, remove_from_startup_exe
 from src.wallpaper.job import WallpaperJobRef
 from src.wallpaper.update import (
     is_paused,
@@ -24,7 +29,11 @@ _TRAY_ICON_NAME = "tray_icon.png"
 
 
 def _tray_icon_path() -> Path:
-    """打包后从 _MEIPASS/assets 读；开发时从仓库 assets/ 读。"""
+    """解析托盘图标路径。
+
+    Returns:
+        打包环境优先 ``_MEIPASS/assets``；开发时为仓库根 ``assets/``。
+    """
     if getattr(sys, "frozen", False):
         meipass = getattr(sys, "_MEIPASS", None)
         if meipass:
@@ -35,11 +44,12 @@ def _tray_icon_path() -> Path:
 
 
 def create_image():
+    """加载托盘图标图像。"""
     return Image.open(_tray_icon_path())
 
 
-# 创建托盘图标右键菜单的回调函数
 def on_clicked(icon, item):
+    """弹出关于对话框（独立线程，避免卡住 pystray 消息循环）。"""
     message_text = f"""\
 软件：{PROGRAM_NAME}
 版本：{SOFTWARE_VERSION}
@@ -47,7 +57,6 @@ def on_clicked(icon, item):
 """
 
     def show_about():
-        # 独立线程弹出，避免卡住 pystray 的 Win32 消息循环。
         # MB_OK | MB_ICONINFORMATION | MB_TOPMOST | MB_SETFOREGROUND
         ctypes.windll.user32.MessageBoxW(
             None,
@@ -59,19 +68,19 @@ def on_clicked(icon, item):
     threading.Thread(target=show_about, daemon=True).start()
 
 
-# 创建托盘图标右键菜单的回调函数
 def on_quit(icon, item):
+    """退出托盘并结束主线程保活。"""
     icon.stop()
     end_main_sys()
 
 
-# 打开官网菜单项的回调函数。
 def on_offical_website(icon, item):
+    """打开产品官网。"""
     webbrowser.open_new(WEBSITE)
 
 
-# 开机启动菜单项的回调函数。
 def on_startup(icon, item):
+    """切换开机启动注册表项。"""
     # TODO 需要判断是否有同名的，但执行路径不一样的，若有就删掉重新设置。
     if is_startup_set():
         remove_from_startup_exe()
@@ -80,14 +89,18 @@ def on_startup(icon, item):
 
 
 def on_open_log(icon, item):
+    """用系统默认方式打开日志文件。"""
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     LOG_PATH.touch(exist_ok=True)
     os.startfile(LOG_PATH)
 
 
-# 创建托盘图标
 def setup_tray_icon(job_ref: WallpaperJobRef):
-    """job_ref: 托盘与定时器共享的壁纸任务引用，由 src.app 注入。"""
+    """创建并阻塞运行系统托盘图标。
+
+    Args:
+        job_ref: 托盘与定时器共享的壁纸任务引用，由 ``src.app`` 注入。
+    """
 
     def on_update_wallpaper(icon, item):
         threading.Thread(

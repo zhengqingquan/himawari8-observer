@@ -1,38 +1,39 @@
-"""
-创建文件夹
-"""
+"""为瓦片与合成输出创建本地目录。"""
 
-import os
+from __future__ import annotations
+
 import logging
+import os
+
 from src.pic.Pic import Pic
 
 
-def arr_create_folder(arr):
-    """
-    根据参数传入的数组创建文件夹
-    :param arr:
-    :return:None
+def arr_create_folder(arr) -> None:
+    """按路径列表创建目录。
+
+    Args:
+        arr: 目录路径可迭代对象。
     """
     for item in arr:
         create_folder(item)
 
 
-def create_folder(folder_path):
-    """
-    判断路径是否存在，若不存在则创建一个。
-    :param folder_path:文件夹路径。判断文件夹是否存在，如果不存在则创建一个
-    :return:None
+def create_folder(folder_path) -> None:
+    """若路径不存在则创建目录。
+
+    Args:
+        folder_path: 目标文件夹路径。
     """
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
 
 
-def cls_create_folder(pic: Pic):
+def cls_create_folder(pic: Pic) -> None:
+    """按 Pic 实例创建瓦片子目录与合成输出目录。
+
+    Args:
+        pic: 等分瓦片图实例。
     """
-    根据参数传入的pic类创建文件夹。
-    :param pic:Pic类，表示照片
-    :return:None
-    """
-    arr_create_folder(pic.arr_puzzle)  # 创建碎片文件夹。
-    create_folder(pic.folder_path)  # 创建complete文件夹。
+    arr_create_folder(pic.arr_puzzle)
+    create_folder(pic.folder_path)
     logging.info("文件夹folder构建完成。")

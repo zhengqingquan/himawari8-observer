@@ -1,12 +1,17 @@
+"""进程保活：主线程等待退出信号。"""
+
+from __future__ import annotations
+
 import threading
 
-# 使用事件保持主线程运行
 stop_event = threading.Event()
 
 
-def end_main_sys():
-    stop_event.set()  # 触发停止事件
+def end_main_sys() -> None:
+    """通知主线程退出。"""
+    stop_event.set()
 
 
-def wait_sys():
-    stop_event.wait()  # 等待停止事件
+def wait_sys() -> None:
+    """阻塞直至 ``end_main_sys`` 被调用。"""
+    stop_event.wait()

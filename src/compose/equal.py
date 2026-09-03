@@ -1,25 +1,26 @@
-"""
-png图片的合成
-"""
+"""等分瓦片合成与可选黑边修边。"""
 
-from PIL import Image, ImageGrab
-import os
+from __future__ import annotations
+
 import logging
 import math
+import os
+
+from PIL import Image, ImageGrab
 
 
-def cls_photo_composition(pic):
-    """
-    将多张碎片照片合成一张完整的照片。
-    :param pic:Pic类，表示某张照片。
-    :return:
+def cls_photo_composition(pic) -> None:
+    """将多张瓦片合成为一张等分完整图，并保存到 ``pic.final_path_equal``。
+
+    Args:
+        pic: 等分瓦片图实例（需已下载完成）。
     """
     axis_x = 0
     axis_y = 0
     joint = Image.new("RGB", (pic.pic_side, pic.pic_side))
     for key, val in pic.dic.items():
         img = Image.open(val[0])
-        joint.paste(img, (pic.pic_pixel * axis_x, pic.pic_pixel * axis_y))  # (x，y)
+        joint.paste(img, (pic.pic_pixel * axis_x, pic.pic_pixel * axis_y))
         axis_x += 1
         if axis_x >= pic.int_equal:
             axis_x = 0
@@ -28,15 +29,15 @@ def cls_photo_composition(pic):
     print(f"图片合成结束。路径为：{os.path.abspath(pic.final_path_equal)}")
 
 
-def fix_pic(file, margin, path, *, top_percent=5.0, bottom_percent=5.0):
-    """
-    将正方形等分合成图嵌入与屏幕同比例的黑边画布。
+def fix_pic(file, margin, path, *, top_percent=5.0, bottom_percent=5.0) -> None:
+    """将正方形等分合成图嵌入与屏幕同比例的黑边画布。
 
-    :param file: 原文件路径
-    :param margin: 原图边长（像素）
-    :param path: 保存路径
-    :param top_percent: 顶边黑边占原图边长的百分比
-    :param bottom_percent: 底边黑边占原图边长的百分比
+    Args:
+        file: 原文件路径。
+        margin: 原图边长（像素）。
+        path: 输出保存路径。
+        top_percent: 顶边黑边占原图边长的百分比。
+        bottom_percent: 底边黑边占原图边长的百分比。
     """
     screen_width, screen_height = ImageGrab.grab().size
     logging.info(f"当前屏幕分辨率: {screen_width}x{screen_height}")

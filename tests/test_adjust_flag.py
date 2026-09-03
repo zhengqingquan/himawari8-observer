@@ -47,9 +47,7 @@ class AdjustFlagTests(unittest.TestCase):
         self.assertEqual(config.get_margin_bottom_percent(), 5.0)
 
     def test_margin_percents_can_be_set(self):
-        config = _fresh_config(
-            ["run.py", "--margin-top", "3", "--margin-bottom", "12.5"]
-        )
+        config = _fresh_config(["run.py", "--margin-top", "3", "--margin-bottom", "12.5"])
         self.assertEqual(config.get_margin_top_percent(), 3.0)
         self.assertEqual(config.get_margin_bottom_percent(), 12.5)
 

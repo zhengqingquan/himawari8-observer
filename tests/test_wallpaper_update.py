@@ -84,9 +84,7 @@ class RunWallpaperUpdateTests(unittest.TestCase):
         self.assertTrue(started.wait(timeout=2))
 
         skipped_calls = []
-        self.assertFalse(
-            run_wallpaper_update(pipeline=lambda: skipped_calls.append(1))
-        )
+        self.assertFalse(run_wallpaper_update(pipeline=lambda: skipped_calls.append(1)))
         self.assertEqual(skipped_calls, [])
 
         release.set()

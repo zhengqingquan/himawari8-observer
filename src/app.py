@@ -29,12 +29,8 @@ def main() -> None:
         )
 
         # 托盘与调度共享同一任务引用（托盘可运行中换档）
-        threading.Thread(
-            target=lambda: setup_tray_icon(job_ref), daemon=True
-        ).start()
-        threading.Thread(
-            target=lambda: stat_time_tast(job_ref), daemon=True
-        ).start()
+        threading.Thread(target=lambda: setup_tray_icon(job_ref), daemon=True).start()
+        threading.Thread(target=lambda: stat_time_tast(job_ref), daemon=True).start()
 
         wait_sys()
     except Exception as e:

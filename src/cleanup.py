@@ -16,6 +16,11 @@ def cleanup_after_wallpaper_apply(
     """保留 keep_file，删除本次瓦片与多余中间图，并清掉其它旧观测目录。
 
     删除失败只记日志，不向外抛。
+
+    Args:
+        img_root: 影像缓存根目录（通常为 ``.../img``）。
+        current_run_root: 本次观测时间对应的运行目录。
+        keep_file: 设壁纸后需保留的文件（须位于 img_root 下）。
     """
     try:
         img_root = img_root.resolve()

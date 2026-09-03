@@ -1,18 +1,21 @@
-"""
-更换window桌面
-"""
+"""通过 Win32 API 设置桌面壁纸。"""
 
-import os
+from __future__ import annotations
+
 import ctypes
-from pathlib import Path
 import logging
+import os
+from pathlib import Path
 
 
-def path_wallpaper(wallpaper_path: Path):
-    """
-    根据路径替换桌面背景，win7 可能不支持 png 格式。
-    :param wallpaper_path: 图片的路径。
-    :return:True or False
+def path_wallpaper(wallpaper_path: Path) -> bool:
+    """按路径替换桌面背景（Win7 可能不支持 PNG）。
+
+    Args:
+        wallpaper_path: 壁纸图片路径（须存在；内部会转为绝对路径）。
+
+    Returns:
+        成功为 True；文件不存在为 False。
     """
     try:
         if wallpaper_path.exists() is False:
@@ -20,7 +23,7 @@ def path_wallpaper(wallpaper_path: Path):
 
         logging.info(f"图片路径为：{wallpaper_path.resolve()}")
 
-        # 必须使用图片的绝对路径。若不是绝对路径，则会设置为默认的纯（黑）色背景。
+        # 必须使用绝对路径，否则可能落到默认纯色背景。
         SPI_SETDESKWALLPAPER = 20
         SPIF_UPDATEINIFILE = 1
         ctypes.windll.user32.SystemParametersInfoW(

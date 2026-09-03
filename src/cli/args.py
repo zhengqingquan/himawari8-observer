@@ -1,5 +1,10 @@
+"""CLI 参数解析：单例 Config。"""
+
+from __future__ import annotations
+
 import argparse
 import logging
+
 from src.metadata.soft_config import (
     DEFAULT_MARGIN_BOTTOM_PERCENT,
     DEFAULT_MARGIN_TOP_PERCENT,
@@ -10,6 +15,7 @@ from src.metadata.soft_info import DESCRIPTION, EPILOG, PROGRAM_NAME, SOFTWARE_V
 
 
 def _percent(value: str) -> float:
+    """将字符串解析为 0–100 的百分比。"""
     try:
         percent = float(value)
     except ValueError as exc:
@@ -20,6 +26,8 @@ def _percent(value: str) -> float:
 
 
 class Config:
+    """进程内单例：解析并缓存命令行参数。"""
+
     _instance = None
     _parser = None
     _args = None
@@ -37,13 +45,11 @@ class Config:
         self._initialized = True
 
     def parse_arguments(self):
-        # 实例化解析器对象
+        """定义并解析 CLI 参数。"""
         self._parser = argparse.ArgumentParser(
             prog=PROGRAM_NAME,
             description=DESCRIPTION,
             epilog=EPILOG,
-            # usage=argparse.SUPPRESS,  # 关闭用例usage，该值默认为None
-            # add_help=True  # 为解析器默认添加一个-h/--help选项
         )
 
         self._parser.add_argument(
@@ -99,7 +105,6 @@ class Config:
             "-v", "--version", action="version", version=f"%(prog)s {SOFTWARE_VERSION}"
         )
 
-        # 解析参数。
         self._args = self._parser.parse_args()
 
         logging.info(f"Download resolution: {self._args.download_resolution}")

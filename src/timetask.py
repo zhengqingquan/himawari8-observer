@@ -1,24 +1,30 @@
-from apscheduler.schedulers.blocking import BlockingScheduler
-from src.wallpaper.update import run_wallpaper_update
-import sys
+"""定时调度：按配置间隔触发壁纸更新。"""
+
+from __future__ import annotations
+
 import datetime
+import sys
 from collections.abc import Callable
+
+from apscheduler.schedulers.blocking import BlockingScheduler
+
 from src.metadata.soft_config import DOWNLOAD_INTERVAL_TIME
+from src.wallpaper.update import run_wallpaper_update
 
 
-def stat_time_tast(pipeline: Callable[[], None]):
+def stat_time_tast(pipeline: Callable[[], None]) -> None:
+    """阻塞运行间隔调度；启动后立即执行一次，之后按 ``DOWNLOAD_INTERVAL_TIME`` 周期触发。
+
+    Args:
+        pipeline: 零参壁纸任务（通常为 WallpaperJobRef）。
+    """
     scheduler = BlockingScheduler()
-
-    # 添加一个每隔一段时间执行一次；启动时立即跑一次
     scheduler.add_job(
         lambda: run_wallpaper_update(pipeline=pipeline, respect_pause=True),
         "interval",
         seconds=DOWNLOAD_INTERVAL_TIME,
         next_run_time=datetime.datetime.now(),
     )
-
-    # 也可以添加其他类型的任务，比如每天在特定时间执行
-    # scheduler.add_job(job, 'cron', hour=10, minute=30)
 
     try:
         scheduler.start()

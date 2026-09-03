@@ -1,3 +1,5 @@
+"""等分瓦片图模型：观测时间 + 档位 → 本地路径与下载字典。"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -7,7 +9,7 @@ from src.metadata.soft_config import PROGRAM_DIR_ABS_PATH
 from src.resolution_grade import grade_to_grid, tile_pixel
 
 
-class Pic(object):
+class Pic:
     """等分瓦片图：按分辨率档位下载多张 550×550 瓦片，再合成为一张图。"""
 
     himawari8_base = "https://himawari8.nict.go.jp/img/D531106"
@@ -16,11 +18,12 @@ class Pic(object):
     dl_finish_equal = False
 
     def __init__(self, pic_time, equal, *, base_dir: Path | None = None):
-        """
-        根据观测时间与分辨率档位构造图片实例。
-        :param pic_time: 观测时间
-        :param equal: 档位字符串，例如 20d
-        :param base_dir: 影像根目录的父路径（其下为 img/）；默认程序目录
+        """根据观测时间与分辨率档位构造图片实例。
+
+        Args:
+            pic_time: 观测时间（struct_time）。
+            equal: 档位字符串，例如 ``4d`` / ``20d``。
+            base_dir: 影像根目录的父路径（其下为 ``img/``）；默认程序目录。
         """
         self.base_dir = Path(base_dir) if base_dir is not None else PROGRAM_DIR_ABS_PATH
         self.str_equal = equal
@@ -47,13 +50,11 @@ class Pic(object):
             f"{self.str_equal}"
             f"{self.year}{self.month}{self.day}{self.hour}{self.minute}{self.seconds}.{self.suffix}"
         )
-        self.folder_path = (
-            self.base_dir / self.folder_top / self.folder_root / self.folder_complete
-        )
+        self.folder_path = self.base_dir / self.folder_top / self.folder_root / self.folder_complete
         self.final_path_equal = self.folder_path / self.pic_name_equal
         self.build_dic()
 
-    def build_dic(self):
+    def build_dic(self) -> None:
         """构建瓦片 url → [path, status] 映射。"""
         print("正在构建url和path的映射字典。")
         location_x = 0
@@ -93,7 +94,7 @@ class Pic(object):
         if self.pic_chip == len(self.dic):
             print("url和path的映射字典构建完成。")
 
-    def download_finish(self):
+    def download_finish(self) -> bool:
         """全部瓦片下载完成则返回 True。"""
         self.dl_finish_equal = True
         for key, val in self.dic.items():
