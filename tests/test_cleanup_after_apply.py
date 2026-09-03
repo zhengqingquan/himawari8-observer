@@ -4,7 +4,6 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 from src.tool.cleanup import cleanup_after_wallpaper_apply
 from src.wallpaper_pipeline import run_wallpaper_pipeline
@@ -44,7 +43,8 @@ class CleanupAfterApplyTests(unittest.TestCase):
 
     def test_pipeline_cleans_when_enabled(self):
         with tempfile.TemporaryDirectory() as tmp:
-            img_root = Path(tmp) / "img"
+            base = Path(tmp)
+            img_root = base / "img"
             keep_name = "4d20210603052000_adjust.png"
 
             def fetch_observation_time():
@@ -72,30 +72,30 @@ class CleanupAfterApplyTests(unittest.TestCase):
                 self.assertTrue(path.is_file())
                 return True
 
-            with patch(
-                "src.wallpaper_pipeline.PROGRAM_DIR_ABS_PATH", Path(tmp)
-            ), patch(
-                "src.cls.Pic.PROGRAM_DIR_ABS_PATH", Path(tmp)
-            ):
-                run_wallpaper_pipeline(
-                    fetch_observation_time=fetch_observation_time,
-                    download_tiles=download_tiles,
-                    compose_equal=compose_equal,
-                    adjust_wallpaper=adjust_wallpaper,
-                    set_wallpaper=set_wallpaper,
-                    auto_adjust=True,
-                    cleanup_after_apply=True,
-                )
+            run_wallpaper_pipeline(
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                adjust_wallpaper=adjust_wallpaper,
+                set_wallpaper=set_wallpaper,
+                auto_adjust=True,
+                cleanup_after_apply=True,
+                base_dir=base,
+            )
 
             keep = img_root / "20210603052000" / "complete" / keep_name
             self.assertTrue(keep.is_file())
             self.assertFalse((img_root / "20210603052000" / "4d").exists())
             self.assertFalse(
-                (img_root / "20210603052000" / "complete" / "4d20210603052000.png").exists()
+                (
+                    img_root / "20210603052000" / "complete" / "4d20210603052000.png"
+                ).exists()
             )
 
     def test_pipeline_skips_cleanup_when_set_wallpaper_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+
             def fetch_observation_time():
                 return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
 
@@ -114,28 +114,17 @@ class CleanupAfterApplyTests(unittest.TestCase):
             def set_wallpaper(path: Path):
                 return False
 
-            with patch(
-                "src.wallpaper_pipeline.PROGRAM_DIR_ABS_PATH", Path(tmp)
-            ), patch(
-                "src.cls.Pic.PROGRAM_DIR_ABS_PATH", Path(tmp)
-            ):
-                run_wallpaper_pipeline(
-                    fetch_observation_time=fetch_observation_time,
-                    download_tiles=download_tiles,
-                    compose_equal=compose_equal,
-                    set_wallpaper=set_wallpaper,
-                    auto_adjust=False,
-                    cleanup_after_apply=True,
-                )
-
-            tile = (
-                Path(tmp)
-                / "img"
-                / "20210603052000"
-                / "4d"
-                / "0"
-                / "tile.png"
+            run_wallpaper_pipeline(
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                set_wallpaper=set_wallpaper,
+                auto_adjust=False,
+                cleanup_after_apply=True,
+                base_dir=base,
             )
+
+            tile = base / "img" / "20210603052000" / "4d" / "0" / "tile.png"
             self.assertTrue(tile.is_file())
 
 

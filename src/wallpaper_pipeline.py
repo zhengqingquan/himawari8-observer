@@ -12,7 +12,6 @@ from src.dl.dlinit import dl_init, get_last_time
 from src.metadata.soft_config import (
     DEFAULT_MARGIN_BOTTOM_PERCENT,
     DEFAULT_MARGIN_TOP_PERCENT,
-    PROGRAM_DIR_ABS_PATH,
 )
 from src.picdeal.photofunia import cls_photo_composition, fix_pic
 from src.resolution_grade import default_grade
@@ -56,8 +55,12 @@ def run_wallpaper_pipeline(
     margin_top_percent: float = DEFAULT_MARGIN_TOP_PERCENT,
     margin_bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
     cleanup_after_apply: bool = True,
+    base_dir: Path | None = None,
 ) -> None:
-    """跑一次壁纸更新。副作用步骤可注入，便于测试。"""
+    """跑一次壁纸更新。副作用步骤可注入，便于测试。
+
+    UI / 定时器只应通过 WallpaperJobRef 触发，不要直接 import 本模块或 dl/。
+    """
     fetch = fetch_observation_time or _default_fetch_observation_time
     download = download_tiles or _default_download_tiles
     compose = compose_equal or _default_compose_equal
@@ -79,7 +82,7 @@ def run_wallpaper_pipeline(
     adjust = adjust_wallpaper or default_adjust
 
     time_str = fetch()
-    pic = Pic(time_str, grade)
+    pic = Pic(time_str, grade, base_dir=base_dir)
     cls_create_folder(pic)
     download(pic)
     if not pic.download_finish():
@@ -91,7 +94,7 @@ def run_wallpaper_pipeline(
     if cleanup_after_apply and applied is not False:
         current_run_root = Path(pic.folder_path).parent
         cleanup_after_wallpaper_apply(
-            img_root=PROGRAM_DIR_ABS_PATH / pic.folder_top,
+            img_root=pic.base_dir / pic.folder_top,
             current_run_root=current_run_root,
             keep_file=Path(wallpaper_path),
         )

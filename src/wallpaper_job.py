@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Callable
+from pathlib import Path
 
 from src.metadata.soft_config import (
     DEFAULT_MARGIN_BOTTOM_PERCENT,
@@ -22,6 +23,7 @@ def build_wallpaper_job(
     margin_top_percent: float = DEFAULT_MARGIN_TOP_PERCENT,
     margin_bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
     cleanup_after_apply: bool = True,
+    base_dir: Path | None = None,
     run_pipeline: Callable[..., None] | None = None,
 ) -> Callable[[], None]:
     """返回零参 callable；每次调用使用构造时冻结的参数。"""
@@ -34,13 +36,17 @@ def build_wallpaper_job(
             margin_top_percent=margin_top_percent,
             margin_bottom_percent=margin_bottom_percent,
             cleanup_after_apply=cleanup_after_apply,
+            base_dir=base_dir,
         )
 
     return job
 
 
 class WallpaperJobRef:
-    """托盘与定时器共享的可调用任务；可在运行中更换分辨率档位。"""
+    """托盘与定时器共享的可调用任务；可在运行中更换分辨率档位。
+
+    UI / timetask 只应依赖本引用与 wallpaper_update，勿直连 pipeline / dl。
+    """
 
     def __init__(
         self,
@@ -50,6 +56,7 @@ class WallpaperJobRef:
         margin_top_percent: float = DEFAULT_MARGIN_TOP_PERCENT,
         margin_bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
         cleanup_after_apply: bool = True,
+        base_dir: Path | None = None,
         build_job: BuildJob | None = None,
     ) -> None:
         self._lock = threading.Lock()
@@ -57,6 +64,7 @@ class WallpaperJobRef:
         self._margin_top_percent = margin_top_percent
         self._margin_bottom_percent = margin_bottom_percent
         self._cleanup_after_apply = cleanup_after_apply
+        self._base_dir = base_dir
         self._build_job = build_job or build_wallpaper_job
         self._grade = resolution_grade
         self._job = self._build_job(
@@ -65,6 +73,7 @@ class WallpaperJobRef:
             margin_top_percent=margin_top_percent,
             margin_bottom_percent=margin_bottom_percent,
             cleanup_after_apply=cleanup_after_apply,
+            base_dir=base_dir,
         )
 
     def __call__(self) -> None:
@@ -96,6 +105,10 @@ class WallpaperJobRef:
     @property
     def cleanup_after_apply(self) -> bool:
         return self._cleanup_after_apply
+
+    @property
+    def base_dir(self) -> Path | None:
+        return self._base_dir
 
     def set_resolution_grade(self, resolution_grade: str) -> None:
         with self._lock:
@@ -132,4 +145,5 @@ class WallpaperJobRef:
             margin_top_percent=self._margin_top_percent,
             margin_bottom_percent=self._margin_bottom_percent,
             cleanup_after_apply=self._cleanup_after_apply,
+            base_dir=self._base_dir,
         )
