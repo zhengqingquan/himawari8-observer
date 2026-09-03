@@ -9,7 +9,7 @@ import os
 from PIL import Image, ImageGrab
 
 
-def cls_photo_composition(pic) -> None:
+def compose_equal_image(pic) -> None:
     """将多张瓦片合成为一张等分完整图，并保存到 ``pic.final_path_equal``。
 
     Args:
@@ -18,18 +18,18 @@ def cls_photo_composition(pic) -> None:
     axis_x = 0
     axis_y = 0
     joint = Image.new("RGB", (pic.pic_side, pic.pic_side))
-    for key, val in pic.dic.items():
+    for key, val in pic.tiles.items():
         img = Image.open(val[0])
         joint.paste(img, (pic.pic_pixel * axis_x, pic.pic_pixel * axis_y))
         axis_x += 1
-        if axis_x >= pic.int_equal:
+        if axis_x >= pic.grid_size:
             axis_x = 0
             axis_y += 1
     joint.save(pic.final_path_equal)
     print(f"图片合成结束。路径为：{os.path.abspath(pic.final_path_equal)}")
 
 
-def fix_pic(file, margin, path, *, top_percent=5.0, bottom_percent=5.0) -> None:
+def apply_margins(file, margin, path, *, top_percent=5.0, bottom_percent=5.0) -> None:
     """将正方形等分合成图嵌入与屏幕同比例的黑边画布。
 
     Args:

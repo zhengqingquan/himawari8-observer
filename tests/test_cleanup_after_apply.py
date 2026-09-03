@@ -50,10 +50,10 @@ class CleanupAfterApplyTests(unittest.TestCase):
                 return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
 
             def download_tiles(pic):
-                for entry in pic.dic.values():
+                for entry in pic.tiles.values():
                     entry[1] = 1
                 run_root = Path(pic.folder_path).parent
-                tile_dir = run_root / pic.str_equal / "0"
+                tile_dir = run_root / pic.grade / "0"
                 tile_dir.mkdir(parents=True, exist_ok=True)
                 (tile_dir / "tile.png").write_bytes(b"t")
                 Path(pic.folder_path).mkdir(parents=True, exist_ok=True)
@@ -96,10 +96,10 @@ class CleanupAfterApplyTests(unittest.TestCase):
                 return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
 
             def download_tiles(pic):
-                for entry in pic.dic.values():
+                for entry in pic.tiles.values():
                     entry[1] = 1
                 Path(pic.folder_path).mkdir(parents=True, exist_ok=True)
-                tile_dir = Path(pic.folder_path).parent / pic.str_equal / "0"
+                tile_dir = Path(pic.folder_path).parent / pic.grade / "0"
                 tile_dir.mkdir(parents=True, exist_ok=True)
                 (tile_dir / "tile.png").write_bytes(b"t")
                 Path(pic.final_path_equal).write_bytes(b"e")

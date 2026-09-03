@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 
 
-def path_wallpaper(wallpaper_path: Path) -> bool:
+def set_wallpaper(wallpaper_path: Path) -> bool:
     """按路径替换桌面背景（Win7 可能不支持 PNG）。
 
     Args:

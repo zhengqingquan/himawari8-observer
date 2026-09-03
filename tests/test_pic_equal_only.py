@@ -12,7 +12,7 @@ class PicEqualOnlyTests(unittest.TestCase):
         pic_time = time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
         with temporary_base_dir() as base_dir:
             pic = Pic(pic_time, "1d", base_dir=base_dir)
-            self.assertEqual(len(pic.dic), 1)
+            self.assertEqual(len(pic.tiles), 1)
             self.assertFalse(hasattr(pic, "post_data"))
             self.assertFalse(hasattr(pic, "pic_name_cpl"))
             self.assertFalse(hasattr(pic, "ensure_complete_download_fields"))
@@ -29,7 +29,7 @@ class PicEqualOnlyTests(unittest.TestCase):
                 pic.final_path_equal,
                 base / "img" / "20210603052000" / "complete" / "2d20210603052000.png",
             )
-            for path, _status in pic.dic.values():
+            for path, _status in pic.tiles.values():
                 self.assertTrue(str(path).startswith(str(base / "img")))
 
 

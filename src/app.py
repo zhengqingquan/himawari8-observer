@@ -6,17 +6,17 @@ import logging
 import threading
 
 from src.cli.args import Config
-from src.event.event import wait_sys
-from src.log.log import log_init
+from src.event.event import wait_for_shutdown
+from src.log.log import init_logging
 from src.resolution_grade import pixel_to_grade
-from src.timetask import stat_time_tast
+from src.timetask import start_scheduler
 from src.tray.sysTray import setup_tray_icon
 from src.wallpaper.job import WallpaperJobRef
 
 
 def main() -> None:
     try:
-        log_init()
+        init_logging()
 
         config = Config()
         grade = pixel_to_grade(config.get_download_resolution())
@@ -30,8 +30,8 @@ def main() -> None:
 
         # 托盘与调度共享同一任务引用（托盘可运行中换档）
         threading.Thread(target=lambda: setup_tray_icon(job_ref), daemon=True).start()
-        threading.Thread(target=lambda: stat_time_tast(job_ref), daemon=True).start()
+        threading.Thread(target=lambda: start_scheduler(job_ref), daemon=True).start()
 
-        wait_sys()
+        wait_for_shutdown()
     except Exception as e:
         logging.error(e)

@@ -7,7 +7,7 @@ import logging
 from src.metadata.soft_config import LOG_PATH
 
 
-def log_init() -> None:
+def init_logging() -> None:
     """配置根 logger：控制台与 ``LOG_PATH`` 文件双输出。"""
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)

@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from src.pic.Pic import Pic
 from src.download.pool import download_files
+from src.pic.Pic import Pic
 
 DownloadFiles = Callable[..., None]
 
@@ -17,7 +17,7 @@ def download_tiles(
     download_files_impl: DownloadFiles | None = None,
     **kwargs: Any,
 ) -> None:
-    """下载 ``pic.dic`` 中的全部瓦片（线程池 + Session/retry/状态位）。
+    """下载 ``pic.tiles`` 中的全部瓦片（线程池 + Session/retry/状态位）。
 
     Args:
         pic: 等分瓦片图实例。
@@ -25,4 +25,4 @@ def download_tiles(
         **kwargs: 转发给批量下载实现。
     """
     impl = download_files_impl or download_files
-    impl(pic.dic, **kwargs)
+    impl(pic.tiles, **kwargs)

@@ -7,11 +7,11 @@ import threading
 stop_event = threading.Event()
 
 
-def end_main_sys() -> None:
+def request_shutdown() -> None:
     """通知主线程退出。"""
     stop_event.set()
 
 
-def wait_sys() -> None:
-    """阻塞直至 ``end_main_sys`` 被调用。"""
+def wait_for_shutdown() -> None:
+    """阻塞直至 ``request_shutdown`` 被调用。"""
     stop_event.wait()

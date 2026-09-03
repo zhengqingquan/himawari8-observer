@@ -8,13 +8,13 @@ import os
 from src.pic.Pic import Pic
 
 
-def arr_create_folder(arr) -> None:
+def create_folders(paths) -> None:
     """按路径列表创建目录。
 
     Args:
-        arr: 目录路径可迭代对象。
+        paths: 目录路径可迭代对象。
     """
-    for item in arr:
+    for item in paths:
         create_folder(item)
 
 
@@ -28,12 +28,12 @@ def create_folder(folder_path) -> None:
         os.makedirs(folder_path)
 
 
-def cls_create_folder(pic: Pic) -> None:
+def create_pic_folders(pic: Pic) -> None:
     """按 Pic 实例创建瓦片子目录与合成输出目录。
 
     Args:
         pic: 等分瓦片图实例。
     """
-    arr_create_folder(pic.arr_puzzle)
+    create_folders(pic.tile_dirs)
     create_folder(pic.folder_path)
     logging.info("文件夹folder构建完成。")

@@ -9,17 +9,18 @@ from time import strftime, struct_time
 from typing import Any
 
 from src.cleanup import cleanup_after_wallpaper_apply
-from src.compose.equal import cls_photo_composition, fix_pic
-from src.download.observation import dl_init, get_last_time
+from src.compose.equal import apply_margins, compose_equal_image
+from src.download.observation import create_session
+from src.download.observation import fetch_observation_time as fetch_latest_observation_time
 from src.download.tiles import download_tiles
-from src.folder import cls_create_folder
+from src.folder import create_pic_folders
 from src.metadata.soft_config import (
     DEFAULT_MARGIN_BOTTOM_PERCENT,
     DEFAULT_MARGIN_TOP_PERCENT,
 )
 from src.pic.Pic import Pic
 from src.resolution_grade import default_grade
-from src.set_wallpaper import path_wallpaper
+from src.set_wallpaper import set_wallpaper as apply_desktop_wallpaper
 
 FetchObservationTime = Callable[[], struct_time]
 DownloadTiles = Callable[[Pic], None]
@@ -30,7 +31,7 @@ AppliedRunState = MutableMapping[str, Any]
 
 
 def _default_fetch_observation_time() -> struct_time:
-    return get_last_time(dl_init())
+    return fetch_latest_observation_time(create_session())
 
 
 def _default_download_tiles(pic: Pic) -> None:
@@ -38,11 +39,11 @@ def _default_download_tiles(pic: Pic) -> None:
 
 
 def _default_compose_equal(pic: Pic) -> None:
-    cls_photo_composition(pic)
+    compose_equal_image(pic)
 
 
 def _default_set_wallpaper(path: Path) -> bool | None:
-    return path_wallpaper(path)
+    return apply_desktop_wallpaper(path)
 
 
 def build_applied_run_key(
@@ -92,7 +93,7 @@ def run_wallpaper_pipeline(
     def default_adjust(pic: Pic) -> Path:
         src = Path(pic.final_path_equal)
         out = src.with_name(f"{src.stem}_adjust{src.suffix}")
-        fix_pic(
+        apply_margins(
             str(src),
             pic.pic_side,
             str(out),
@@ -116,7 +117,7 @@ def run_wallpaper_pipeline(
         return
 
     pic = Pic(time_str, grade, base_dir=base_dir)
-    cls_create_folder(pic)
+    create_pic_folders(pic)
     download(pic)
     if not pic.download_finish():
         logging.warning("瓦片未全部下载完成，跳过合成与设壁纸")

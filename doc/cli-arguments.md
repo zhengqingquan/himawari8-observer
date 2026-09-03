@@ -73,7 +73,7 @@ python run.py -r
 
 将正方形合成图放入与屏幕同比例的黑边画布，底边加厚，减轻任务栏遮挡。
 
-> **实现说明**：`BooleanOptionalAction`，**默认开启**；`--no-adjust` 关闭。启动时冻结进 `build_wallpaper_job`，compose 之后、设壁纸之前调用 `fix_pic`，输出为同目录 `*_adjust.png`。
+> **实现说明**：`BooleanOptionalAction`，**默认开启**；`--no-adjust` 关闭。启动时冻结进 `build_wallpaper_job`，compose 之后、设壁纸之前调用 `apply_margins`，输出为同目录 `*_adjust.png`。
 
 示例：
 

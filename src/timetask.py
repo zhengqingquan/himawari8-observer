@@ -12,7 +12,7 @@ from src.metadata.soft_config import DOWNLOAD_INTERVAL_TIME
 from src.wallpaper.update import run_wallpaper_update
 
 
-def stat_time_tast(pipeline: Callable[[], None]) -> None:
+def start_scheduler(pipeline: Callable[[], None]) -> None:
     """阻塞运行间隔调度；启动后立即执行一次，之后按 ``DOWNLOAD_INTERVAL_TIME`` 周期触发。
 
     Args:

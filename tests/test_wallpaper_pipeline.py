@@ -17,12 +17,12 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
 
         def download_tiles(pic):
-            events.append(("download", pic.str_equal))
-            for entry in pic.dic.values():
+            events.append(("download", pic.grade))
+            for entry in pic.tiles.values():
                 entry[1] = 1
 
         def compose_equal(pic):
-            events.append(("compose", pic.str_equal))
+            events.append(("compose", pic.grade))
 
         def set_wallpaper(path: Path):
             events.append(("set", path.name))
@@ -54,7 +54,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
 
         def download_tiles(pic):
-            for entry in pic.dic.values():
+            for entry in pic.tiles.values():
                 entry[1] = 1
 
         def compose_equal(pic):
@@ -88,7 +88,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
 
         def download_tiles(pic):
-            for entry in pic.dic.values():
+            for entry in pic.tiles.values():
                 entry[1] = 1
 
         def compose_equal(pic):
@@ -153,7 +153,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
         def download_tiles(pic):
             events.append("download")
-            for entry in pic.dic.values():
+            for entry in pic.tiles.values():
                 entry[1] = 1
 
         def compose_equal(pic):
@@ -194,7 +194,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
         def download_tiles(pic):
             events.append(("download", pic.folder_root))
-            for entry in pic.dic.values():
+            for entry in pic.tiles.values():
                 entry[1] = 1
 
         def compose_equal(pic):

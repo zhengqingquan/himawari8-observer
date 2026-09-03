@@ -13,7 +13,7 @@ import pystray
 import webbrowser
 from PIL import Image
 
-from src.event.event import end_main_sys
+from src.event.event import request_shutdown
 from src.metadata.soft_config import IMAGE_RESOLUTION, LOG_PATH, MARGIN_PERCENT_CHOICES
 from src.metadata.soft_info import DESCRIPTION, PROGRAM_NAME, SOFTWARE_VERSION, WEBSITE
 from src.startup import add_to_startup_exe, is_startup_set, remove_from_startup_exe
@@ -71,10 +71,10 @@ def on_clicked(icon, item):
 def on_quit(icon, item):
     """退出托盘并结束主线程保活。"""
     icon.stop()
-    end_main_sys()
+    request_shutdown()
 
 
-def on_offical_website(icon, item):
+def on_official_website(icon, item):
     """打开产品官网。"""
     webbrowser.open_new(WEBSITE)
 
@@ -180,7 +180,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         )
 
     global icon
-    icon = pystray.Icon(f"{PROGRAM_NAME}_sysTray_icon")
+    icon = pystray.Icon(f"{PROGRAM_NAME}_tray_icon")
     icon.icon = create_image()
     icon.title = PROGRAM_NAME
 
@@ -213,7 +213,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             checked=lambda item: is_startup_set(),
         ),
         pystray.MenuItem("打开日志", on_open_log),
-        pystray.MenuItem("访问官网", on_offical_website),
+        pystray.MenuItem("访问官网", on_official_website),
         pystray.MenuItem(f"关于 {PROGRAM_NAME}", on_clicked),
         pystray.MenuItem("退出", on_quit),
     )
