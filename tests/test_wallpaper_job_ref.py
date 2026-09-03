@@ -93,6 +93,23 @@ class WallpaperJobRefTests(unittest.TestCase):
         self.assertFalse(ref.cleanup_after_apply)
         self.assertEqual(flags, [True, False])
 
+    def test_applied_observation_time_from_run_state_and_survives_rebuild(self):
+        ref = WallpaperJobRef("4d", build_job=_noop_build)
+        self.assertIsNone(ref.applied_observation_time)
+
+        ref._applied_run_state["last"] = (
+            "2026-09-03 02:10:00",
+            "4d",
+            False,
+            0.0,
+            5.0,
+        )
+        self.assertEqual(ref.applied_observation_time, "2026-09-03 02:10:00")
+
+        ref.set_resolution_grade("8d")
+        self.assertIsNone(ref._applied_run_state.get("last"))
+        self.assertEqual(ref.applied_observation_time, "2026-09-03 02:10:00")
+
 
 class WallpaperJobRefProgressiveTests(unittest.TestCase):
     def test_progressive_runs_preview_then_target(self):

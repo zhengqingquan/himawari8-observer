@@ -85,6 +85,8 @@ class WallpaperJobRef:
         self._run_pipeline = run_pipeline or run_wallpaper_pipeline
         self._grade = resolution_grade
         self._applied_run_state: dict[str, Any] = {"last": None}
+        # 上次成功上墙的观测时间；换参重建 job 清空指纹时仍保留，供托盘展示。
+        self._last_observation_time: str | None = None
         self._job = self._build_initial_job()
 
     def _build_initial_job(self) -> Callable[[], None]:
@@ -182,6 +184,15 @@ class WallpaperJobRef:
     def base_dir(self) -> Path | None:
         return self._base_dir
 
+    @property
+    def applied_observation_time(self) -> str | None:
+        """当前壁纸对应的观测时间（``YYYY-MM-DD HH:MM:SS``，UTC）；尚未成功应用则为 ``None``。"""
+        with self._lock:
+            last = self._applied_run_state.get("last")
+            if isinstance(last, tuple) and last:
+                self._last_observation_time = str(last[0])
+            return self._last_observation_time
+
     def set_resolution_grade(self, resolution_grade: str) -> None:
         with self._lock:
             self._grade = resolution_grade
@@ -211,6 +222,9 @@ class WallpaperJobRef:
             self._rebuild_job_locked()
 
     def _rebuild_job_locked(self) -> None:
+        last = self._applied_run_state.get("last")
+        if isinstance(last, tuple) and last:
+            self._last_observation_time = str(last[0])
         self._applied_run_state = {"last": None}
         self._job = self._build_job(
             self._grade,

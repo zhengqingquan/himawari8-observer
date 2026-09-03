@@ -1,4 +1,4 @@
-"""系统托盘菜单：分辨率、修边、暂停、开机启动、日志与关于。"""
+"""系统托盘菜单：壁纸时间、分辨率、修边、暂停、开机启动、日志与关于。"""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import logging
 import os
 import sys
 import threading
+from datetime import datetime, timezone, tzinfo
 from pathlib import Path
 
 import pystray
@@ -40,6 +41,26 @@ from src.wallpaper.update import (
 )
 
 _TRAY_ICON_NAME = "tray_icon.png"
+_OBS_TIME_FMT = "%Y-%m-%d %H:%M:%S"
+
+
+def format_observation_local_time(
+    utc_time_str: str,
+    *,
+    local_tz: tzinfo | None = None,
+) -> str:
+    """将 NICT UTC 观测时间字符串换算为本机（或指定）时区时间。
+
+    Args:
+        utc_time_str: ``YYYY-MM-DD HH:MM:SS``（按 UTC 解释）。
+        local_tz: 目标时区；默认使用系统本地时区。
+
+    Returns:
+        换算后的 ``YYYY-MM-DD HH:MM:SS``。
+    """
+    utc_dt = datetime.strptime(utc_time_str, _OBS_TIME_FMT).replace(tzinfo=timezone.utc)
+    local_dt = utc_dt.astimezone(local_tz)
+    return local_dt.strftime(_OBS_TIME_FMT)
 
 
 def _tray_icon_path() -> Path:
@@ -301,7 +322,27 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         pystray.MenuItem("检查更新", on_check_update),
     )
 
+    def wallpaper_time_local_text(_item):
+        obs_time = job_ref.applied_observation_time
+        if not obs_time:
+            return "壁纸时间（本地）：尚未应用"
+        try:
+            local = format_observation_local_time(obs_time)
+        except (ValueError, OSError):
+            logging.exception("Failed to convert observation time to local: %s", obs_time)
+            return "壁纸时间（本地）：—"
+        return f"壁纸时间（本地）：{local}"
+
+    def wallpaper_time_utc_text(_item):
+        obs_time = job_ref.applied_observation_time
+        if obs_time:
+            return f"壁纸时间（UTC）：{obs_time}"
+        return "壁纸时间（UTC）：尚未应用"
+
     icon.menu = pystray.Menu(
+        pystray.MenuItem(wallpaper_time_local_text, None),
+        pystray.MenuItem(wallpaper_time_utc_text, None),
+        pystray.Menu.SEPARATOR,
         pystray.MenuItem("立即更新壁纸", on_update_wallpaper),
         pystray.MenuItem(
             "暂停更新壁纸",
