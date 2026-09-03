@@ -134,6 +134,88 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
         self.assertEqual(events, ["download"])
 
+    def test_skips_when_applied_run_unchanged(self):
+        events = []
+        state = {"last": None}
+
+        def fetch_observation_time():
+            events.append("fetch")
+            return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
+
+        def download_tiles(pic):
+            events.append("download")
+            for entry in pic.dic.values():
+                entry[1] = 1
+
+        def compose_equal(pic):
+            events.append("compose")
+
+        def set_wallpaper(path: Path):
+            events.append("set")
+            return True
+
+        kwargs = dict(
+            fetch_observation_time=fetch_observation_time,
+            download_tiles=download_tiles,
+            compose_equal=compose_equal,
+            set_wallpaper=set_wallpaper,
+            cleanup_after_apply=False,
+            applied_run_state=state,
+        )
+        run_wallpaper_pipeline(**kwargs)
+        run_wallpaper_pipeline(**kwargs)
+
+        self.assertEqual(
+            events,
+            ["fetch", "download", "compose", "set", "fetch"],
+        )
+
+    def test_reruns_when_observation_time_changes(self):
+        events = []
+        state = {"last": None}
+        times = [
+            time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S"),
+            time.strptime("2021-06-03 05:30:00", "%Y-%m-%d %H:%M:%S"),
+        ]
+
+        def fetch_observation_time():
+            return times.pop(0)
+
+        def download_tiles(pic):
+            events.append(("download", pic.folder_root))
+            for entry in pic.dic.values():
+                entry[1] = 1
+
+        def compose_equal(pic):
+            events.append("compose")
+
+        def set_wallpaper(path: Path):
+            events.append(("set", path.name))
+            return True
+
+        kwargs = dict(
+            fetch_observation_time=fetch_observation_time,
+            download_tiles=download_tiles,
+            compose_equal=compose_equal,
+            set_wallpaper=set_wallpaper,
+            cleanup_after_apply=False,
+            applied_run_state=state,
+        )
+        run_wallpaper_pipeline(**kwargs)
+        run_wallpaper_pipeline(**kwargs)
+
+        self.assertEqual(
+            events,
+            [
+                ("download", "20210603052000"),
+                "compose",
+                ("set", "4d20210603052000.png"),
+                ("download", "20210603053000"),
+                "compose",
+                ("set", "4d20210603053000.png"),
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

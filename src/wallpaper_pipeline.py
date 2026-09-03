@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, MutableMapping
 from pathlib import Path
-from time import struct_time
+from time import strftime, struct_time
+from typing import Any
 
 from src.cls.Pic import Pic
 from src.dl.dlinit import dl_init, get_last_time
@@ -25,6 +26,7 @@ DownloadTiles = Callable[[Pic], None]
 ComposeEqual = Callable[[Pic], None]
 AdjustWallpaper = Callable[[Pic], Path]
 SetWallpaper = Callable[[Path], bool | None]
+AppliedRunState = MutableMapping[str, Any]
 
 
 def _default_fetch_observation_time() -> struct_time:
@@ -43,6 +45,24 @@ def _default_set_wallpaper(path: Path) -> bool | None:
     return path_wallpaper(path)
 
 
+def build_applied_run_key(
+    observation_time: struct_time,
+    *,
+    resolution_grade: str,
+    auto_adjust: bool,
+    margin_top_percent: float,
+    margin_bottom_percent: float,
+) -> tuple[str, str, bool, float, float]:
+    """用于判断是否可跳过重复下载的指纹（观测时间 + 影响成图的参数）。"""
+    return (
+        strftime("%Y-%m-%d %H:%M:%S", observation_time),
+        resolution_grade,
+        auto_adjust,
+        float(margin_top_percent),
+        float(margin_bottom_percent),
+    )
+
+
 def run_wallpaper_pipeline(
     *,
     fetch_observation_time: FetchObservationTime | None = None,
@@ -56,10 +76,12 @@ def run_wallpaper_pipeline(
     margin_bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
     cleanup_after_apply: bool = True,
     base_dir: Path | None = None,
+    applied_run_state: AppliedRunState | None = None,
 ) -> None:
     """跑一次壁纸更新。副作用步骤可注入，便于测试。
 
     UI / 定时器只应通过 WallpaperJobRef 触发，不要直接 import 本模块或 dl/。
+    若传入 applied_run_state 且指纹与上次成功应用相同，则跳过下载与后续步骤。
     """
     fetch = fetch_observation_time or _default_fetch_observation_time
     download = download_tiles or _default_download_tiles
@@ -82,6 +104,17 @@ def run_wallpaper_pipeline(
     adjust = adjust_wallpaper or default_adjust
 
     time_str = fetch()
+    run_key = build_applied_run_key(
+        time_str,
+        resolution_grade=grade,
+        auto_adjust=auto_adjust,
+        margin_top_percent=margin_top_percent,
+        margin_bottom_percent=margin_bottom_percent,
+    )
+    if applied_run_state is not None and applied_run_state.get("last") == run_key:
+        logging.info("观测时间与当前参数未变化，跳过本次更新")
+        return
+
     pic = Pic(time_str, grade, base_dir=base_dir)
     cls_create_folder(pic)
     download(pic)
@@ -91,7 +124,11 @@ def run_wallpaper_pipeline(
     compose(pic)
     wallpaper_path = adjust(pic) if auto_adjust else Path(pic.final_path_equal)
     applied = set_desktop(wallpaper_path)
-    if cleanup_after_apply and applied is not False:
+    if applied is False:
+        return
+    if applied_run_state is not None:
+        applied_run_state["last"] = run_key
+    if cleanup_after_apply:
         current_run_root = Path(pic.folder_path).parent
         cleanup_after_wallpaper_apply(
             img_root=pic.base_dir / pic.folder_top,

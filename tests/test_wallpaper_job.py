@@ -56,6 +56,23 @@ class BuildWallpaperJobTests(unittest.TestCase):
         job()
         self.assertEqual(margins, [(3.0, 12.0)])
 
+    def test_job_skips_second_identical_run_via_state(self):
+        calls = []
+
+        def fake_pipeline(*, applied_run_state=None, **_kwargs):
+            calls.append(applied_run_state)
+            if applied_run_state is not None and applied_run_state.get("last") == "done":
+                return
+            if applied_run_state is not None:
+                applied_run_state["last"] = "done"
+
+        job = build_wallpaper_job("4d", run_pipeline=fake_pipeline)
+        job()
+        job()
+        self.assertEqual(len(calls), 2)
+        self.assertIs(calls[0], calls[1])
+        self.assertEqual(calls[0]["last"], "done")
+
 
 if __name__ == "__main__":
     unittest.main()

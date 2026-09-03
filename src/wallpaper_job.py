@@ -26,8 +26,13 @@ def build_wallpaper_job(
     base_dir: Path | None = None,
     run_pipeline: Callable[..., None] | None = None,
 ) -> Callable[[], None]:
-    """返回零参 callable；每次调用使用构造时冻结的参数。"""
+    """返回零参 callable；每次调用使用构造时冻结的参数。
+
+    同一 job 闭包内记住上次成功应用的指纹；观测时间与成图参数未变则跳过下载。
+    换档 / 改修边等会重建 job，从而清空指纹并强制再跑一轮。
+    """
     pipeline = run_pipeline or run_wallpaper_pipeline
+    applied_run_state: dict[str, object] = {"last": None}
 
     def job() -> None:
         pipeline(
@@ -37,6 +42,7 @@ def build_wallpaper_job(
             margin_bottom_percent=margin_bottom_percent,
             cleanup_after_apply=cleanup_after_apply,
             base_dir=base_dir,
+            applied_run_state=applied_run_state,
         )
 
     return job

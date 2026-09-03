@@ -34,6 +34,7 @@ Data sources: [himawari8.nict.go.jp](https://himawari8.nict.go.jp/) · [himawari
 
 - Download 550×550 tiles at resolution grades from 550 to 11000 and composite locally
 - Updates about every 20 minutes by default; runs once immediately on startup
+- Skips download when observation time and compositing params are unchanged (changing resolution/padding forces a refresh)
 - Black-border padding on by default to reduce taskbar occlusion (top/bottom margins adjustable)
 - After applying wallpaper, cleans tiles and old caches by default (keeps the current wallpaper file)
 - Tray menu: manual update, pause schedule, change resolution, padding, cleanup toggle, start on boot, and more
