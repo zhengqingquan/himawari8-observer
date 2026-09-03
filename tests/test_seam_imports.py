@@ -13,8 +13,8 @@ _FORBIDDEN_IMPORT_PREFIXES = (
 )
 
 _GUARDED_FILES = (
-    Path("src/tray/sysTray.py"),
-    Path("src/timetask.py"),
+    Path("src/tray/menu.py"),
+    Path("src/scheduler.py"),
 )
 
 

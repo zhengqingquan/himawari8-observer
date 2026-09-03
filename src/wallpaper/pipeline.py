@@ -18,7 +18,7 @@ from src.metadata.soft_config import (
     DEFAULT_MARGIN_BOTTOM_PERCENT,
     DEFAULT_MARGIN_TOP_PERCENT,
 )
-from src.pic.Pic import Pic
+from src.pic.pic import Pic
 from src.resolution_grade import default_grade
 from src.set_wallpaper import set_wallpaper as apply_desktop_wallpaper
 

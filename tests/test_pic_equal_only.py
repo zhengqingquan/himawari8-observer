@@ -3,7 +3,7 @@
 import time
 import unittest
 
-from src.pic.Pic import Pic
+from src.pic.pic import Pic
 from tests.workdir_paths import temporary_base_dir
 
 

@@ -9,8 +9,8 @@ from src.cli.args import Config
 from src.event.event import wait_for_shutdown
 from src.log.log import init_logging
 from src.resolution_grade import pixel_to_grade
-from src.timetask import start_scheduler
-from src.tray.sysTray import setup_tray_icon
+from src.scheduler import start_scheduler
+from src.tray.menu import setup_tray_icon
 from src.wallpaper.job import WallpaperJobRef
 
 
