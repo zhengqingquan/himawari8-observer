@@ -15,7 +15,12 @@ from PIL import Image
 
 from src.event.event import request_shutdown
 from src.log.log import is_logging_enabled, set_logging_enabled
-from src.metadata.soft_config import IMAGE_RESOLUTION, LOG_PATH, MARGIN_PERCENT_CHOICES
+from src.metadata.soft_config import (
+    IMAGE_RESOLUTION,
+    LOG_PATH,
+    MARGIN_PERCENT_CHOICES,
+    PROGRAM_DIR_ABS_PATH,
+)
 from src.metadata.soft_info import DESCRIPTION, PROGRAM_NAME, SOFTWARE_VERSION, WEBSITE
 from src.settings import save_settings, settings_dict_from_job
 from src.startup import add_to_startup_exe, is_startup_set, remove_from_startup_exe
@@ -84,6 +89,13 @@ def on_quit(icon, item):
 def on_open_github(icon, item):
     """在浏览器中打开 GitHub 仓库。"""
     webbrowser.open_new(WEBSITE)
+
+
+def on_open_program_dir(icon, item):
+    """用资源管理器打开程序所在目录。"""
+    program_dir = PROGRAM_DIR_ABS_PATH
+    program_dir.mkdir(parents=True, exist_ok=True)
+    os.startfile(program_dir)
 
 
 def on_startup(icon, item):
@@ -238,6 +250,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         pystray.MenuItem("打开日志文件", on_open_log),
     )
     about_menu = pystray.Menu(
+        pystray.MenuItem("打开程序所在目录", on_open_program_dir),
         pystray.MenuItem("GitHub", on_open_github),
         pystray.MenuItem(f"关于 {PROGRAM_NAME}", on_clicked),
     )
