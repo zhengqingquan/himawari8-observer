@@ -68,13 +68,18 @@ class AppliedRunKey(NamedTuple):
     def options(self) -> PostprocessOptions:
         """指纹中的成图开关部分。"""
         return PostprocessOptions(
-            self.auto_adjust,
-            self.margin_top_percent,
-            self.margin_bottom_percent,
-            self.reduce_banding,
-            self.show_typhoon_marker,
-            self.show_my_location,
+            **{name: getattr(self, name) for name in PostprocessOptions._fields}
         )
+
+    @classmethod
+    def from_observation(
+        cls,
+        observation_time: str,
+        resolution_grade: str,
+        options: PostprocessOptions,
+    ) -> AppliedRunKey:
+        """观测时间字符串 + 档位 + 成图开关 → 指纹。"""
+        return cls(observation_time, resolution_grade, *options)
 
     @classmethod
     def from_raw(cls, value: Any) -> AppliedRunKey | None:
@@ -118,15 +123,10 @@ def build_applied_run_key(
     options: PostprocessOptions,
 ) -> AppliedRunKey:
     """用于判断是否可跳过重复下载的指纹（观测时间 + 影响成图的参数）。"""
-    return AppliedRunKey(
+    return AppliedRunKey.from_observation(
         strftime(OBS_TIME_FMT, observation_time),
         resolution_grade,
-        options.auto_adjust,
-        float(options.margin_top_percent),
-        float(options.margin_bottom_percent),
-        bool(options.reduce_banding),
-        bool(options.show_typhoon_marker),
-        bool(options.show_my_location),
+        options,
     )
 
 
@@ -177,13 +177,8 @@ def provisional_run_key_from_last(
     last_key = AppliedRunKey.from_raw(last)
     if last_key is None:
         return None
-    return AppliedRunKey(
+    return AppliedRunKey.from_observation(
         last_key.observation_time,
         resolution_grade,
-        options.auto_adjust,
-        float(options.margin_top_percent),
-        float(options.margin_bottom_percent),
-        bool(options.reduce_banding),
-        bool(options.show_typhoon_marker),
-        bool(options.show_my_location),
+        options,
     )

@@ -3,7 +3,7 @@
 import unittest
 
 from src.wallpaper.job import WallpaperJobRef
-from src.wallpaper.fingerprint import PostprocessOptions
+from src.wallpaper.fingerprint import AppliedRunKey, PostprocessOptions
 
 
 class WallpaperJobRefTests(unittest.TestCase):
@@ -126,22 +126,21 @@ class WallpaperJobRefTests(unittest.TestCase):
         ref = WallpaperJobRef("4d", build_job=_noop_build, persist_state=False)
         self.assertIsNone(ref.applied_observation_time)
 
-        ref._applied_run_state["last"] = (
+        ref._applied_run_state["last"] = AppliedRunKey.from_observation(
             "2026-09-03 02:10:00",
             "4d",
-            False,
-            0.0,
-            5.0,
-            False,
-            False,
-            False,
+            PostprocessOptions(margin_top_percent=0.0, margin_bottom_percent=5.0),
         )
         self.assertEqual(ref.applied_observation_time, "2026-09-03 02:10:00")
 
         ref.set_resolution_grade("8d")
         self.assertEqual(
             ref._applied_run_state.get("last"),
-            ("2026-09-03 02:10:00", "4d", False, 0.0, 5.0, False, False, False),
+            AppliedRunKey.from_observation(
+                "2026-09-03 02:10:00",
+                "4d",
+                PostprocessOptions(margin_top_percent=0.0, margin_bottom_percent=5.0),
+            ),
         )
         self.assertEqual(ref.applied_observation_time, "2026-09-03 02:10:00")
 
@@ -154,15 +153,15 @@ class WallpaperJobRefTests(unittest.TestCase):
 
             def job() -> None:
                 assert applied_run_state is not None
-                applied_run_state["last"] = (
+                applied_run_state["last"] = AppliedRunKey.from_observation(
                     "2026-09-04 01:40:00",
                     resolution_grade,
-                    True,
-                    0.0,
-                    5.0,
-                    False,
-                    True,
-                    False,
+                    PostprocessOptions(
+                        auto_adjust=True,
+                        margin_top_percent=0.0,
+                        margin_bottom_percent=5.0,
+                        show_typhoon_marker=True,
+                    ),
                 )
                 applied_run_state["wallpaper_path"] = r"E:\app\img\20260904014000\wall.png"
 
@@ -176,7 +175,10 @@ class WallpaperJobRefTests(unittest.TestCase):
         ref.set_show_typhoon_marker(True)
         self.assertEqual(id(ref._applied_run_state), state_id)
         inflight()
-        self.assertEqual(ref._applied_run_state["last"][0], "2026-09-04 01:40:00")
+        self.assertEqual(
+            ref._applied_run_state["last"].observation_time,
+            "2026-09-04 01:40:00",
+        )
         self.assertEqual(
             ref._applied_run_state["wallpaper_path"],
             r"E:\app\img\20260904014000\wall.png",
@@ -184,7 +186,15 @@ class WallpaperJobRefTests(unittest.TestCase):
 
     def test_init_hydrates_observation_time_from_applied_state(self):
         state = {
-            "last": ("2026-09-03 02:10:00", "4d", True, 0.0, 5.0, False, False, False),
+            "last": AppliedRunKey.from_observation(
+                "2026-09-03 02:10:00",
+                "4d",
+                PostprocessOptions(
+                    auto_adjust=True,
+                    margin_top_percent=0.0,
+                    margin_bottom_percent=5.0,
+                ),
+            ),
             "wallpaper_path": r"E:\app\img\wall.png",
         }
         ref = WallpaperJobRef(
@@ -253,7 +263,7 @@ class WallpaperJobRefTests(unittest.TestCase):
 
         self.assertEqual(len(set_paths), 1)
         self.assertEqual(notifies, [1])
-        self.assertTrue(ref._applied_run_state["last"][6])
+        self.assertTrue(ref._applied_run_state["last"].show_typhoon_marker)
 
     def test_try_live_postprocess_grade_change_returns_false(self):
         ref = WallpaperJobRef(
@@ -373,15 +383,13 @@ class WallpaperJobRefProgressiveTests(unittest.TestCase):
             if applied_run_state is not None:
                 applied_run_state["applied_grade"] = resolution_grade
                 if record_run_key:
-                    applied_run_state["last"] = (
+                    applied_run_state["last"] = AppliedRunKey.from_observation(
                         obs,
                         resolution_grade,
-                        False,
-                        0.0,
-                        5.0,
-                        False,
-                        False,
-                        False,
+                        PostprocessOptions(
+                            margin_top_percent=0.0,
+                            margin_bottom_percent=5.0,
+                        ),
                     )
             return obs
 
@@ -400,7 +408,7 @@ class WallpaperJobRefProgressiveTests(unittest.TestCase):
         self.assertEqual(ref.applied_observation_time, obs)
         self.assertEqual(ref.applied_resolution_grade, "20d")
         self.assertEqual(ref.applied_pixel_side, 11000)
-        self.assertEqual(ref._applied_run_state["last"][0], obs)
+        self.assertEqual(ref._applied_run_state["last"].observation_time, obs)
 
     def test_progressive_preview_notify_before_target_without_writing_last(self):
         obs = "2026-09-03 02:10:00"
@@ -425,15 +433,13 @@ class WallpaperJobRefProgressiveTests(unittest.TestCase):
             if applied_run_state is not None:
                 applied_run_state["applied_grade"] = resolution_grade
                 if record_run_key:
-                    applied_run_state["last"] = (
+                    applied_run_state["last"] = AppliedRunKey.from_observation(
                         obs,
                         resolution_grade,
-                        False,
-                        0.0,
-                        5.0,
-                        False,
-                        False,
-                        False,
+                        PostprocessOptions(
+                            margin_top_percent=0.0,
+                            margin_bottom_percent=5.0,
+                        ),
                     )
             return obs
 

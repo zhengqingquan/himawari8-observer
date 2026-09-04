@@ -8,7 +8,7 @@ from unittest.mock import patch
 from PIL import Image
 
 from src.wallpaper.pipeline import run_wallpaper_pipeline
-from src.wallpaper.fingerprint import PostprocessOptions
+from src.wallpaper.fingerprint import AppliedRunKey, PostprocessOptions
 from tests.workdir_paths import temporary_base_dir
 
 
@@ -534,7 +534,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 ("set", "4d20260902092000.png"),
             ],
         )
-        self.assertEqual(state["last"][0], "2026-09-02 09:20:00")
+        self.assertEqual(state["last"].observation_time, "2026-09-02 09:20:00")
 
     def test_skips_when_latest_observation_older_than_applied(self):
         events = []
@@ -557,7 +557,11 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             wall = Path(base_dir) / "wall.png"
             wall.write_bytes(b"img")
             state = {
-                "last": ("2026-09-04 01:40:00", "4d", False, 0.0, 5.0, False, False, False),
+                "last": AppliedRunKey.from_observation(
+                    "2026-09-04 01:40:00",
+                    "4d",
+                    PostprocessOptions(margin_top_percent=0.0, margin_bottom_percent=5.0),
+                ),
                 "wallpaper_path": str(wall.resolve()),
             }
 
@@ -575,7 +579,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
         self.assertIsNone(result)
         self.assertEqual(events, ["fetch"])
-        self.assertEqual(state["last"][0], "2026-09-04 01:40:00")
+        self.assertEqual(state["last"].observation_time, "2026-09-04 01:40:00")
 
     def test_reduce_banding_toggle_skips_download(self):
         downloads = []
@@ -614,7 +618,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             )
             self.assertEqual(downloads, [1])
             self.assertEqual(fetches, [1])
-            self.assertFalse(state["last"][5])
+            self.assertFalse(state["last"].reduce_banding)
             wall = Path(state["wallpaper_path"])
             base = Path(state["wallpaper_base_path"])
             self.assertTrue(base.is_file())
@@ -631,7 +635,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 applied_run_state=state,
                 base_dir=base_dir,
             )
-            self.assertTrue(state["last"][5])
+            self.assertTrue(state["last"].reduce_banding)
             self.assertEqual(downloads, [1])
             self.assertEqual(fetches, [1], "banding toggle must not fetch latest.json")
             self.assertNotEqual(wall.read_bytes(), base_bytes)
@@ -648,7 +652,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 base_dir=base_dir,
             )
 
-            self.assertFalse(state["last"][5])
+            self.assertFalse(state["last"].reduce_banding)
             self.assertEqual(downloads, [1])
             self.assertEqual(fetches, [1])
             self.assertEqual(wall.read_bytes(), base_bytes)
@@ -696,7 +700,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 )
                 self.assertEqual(downloads, [1])
                 self.assertEqual(fetches, [1])
-                self.assertTrue(state["last"][2])
+                self.assertTrue(state["last"].auto_adjust)
                 disk = Path(state["wallpaper_disk_path"])
                 self.assertTrue(disk.is_file())
                 first_wall = Path(state["wallpaper_path"])
@@ -716,7 +720,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
                 self.assertEqual(downloads, [1])
                 self.assertEqual(fetches, [1], "margin toggle must not fetch latest.json")
-                self.assertEqual(state["last"][4], 10.0)
+                self.assertEqual(state["last"].margin_bottom_percent, 10.0)
                 self.assertTrue(Path(state["wallpaper_path"]).is_file())
                 self.assertGreaterEqual(len(set_names), 2)
 

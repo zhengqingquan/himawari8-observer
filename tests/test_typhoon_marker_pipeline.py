@@ -145,7 +145,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                 self.assertEqual(fetches, [1])
                 self.assertEqual(center_fetches, [1])
                 self.assertEqual(len(draws), 1)
-                self.assertTrue(state["last"][6])
+                self.assertTrue(state["last"].show_typhoon_marker)
                 self.assertEqual(
                     state["typhoon_center_cache"]["observation_time"],
                     "2021-06-03 05:20:00",
@@ -164,7 +164,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                     applied_run_state=state,
                     base_dir=base_dir,
                 )
-                self.assertFalse(state["last"][6])
+                self.assertFalse(state["last"].show_typhoon_marker)
 
                 # 再开：只用缓存，不请求网络
                 run_wallpaper_pipeline(
@@ -184,7 +184,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
         self.assertEqual(fetches, [1], "typhoon toggle must not fetch latest.json")
         self.assertEqual(center_fetches, [1], "typhoon toggle must use cache only")
         self.assertEqual(len(draws), 2)
-        self.assertTrue(state["last"][6])
+        self.assertTrue(state["last"].show_typhoon_marker)
 
     def test_typhoon_toggle_on_without_matching_cache_skips_marker(self):
         draws = []
@@ -238,7 +238,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
         self.assertEqual(result, "2021-06-03 05:20:00")
         self.assertEqual(draws, [])
         self.assertEqual(center_fetches, [])
-        self.assertTrue(state["last"][6])
+        self.assertTrue(state["last"].show_typhoon_marker)
 
     def test_typhoon_only_toggle_off_restores_base_without_download(self):
         downloads = []
@@ -285,7 +285,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                 wall = Path(state["wallpaper_path"])
                 base = Path(state["wallpaper_base_path"])
                 self.assertTrue(base.is_file())
-                self.assertTrue(state["last"][6])
+                self.assertTrue(state["last"].show_typhoon_marker)
                 self.assertEqual(fetches, [1])
 
                 run_wallpaper_pipeline(
@@ -303,7 +303,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
 
         self.assertEqual(downloads, [1])
         self.assertEqual(fetches, [1], "typhoon toggle must not fetch latest.json")
-        self.assertFalse(state["last"][6])
+        self.assertFalse(state["last"].show_typhoon_marker)
         self.assertEqual(set_paths[-1], wall.name)
 
     def test_typhoon_toggle_skips_latest_even_if_fetch_would_fail(self):
@@ -349,7 +349,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                 )
 
         self.assertEqual(result, "2021-06-03 05:20:00")
-        self.assertTrue(state["last"][6])
+        self.assertTrue(state["last"].show_typhoon_marker)
         self.assertTrue(draw.called)
 
     def test_grade_change_still_downloads(self):

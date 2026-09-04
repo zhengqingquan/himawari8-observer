@@ -229,7 +229,7 @@ def run_wallpaper_pipeline(
         live = refresh_postprocess()
         opts = live.options
         cleanup_after_apply = live.cleanup_after_apply
-        run_key = AppliedRunKey(observation_time, grade, *opts)
+        run_key = AppliedRunKey.from_observation(observation_time, grade, opts)
         logging.info(
             "Post-download postprocess refresh: adjust=%s banding=%s typhoon=%s my_location=%s",
             opts.auto_adjust,

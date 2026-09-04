@@ -139,7 +139,7 @@ class MyLocationMarkerPipelineTests(unittest.TestCase):
                 )
                 self.assertEqual(downloads, [1])
                 self.assertEqual(ip_fetches, [1])
-                self.assertTrue(state["last"][7])
+                self.assertTrue(state["last"].show_my_location)
                 self.assertIn("my_location_cache", state)
 
                 run_wallpaper_pipeline(
@@ -154,7 +154,7 @@ class MyLocationMarkerPipelineTests(unittest.TestCase):
                     applied_run_state=state,
                     base_dir=base_dir,
                 )
-                self.assertFalse(state["last"][7])
+                self.assertFalse(state["last"].show_my_location)
 
                 run_wallpaper_pipeline(
                     resolution_grade="4d",
@@ -173,7 +173,7 @@ class MyLocationMarkerPipelineTests(unittest.TestCase):
         self.assertEqual(fetches, [1], "my-location toggle must not fetch latest.json")
         self.assertEqual(ip_fetches, [1], "re-enable must reuse my_location_cache")
         self.assertEqual(len(draws), 2)
-        self.assertTrue(state["last"][7])
+        self.assertTrue(state["last"].show_my_location)
 
     def test_first_toggle_on_fetches_ip_on_fast_path(self):
         """首次开启无缓存时，快路径应联网拉 IP（不下载瓦片）。"""
@@ -232,7 +232,7 @@ class MyLocationMarkerPipelineTests(unittest.TestCase):
         self.assertEqual(ip_fetches, [1])
         self.assertEqual(draws, ["ME"])
         self.assertIn("my_location_cache", state)
-        self.assertTrue(state["last"][7])
+        self.assertTrue(state["last"].show_my_location)
 
 
 if __name__ == "__main__":
