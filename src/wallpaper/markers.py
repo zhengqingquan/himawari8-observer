@@ -74,6 +74,7 @@ def draw_typhoon_marker_at(
     margin_bottom_percent: float,
     label: str = "TY",
     color: tuple[int, int, int] = (241, 166, 39),
+    style: str = "corners",
 ) -> bool:
     """按经纬度在壁纸上画标记；成功返回 True。"""
     xy = latlon_to_himawari_fd_xy(lat, lon, pic_side)
@@ -98,7 +99,9 @@ def draw_typhoon_marker_at(
                 bottom_percent=margin_bottom_percent,
             )
             draw_xy = (image_x + xy[0], image_y + xy[1])
-    return draw_typhoon_marker(wallpaper_path, draw_xy, label=label, color=color)
+    return draw_typhoon_marker(
+        wallpaper_path, draw_xy, label=label, color=color, style=style
+    )
 
 
 def apply_typhoon_marker_if_needed(
@@ -296,6 +299,7 @@ def apply_jtwc_invest_markers_if_needed(
             margin_bottom_percent=margin_bottom_percent,
             label=str(item["id"]),
             color=_JTWC_INVEST_MARKER_COLOR,
+            style="corners",
         )
 
 
@@ -376,4 +380,5 @@ def apply_my_location_marker_if_needed(
         margin_bottom_percent=margin_bottom_percent,
         label=_MY_LOCATION_MARKER_LABEL,
         color=_MY_LOCATION_MARKER_COLOR,
+        style="crosshair",
     )
