@@ -26,21 +26,25 @@ from src.wallpaper.desktop import get_desktop_wallpaper as read_desktop_wallpape
 from src.wallpaper.desktop import set_wallpaper as apply_desktop_wallpaper
 from src.wallpaper.desktop import wallpaper_paths_match
 from src.wallpaper.folders import create_pic_folders
-from src.wallpaper.postprocess import (
+from src.wallpaper.fast_path import try_postprocess_fast_path
+from src.wallpaper.fingerprint import (
     AppliedRunKey,
-    AppliedRunState,
-    apply_my_location_marker_if_needed,
-    apply_typhoon_marker_if_needed,
     build_applied_run_key,
-    copy2_wallpaper,
-    equal_path_from_disk,
     layout_or_postprocess_differs,
-    pick_writable_wallpaper_path,
     provisional_run_key_from_last,
     remember_applied,
+)
+from src.wallpaper.markers import (
+    apply_my_location_marker_if_needed,
+    apply_typhoon_marker_if_needed,
+)
+from src.wallpaper.paths import (
+    AppliedRunState,
+    copy2_wallpaper,
+    equal_path_from_disk,
+    pick_writable_wallpaper_path,
     save_disk_copy,
     save_unmarked_base,
-    try_postprocess_fast_path,
     wallpaper_base_path,
     wallpaper_disk_path,
     wallpaper_output_path,

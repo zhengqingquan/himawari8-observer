@@ -771,7 +771,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             }
 
         with temporary_base_dir() as base_dir:
-            with patch("src.wallpaper.postprocess.draw_typhoon_marker", side_effect=fake_draw):
+            with patch("src.wallpaper.markers.draw_typhoon_marker", side_effect=fake_draw):
                 result = run_wallpaper_pipeline(
                     resolution_grade="4d",
                     fetch_observation_time=fetch_observation_time,
@@ -829,7 +829,7 @@ class WallpaperWritablePathTests(unittest.TestCase):
                     raise err
                 return real_copy2(a, b)
 
-            with patch("src.wallpaper.postprocess.shutil.copy2", side_effect=fake_copy2):
+            with patch("src.wallpaper.paths.shutil.copy2", side_effect=fake_copy2):
                 written = copy2_wallpaper(src, dest)
 
             self.assertEqual(written.name, "dest_b.png")

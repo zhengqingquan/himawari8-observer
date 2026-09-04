@@ -39,7 +39,7 @@ class MyLocationMarkerPipelineTests(unittest.TestCase):
             return True
 
         with temporary_base_dir() as base_dir:
-            with patch("src.wallpaper.postprocess.draw_typhoon_marker", side_effect=fake_draw):
+            with patch("src.wallpaper.markers.draw_typhoon_marker", side_effect=fake_draw):
                 run_wallpaper_pipeline(
                     fetch_observation_time=fetch_observation_time,
                     download_tiles=download_tiles,
@@ -123,7 +123,7 @@ class MyLocationMarkerPipelineTests(unittest.TestCase):
 
         state = {"last": None, "wallpaper_path": None}
         with temporary_base_dir() as base_dir:
-            with patch("src.wallpaper.postprocess.draw_typhoon_marker", side_effect=fake_draw):
+            with patch("src.wallpaper.markers.draw_typhoon_marker", side_effect=fake_draw):
                 run_wallpaper_pipeline(
                     resolution_grade="4d",
                     fetch_observation_time=fetch_observation_time,
@@ -211,7 +211,7 @@ class MyLocationMarkerPipelineTests(unittest.TestCase):
                 "wallpaper_path": str(wall),
                 "wallpaper_base_path": str(base),
             }
-            with patch("src.wallpaper.postprocess.draw_typhoon_marker", side_effect=fake_draw):
+            with patch("src.wallpaper.markers.draw_typhoon_marker", side_effect=fake_draw):
                 result = run_wallpaper_pipeline(
                     resolution_grade="4d",
                     fetch_observation_time=fetch_observation_time,

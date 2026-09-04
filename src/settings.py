@@ -298,7 +298,7 @@ def settings_dict_from_job(
 def applied_run_state_from_settings(settings: dict[str, Any] | None) -> dict[str, Any]:
     """从 settings 字段还原内存中的 ``applied_run_state``。"""
     # 延迟导入：避免 settings ↔ wallpaper 顶层环依赖。
-    from src.wallpaper.postprocess import AppliedRunKey
+    from src.wallpaper.fingerprint import AppliedRunKey
 
     state: dict[str, Any] = {"last": None, "wallpaper_path": None}
     if not settings:
@@ -328,7 +328,7 @@ def persist_applied_run_state(
     path: Path | None = None,
 ) -> bool:
     """将内存指纹与壁纸路径写回 settings.json。"""
-    from src.wallpaper.postprocess import AppliedRunKey
+    from src.wallpaper.fingerprint import AppliedRunKey
 
     payload: dict[str, Any] = {}
     last = AppliedRunKey.from_raw(state.get("last"))

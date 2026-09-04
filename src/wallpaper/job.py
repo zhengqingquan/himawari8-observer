@@ -25,11 +25,11 @@ from src.settings import persist_applied_run_state
 from src.wallpaper.desktop import get_desktop_wallpaper as read_desktop_wallpaper
 from src.wallpaper.desktop import set_wallpaper as apply_desktop_wallpaper
 from src.wallpaper.pipeline import run_wallpaper_pipeline
-from src.wallpaper.postprocess import (
+from src.wallpaper.fast_path import try_postprocess_fast_path
+from src.wallpaper.fingerprint import (
     AppliedRunKey,
     layout_or_postprocess_differs,
     provisional_run_key_from_last,
-    try_postprocess_fast_path,
 )
 from src.wallpaper.update import is_paused, resume
 
