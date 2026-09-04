@@ -18,6 +18,7 @@ class JobKwargsFromConfigTests(unittest.TestCase):
             is_reduce_banding=lambda: True,
             is_show_typhoon_marker=lambda: True,
             is_show_my_location=lambda: True,
+            get_download_interval_minutes=lambda: 15,
         )
         kwargs = job_kwargs_from_config(config)
         self.assertEqual(kwargs["resolution_grade"], "4d")
@@ -29,6 +30,7 @@ class JobKwargsFromConfigTests(unittest.TestCase):
         self.assertTrue(kwargs["reduce_banding"])
         self.assertTrue(kwargs["show_typhoon_marker"])
         self.assertTrue(kwargs["show_my_location"])
+        self.assertEqual(kwargs["download_interval_minutes"], 15)
 
 
 class BuildWallpaperJobTests(unittest.TestCase):
