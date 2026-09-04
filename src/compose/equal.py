@@ -113,6 +113,16 @@ def reduce_color_banding(image: Image.Image) -> Image.Image:
     return result
 
 
+def apply_deband_to_file(src: Path | str, dest: Path | str) -> None:
+    """读取 ``src``，减轻色带后写入 ``dest``（可与 ``src`` 相同）。"""
+    with Image.open(src) as image:
+        processed = reduce_color_banding(image)
+        try:
+            processed.save(dest)
+        finally:
+            processed.close()
+
+
 def _save_rgb(image: Image.Image, path: Path | str, *, deband: bool = False) -> None:
     """保存 RGB 壁纸图；``deband=True`` 时先做去色带再落盘。"""
     if not deband:

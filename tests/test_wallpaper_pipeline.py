@@ -5,6 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from PIL import Image
+
 from src.wallpaper.pipeline import run_wallpaper_pipeline
 from tests.workdir_paths import temporary_base_dir
 
@@ -561,6 +563,82 @@ class RunWallpaperPipelineTests(unittest.TestCase):
         self.assertIsNone(result)
         self.assertEqual(events, ["fetch"])
         self.assertEqual(state["last"][0], "2026-09-04 01:40:00")
+
+    def test_reduce_banding_toggle_skips_download(self):
+        downloads = []
+        fetches = []
+
+        def fetch_observation_time():
+            fetches.append(1)
+            return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
+
+        def download_tiles(pic):
+            downloads.append(1)
+            for entry in pic.tiles.values():
+                entry[1] = 1
+
+        def compose_equal(pic):
+            Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
+            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(
+                pic.final_path_equal
+            )
+
+        def set_wallpaper(path: Path):
+            return True
+
+        state = {"last": None, "wallpaper_path": None}
+        with temporary_base_dir() as base_dir:
+            run_wallpaper_pipeline(
+                resolution_grade="4d",
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                set_wallpaper=set_wallpaper,
+                reduce_banding=False,
+                cleanup_after_apply=False,
+                applied_run_state=state,
+                base_dir=base_dir,
+            )
+            self.assertEqual(downloads, [1])
+            self.assertEqual(fetches, [1])
+            self.assertFalse(state["last"][5])
+            wall = Path(state["wallpaper_path"])
+            base = Path(state["wallpaper_base_path"])
+            self.assertTrue(base.is_file())
+            base_bytes = base.read_bytes()
+
+            run_wallpaper_pipeline(
+                resolution_grade="4d",
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                set_wallpaper=set_wallpaper,
+                reduce_banding=True,
+                cleanup_after_apply=False,
+                applied_run_state=state,
+                base_dir=base_dir,
+            )
+            self.assertTrue(state["last"][5])
+            self.assertEqual(downloads, [1])
+            self.assertEqual(fetches, [1], "banding toggle must not fetch latest.json")
+            self.assertNotEqual(wall.read_bytes(), base_bytes)
+
+            run_wallpaper_pipeline(
+                resolution_grade="4d",
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                set_wallpaper=set_wallpaper,
+                reduce_banding=False,
+                cleanup_after_apply=False,
+                applied_run_state=state,
+                base_dir=base_dir,
+            )
+
+            self.assertFalse(state["last"][5])
+            self.assertEqual(downloads, [1])
+            self.assertEqual(fetches, [1])
+            self.assertEqual(wall.read_bytes(), base_bytes)
 
 
 if __name__ == "__main__":
