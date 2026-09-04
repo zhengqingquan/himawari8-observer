@@ -6,7 +6,7 @@ import logging
 import threading
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from src.metadata.app_config import (
     DEFAULT_MARGIN_BOTTOM_PERCENT,
@@ -23,6 +23,40 @@ from src.wallpaper.pipeline import run_wallpaper_pipeline
 
 BuildJob = Callable[..., Callable[[], None]]
 RunPipeline = Callable[..., str | None]
+
+
+class WallpaperJobConfig(Protocol):
+    """Config / 等价对象：提供装配 job 所需的 getter。"""
+
+    def get_download_resolution(self) -> int: ...
+
+    def is_auto_adjust_picture(self) -> bool: ...
+
+    def get_margin_top_percent(self) -> float: ...
+
+    def get_margin_bottom_percent(self) -> float: ...
+
+    def is_cleanup_after_apply(self) -> bool: ...
+
+    def is_use_yesterday_local_time(self) -> bool: ...
+
+    def is_reduce_banding(self) -> bool: ...
+
+    def is_show_typhoon_marker(self) -> bool: ...
+
+
+def job_kwargs_from_config(config: WallpaperJobConfig) -> dict[str, Any]:
+    """将 Config getter 映射为 ``build_wallpaper_job`` / ``WallpaperJobRef`` 的 kwargs。"""
+    return {
+        "resolution_grade": pixel_to_grade(config.get_download_resolution()),
+        "auto_adjust": config.is_auto_adjust_picture(),
+        "margin_top_percent": config.get_margin_top_percent(),
+        "margin_bottom_percent": config.get_margin_bottom_percent(),
+        "cleanup_after_apply": config.is_cleanup_after_apply(),
+        "use_yesterday_local_time": config.is_use_yesterday_local_time(),
+        "reduce_banding": config.is_reduce_banding(),
+        "show_typhoon_marker": config.is_show_typhoon_marker(),
+    }
 
 
 def build_wallpaper_job(

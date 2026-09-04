@@ -1,8 +1,32 @@
 """Seam: build_wallpaper_job freezes resolution grade and auto_adjust at assembly."""
 
 import unittest
+from types import SimpleNamespace
 
-from src.wallpaper.job import build_wallpaper_job
+from src.wallpaper.job import build_wallpaper_job, job_kwargs_from_config
+
+
+class JobKwargsFromConfigTests(unittest.TestCase):
+    def test_maps_config_getters(self):
+        config = SimpleNamespace(
+            get_download_resolution=lambda: 2200,
+            is_auto_adjust_picture=lambda: True,
+            get_margin_top_percent=lambda: 1.0,
+            get_margin_bottom_percent=lambda: 2.0,
+            is_cleanup_after_apply=lambda: False,
+            is_use_yesterday_local_time=lambda: True,
+            is_reduce_banding=lambda: True,
+            is_show_typhoon_marker=lambda: True,
+        )
+        kwargs = job_kwargs_from_config(config)
+        self.assertEqual(kwargs["resolution_grade"], "4d")
+        self.assertTrue(kwargs["auto_adjust"])
+        self.assertEqual(kwargs["margin_top_percent"], 1.0)
+        self.assertEqual(kwargs["margin_bottom_percent"], 2.0)
+        self.assertFalse(kwargs["cleanup_after_apply"])
+        self.assertTrue(kwargs["use_yesterday_local_time"])
+        self.assertTrue(kwargs["reduce_banding"])
+        self.assertTrue(kwargs["show_typhoon_marker"])
 
 
 class BuildWallpaperJobTests(unittest.TestCase):

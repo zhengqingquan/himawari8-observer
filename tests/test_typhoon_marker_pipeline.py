@@ -41,7 +41,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
             return True
 
         with temporary_base_dir() as base_dir:
-            with patch("src.wallpaper.pipeline.draw_typhoon_marker", side_effect=fake_draw):
+            with patch("src.wallpaper.postprocess.draw_typhoon_marker", side_effect=fake_draw):
                 run_wallpaper_pipeline(
                     fetch_observation_time=fetch_observation_time,
                     download_tiles=download_tiles,
@@ -126,7 +126,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
 
         state = {"last": None, "wallpaper_path": None}
         with temporary_base_dir() as base_dir:
-            with patch("src.wallpaper.pipeline.draw_typhoon_marker", side_effect=fake_draw):
+            with patch("src.wallpaper.postprocess.draw_typhoon_marker", side_effect=fake_draw):
                 # 全量开台风：拉中心并写入缓存
                 run_wallpaper_pipeline(
                     resolution_grade="4d",
@@ -218,7 +218,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                     "lon": 128.437,
                 },
             }
-            with patch("src.wallpaper.pipeline.draw_typhoon_marker", side_effect=fake_draw):
+            with patch("src.wallpaper.postprocess.draw_typhoon_marker", side_effect=fake_draw):
                 result = run_wallpaper_pipeline(
                     resolution_grade="4d",
                     fetch_observation_time=lambda: (_ for _ in ()).throw(
@@ -268,7 +268,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
 
         state = {"last": None, "wallpaper_path": None}
         with temporary_base_dir() as base_dir:
-            with patch("src.wallpaper.pipeline.draw_typhoon_marker", return_value=True):
+            with patch("src.wallpaper.postprocess.draw_typhoon_marker", return_value=True):
                 run_wallpaper_pipeline(
                     resolution_grade="4d",
                     fetch_observation_time=fetch_observation_time,
@@ -331,7 +331,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                     "lon": 128.437,
                 },
             }
-            with patch("src.wallpaper.pipeline.draw_typhoon_marker", return_value=True) as draw:
+            with patch("src.wallpaper.postprocess.draw_typhoon_marker", return_value=True) as draw:
                 result = run_wallpaper_pipeline(
                     resolution_grade="4d",
                     fetch_observation_time=fetch_observation_time,
