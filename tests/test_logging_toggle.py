@@ -31,6 +31,21 @@ class LoggingToggleTests(unittest.TestCase):
                 self.assertTrue(log_path.is_file())
                 self.assertIn("hello-log-toggle", log_path.read_text(encoding="utf-8"))
 
+    def test_enabling_quiets_third_party_loggers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            log_path = Path(tmp) / "debug_log.txt"
+            with patch("src.log.LOG_PATH", log_path):
+                set_logging_enabled(True)
+                try:
+                    self.assertEqual(logging.getLogger("urllib3").level, logging.WARNING)
+                    self.assertEqual(logging.getLogger("PIL").level, logging.WARNING)
+                    self.assertEqual(
+                        logging.getLogger("PIL.PngImagePlugin").level,
+                        logging.WARNING,
+                    )
+                finally:
+                    set_logging_enabled(False)
+
 
 if __name__ == "__main__":
     unittest.main()

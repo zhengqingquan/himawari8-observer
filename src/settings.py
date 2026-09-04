@@ -249,7 +249,8 @@ def load_settings(path: Path | None = None) -> dict[str, Any]:
         return {}
 
     cleaned = sanitize_settings(raw)
-    logging.info("Loaded settings from %s: %s", settings_path, cleaned)
+    logging.info("Loaded settings from %s", settings_path)
+    logging.debug("Loaded settings payload: %s", cleaned)
     return cleaned
 
 
@@ -280,7 +281,8 @@ def save_settings(data: dict[str, Any], path: Path | None = None) -> bool:
             except OSError:
                 pass
             raise
-        logging.info("Saved settings to %s: %s", settings_path, payload)
+        logging.info("Saved settings to %s", settings_path)
+        logging.debug("Saved settings payload: %s", payload)
         return True
     except OSError:
         logging.exception("Failed to save settings to %s", settings_path)

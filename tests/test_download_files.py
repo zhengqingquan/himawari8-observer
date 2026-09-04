@@ -93,7 +93,11 @@ class DownloadFilesTests(unittest.TestCase):
                 "https://example.test/a.png": [str(existing), 0],
                 "https://example.test/b.png": [str(missing), 0],
             }
-            download_files(urls, download_one=fake_download_one)
+            with self.assertLogs(level="INFO") as captured:
+                download_files(urls, download_one=fake_download_one)
+            messages = "\n".join(captured.output)
+            self.assertIn("Skipped 1 existing tile(s)", messages)
+            self.assertIn("Tile download pass-1: 1 ok, 0 failed (of 1)", messages)
             self.assertEqual(calls, ["https://example.test/b.png"])
             self.assertEqual(urls["https://example.test/a.png"][1], 1)
             self.assertEqual(urls["https://example.test/b.png"][1], 1)

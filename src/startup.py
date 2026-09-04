@@ -24,11 +24,11 @@ def is_startup_set() -> bool:
         value, reg_type = reg.QueryValueEx(reg_key, app_name)
         reg.CloseKey(reg_key)
         if value:
-            logging.info("Startup entry found: %s", value)
+            logging.debug("Startup entry found: %s", value)
             return True
-        logging.info("Startup entry exists but is empty")
+        logging.debug("Startup entry exists but is empty")
     except FileNotFoundError:
-        logging.info("Startup entry not set")
+        logging.debug("Startup entry not set")
     except OSError:
         logging.exception("Failed to check startup entry")
     return False
@@ -60,7 +60,7 @@ def remove_from_startup_exe() -> None:
         reg.CloseKey(reg_key)
         logging.info("Removed startup entry")
     except FileNotFoundError:
-        logging.info("Startup entry already absent")
+        logging.debug("Startup entry already absent")
     except OSError:
         logging.exception("Failed to remove startup entry")
 

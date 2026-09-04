@@ -184,15 +184,18 @@ def compose_equal_image_with_margins(
         top_percent=top_percent,
         bottom_percent=bottom_percent,
     )
-    logging.info("Screen resolution: %sx%s", screen_width, screen_height)
-    logging.info("Source image side: %s px", pic.pic_side)
     logging.info(
-        "Margin percents: top=%s bottom=%s",
+        "Margin layout: screen=%sx%s source=%spx margins=%s/%s canvas=%sx%s paste=(%s,%s)",
+        screen_width,
+        screen_height,
+        pic.pic_side,
         top_percent,
         bottom_percent,
+        canvas_width,
+        canvas_height,
+        image_x,
+        image_y,
     )
-    logging.info("Wallpaper canvas size: %sx%s", canvas_width, canvas_height)
-    logging.info("Paste origin for tiles: (%s, %s)", image_x, image_y)
 
     joint = None
     try:
@@ -241,13 +244,6 @@ def apply_margins(
             screen_width, screen_height = get_primary_screen_size()
         else:
             screen_width, screen_height = screen_size
-        logging.info("Screen resolution: %sx%s", screen_width, screen_height)
-        logging.info("Source image side: %s px", margin)
-        logging.info(
-            "Margin percents: top=%s bottom=%s",
-            top_percent,
-            bottom_percent,
-        )
 
         canvas_width, canvas_height, image_x, image_y = compute_margin_layout(
             margin,
@@ -256,8 +252,18 @@ def apply_margins(
             top_percent=top_percent,
             bottom_percent=bottom_percent,
         )
-        logging.info("Wallpaper canvas size: %sx%s", canvas_width, canvas_height)
-        logging.info("Paste offset for source image: (%s, %s)", image_x, image_y)
+        logging.info(
+            "Margin layout: screen=%sx%s source=%spx margins=%s/%s canvas=%sx%s paste=(%s,%s)",
+            screen_width,
+            screen_height,
+            margin,
+            top_percent,
+            bottom_percent,
+            canvas_width,
+            canvas_height,
+            image_x,
+            image_y,
+        )
 
         joint = Image.new("RGB", (canvas_width, canvas_height), color=(0, 0, 0))
         with Image.open(file) as img:

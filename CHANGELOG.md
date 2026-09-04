@@ -27,6 +27,7 @@
 - 默认分辨率改为 `2200`（4d）。
 - 补充调度首跑渐进、观测时间解析、桌面壁纸 API、修边几何与指纹灌回/成品缺失等单测。
 - 模块整理：`soft_*` → `app_config` / `app_info`；`update_check` → `version_check`；`cleanup` / `folders` / `desktop` 收进 `wallpaper/`；压平 `pic` / `event` / `log`；一次性入口 `main` → `oneshot`；托盘拆为 `menu` + `actions`。
+- 日志降噪：压制 urllib3/Pillow DEBUG；瓦片成功改为汇总 INFO；开机启动探测与 settings 载荷降为 DEBUG；文件日志改为滚动（2MB×3）。
 
 ## [1.4.0] - 2026-09-03
 

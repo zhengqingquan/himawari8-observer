@@ -3,11 +3,21 @@
 from __future__ import annotations
 
 import logging
+from logging.handlers import RotatingFileHandler
 
 from src.metadata.app_config import LOG_PATH
 
 _CONSOLE_HANDLER_NAME = "himawari8_console"
 _FILE_HANDLER_NAME = "himawari8_file"
+_LOG_MAX_BYTES = 2 * 1024 * 1024
+_LOG_BACKUP_COUNT = 3
+_NOISY_LOGGER_NAMES = (
+    "urllib3",
+    "urllib3.connectionpool",
+    "PIL",
+    "PIL.Image",
+    "PIL.PngImagePlugin",
+)
 _enabled = False
 
 
@@ -20,10 +30,17 @@ def _has_handler(logger: logging.Logger, name: str) -> bool:
     return any(getattr(handler, "name", None) == name for handler in logger.handlers)
 
 
+def _quiet_third_party_loggers() -> None:
+    """压低 urllib3 / Pillow 等库的 DEBUG，避免刷屏。"""
+    for name in _NOISY_LOGGER_NAMES:
+        logging.getLogger(name).setLevel(logging.WARNING)
+
+
 def _attach_handlers() -> None:
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     logger.disabled = False
+    _quiet_third_party_loggers()
 
     if not _has_handler(logger, _CONSOLE_HANDLER_NAME):
         console_handler = logging.StreamHandler()
@@ -33,7 +50,12 @@ def _attach_handlers() -> None:
         logger.addHandler(console_handler)
 
     if not _has_handler(logger, _FILE_HANDLER_NAME):
-        file_handler = logging.FileHandler(LOG_PATH, encoding="utf-8")
+        file_handler = RotatingFileHandler(
+            LOG_PATH,
+            maxBytes=_LOG_MAX_BYTES,
+            backupCount=_LOG_BACKUP_COUNT,
+            encoding="utf-8",
+        )
         file_handler.name = _FILE_HANDLER_NAME
         file_handler.setLevel(logging.DEBUG)
         file_handler.setFormatter(

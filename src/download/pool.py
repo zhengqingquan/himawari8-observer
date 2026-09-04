@@ -89,6 +89,8 @@ def _run_download_round(
     """并发下载一批瓦片；成功则 ``status=1``，失败保持 ``0``。"""
     if not batch:
         return
+    ok_count = 0
+    fail_count = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_entry = {
             executor.submit(download_one, url, entry[0]): (url, entry)
@@ -99,14 +101,23 @@ def _run_download_round(
             try:
                 future.result()
                 entry[1] = 1
-                logging.info("Downloaded tile (%s): %s", round_label, url)
+                ok_count += 1
+                logging.debug("Downloaded tile (%s): %s", round_label, url)
             except Exception as exc:
+                fail_count += 1
                 logging.warning(
                     "Failed to download tile (%s) %s: %s",
                     round_label,
                     url,
                     exc,
                 )
+    logging.info(
+        "Tile download %s: %s ok, %s failed (of %s)",
+        round_label,
+        ok_count,
+        fail_count,
+        ok_count + fail_count,
+    )
 
 
 def download_files(
@@ -128,12 +139,17 @@ def download_files(
         retry_rounds: 首轮之外的失败补下轮数；``0`` 表示不补下。
     """
     pending: dict[str, Any] = {}
+    skipped = 0
     for url, entry in urls.items():
         if _existing_tile_ok(entry[0]):
             entry[1] = 1
-            logging.info("Skipped existing tile: %s", entry[0])
+            skipped += 1
+            logging.debug("Skipped existing tile: %s", entry[0])
             continue
         pending[url] = entry
+
+    if skipped:
+        logging.info("Skipped %s existing tile(s)", skipped)
 
     if not pending:
         return
