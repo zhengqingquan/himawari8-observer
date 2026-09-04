@@ -34,14 +34,17 @@
 在 Windows 上定时拉取葵花 8 号最新影像，合成为桌面壁纸，并以系统托盘方式常驻运行。
 
 - 支持多种分辨率档位，可按需切换
-- 默认约每 20 分钟自动更新，启动时立刻更新一次
+- 默认约每 10 分钟自动更新，启动时立刻更新一次
 - 影像与参数未变时可跳过重复下载
 - 可选黑边修边，减轻任务栏遮挡
+- 可选减轻色带、台风/位置标注、昨日影像等
 - 托盘可手动更新、暂停定时、换分辨率、开机启动等
 - 托盘修改的设置保存在程序目录 `settings.json`，重启后自动恢复
 - 日志默认关闭，可在托盘或用 `--logging` 开启
 
 日常使用可从 [Releases](https://github.com/zhengqingquan/himawari8-observer/releases/latest) 下载预编译包，解压后直接运行。
+
+更完整的 CLI 说明见 [doc/cli-arguments.md](doc/cli-arguments.md)；更新记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 开发环境
 
@@ -63,6 +66,8 @@ python run.py -r 4400
 python run.py --margin-bottom 12
 python run.py --no-adjust -r 2200
 python run.py --no-cleanup-after-apply
+python run.py --download-interval-minutes 20
+python run.py --show-typhoon-marker --show-my-location
 python run.py -h
 python run.py -v
 ```
@@ -81,6 +86,11 @@ python -m src.oneshot
 | `-a` / `--adjust` | 黑边修边（默认开启；`--no-adjust` 关闭） |
 | `--margin-top` / `--margin-bottom` | 顶 / 底边黑边百分比（默认顶 `0`、底 `5`） |
 | `--cleanup-after-apply` | 设壁纸后清理缓存（默认开启；`--no-cleanup-after-apply` 关闭） |
+| `--use-yesterday-local-time` | 按本机钟点取昨日影像（默认关闭） |
+| `--reduce-banding` | 减轻色带（默认关闭） |
+| `--show-typhoon-marker` | 标注台风中心（默认关闭） |
+| `--show-my-location` | 标注我的位置（IP 粗定位，默认关闭） |
+| `--download-interval-minutes` | 定时间隔：`5` / `10`（默认） / `15` / `20` / `30` |
 | `--logging` | 启用日志（默认关闭；`--no-logging` 关闭） |
 | `-v` / `--version` | 打印版本后退出 |
 

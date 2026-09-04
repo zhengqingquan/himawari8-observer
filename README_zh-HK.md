@@ -34,14 +34,17 @@
 在 Windows 上定時拉取葵花 8 號最新影像，合成為桌面桌布，並以系統匣方式常駐執行。
 
 - 支援多種解析度檔位，可依需求切換
-- 預設約每 20 分鐘自動更新，啟動時立即更新一次
+- 預設約每 10 分鐘自動更新，啟動時立即更新一次
 - 影像與參數未變時可跳過重複下載
 - 可選黑邊修邊，減輕工作列遮擋
+- 可選減輕色帶、颱風／位置標註、昨日影像等
 - 系統匣可手動更新、暫停定時、切換解析度、開機啟動等
 - 系統匣修改的設定會寫入程式目錄 `settings.json`，重啟後自動還原
 - 日誌預設關閉，可在系統匣或以 `--logging` 開啟
 
 日常使用可從 [Releases](https://github.com/zhengqingquan/himawari8-observer/releases/latest) 下載預編譯包，解壓後直接執行。
+
+更完整的 CLI 說明見 [doc/cli-arguments.md](doc/cli-arguments.md)；更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 開發環境
 
@@ -63,6 +66,8 @@ python run.py -r 4400
 python run.py --margin-bottom 12
 python run.py --no-adjust -r 2200
 python run.py --no-cleanup-after-apply
+python run.py --download-interval-minutes 20
+python run.py --show-typhoon-marker --show-my-location
 python run.py -h
 python run.py -v
 ```
@@ -81,6 +86,11 @@ python -m src.oneshot
 | `-a` / `--adjust` | 黑邊修邊（預設開啟；`--no-adjust` 關閉） |
 | `--margin-top` / `--margin-bottom` | 上／下邊黑邊百分比（預設上 `0`、下 `5`） |
 | `--cleanup-after-apply` | 設成桌布後清理快取（預設開啟；`--no-cleanup-after-apply` 關閉） |
+| `--use-yesterday-local-time` | 按本機鐘點取昨日影像（預設關閉） |
+| `--reduce-banding` | 減輕色帶（預設關閉） |
+| `--show-typhoon-marker` | 標註颱風中心（預設關閉） |
+| `--show-my-location` | 標註我的位置（IP 粗定位，預設關閉） |
+| `--download-interval-minutes` | 定時間隔：`5` / `10`（預設） / `15` / `20` / `30` |
 | `--logging` | 啟用日誌（預設關閉；`--no-logging` 關閉） |
 | `-v` / `--version` | 印出版本後結束 |
 

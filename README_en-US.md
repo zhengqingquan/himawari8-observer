@@ -34,14 +34,17 @@ Data sources: [himawari8.nict.go.jp](https://himawari8.nict.go.jp/) · [himawari
 Fetches the latest Himawari-8 imagery on a schedule, composites it into a desktop wallpaper, and runs quietly in the Windows system tray.
 
 - Multiple resolution grades, switchable anytime
-- Updates about every 20 minutes by default; runs once immediately on startup
+- Updates about every 10 minutes by default; runs once immediately on startup
 - Skips redundant downloads when imagery and settings are unchanged
 - Optional black-border padding to reduce taskbar occlusion
+- Optional banding reduction, typhoon/location markers, yesterday imagery, and more
 - Tray menu for manual update, pause schedule, change resolution, start on boot, and more
 - Tray changes are saved to `settings.json` next to the program and restored on restart
 - Logging is off by default; enable from the tray or with `--logging`
 
 For daily use, download a prebuilt package from [Releases](https://github.com/zhengqingquan/himawari8-observer/releases/latest), extract, and run.
+
+Full CLI reference: [doc/cli-arguments.md](doc/cli-arguments.md). Changelog: [CHANGELOG.md](CHANGELOG.md).
 
 ## Development environment
 
@@ -63,6 +66,8 @@ python run.py -r 4400
 python run.py --margin-bottom 12
 python run.py --no-adjust -r 2200
 python run.py --no-cleanup-after-apply
+python run.py --download-interval-minutes 20
+python run.py --show-typhoon-marker --show-my-location
 python run.py -h
 python run.py -v
 ```
@@ -81,6 +86,11 @@ Common options:
 | `-a` / `--adjust` | Black-border padding (on by default; `--no-adjust` to disable) |
 | `--margin-top` / `--margin-bottom` | Top / bottom black-border percent (default top `0`, bottom `5`) |
 | `--cleanup-after-apply` | Clean caches after applying wallpaper (on by default; `--no-cleanup-after-apply` to disable) |
+| `--use-yesterday-local-time` | Use yesterday’s image at the local clock time (off by default) |
+| `--reduce-banding` | Reduce color banding (off by default) |
+| `--show-typhoon-marker` | Mark typhoon center (off by default) |
+| `--show-my-location` | Mark approximate location via IP geolocation (off by default) |
+| `--download-interval-minutes` | Schedule interval: `5` / `10` (default) / `15` / `20` / `30` |
 | `--logging` | Enable logging (off by default; `--no-logging` to disable) |
 | `-v` / `--version` | Print version and exit |
 
