@@ -9,8 +9,10 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from src.metadata.app_config import (
+    DEFAULT_DOWNLOAD_INTERVAL_MINUTES,
     DEFAULT_MARGIN_BOTTOM_PERCENT,
     DEFAULT_MARGIN_TOP_PERCENT,
+    DOWNLOAD_INTERVAL_MINUTES_CHOICES,
 )
 from src.resolution_grade import (
     PROGRESSIVE_PREVIEW_PIXEL,
@@ -18,6 +20,7 @@ from src.resolution_grade import (
     pixel_to_grade,
     progressive_preview_grade,
 )
+from src.scheduler import reschedule_interval
 from src.settings import persist_applied_run_state
 from src.wallpaper.desktop import get_desktop_wallpaper as read_desktop_wallpaper
 from src.wallpaper.desktop import set_wallpaper as apply_desktop_wallpaper
@@ -28,6 +31,7 @@ from src.wallpaper.postprocess import (
     provisional_run_key_from_last,
     try_postprocess_fast_path,
 )
+from src.wallpaper.update import is_paused, resume
 
 BuildJob = Callable[..., Callable[[], None]]
 RunPipeline = Callable[..., str | None]
@@ -54,6 +58,8 @@ class WallpaperJobConfig(Protocol):
 
     def is_show_my_location(self) -> bool: ...
 
+    def get_download_interval_minutes(self) -> int: ...
+
 
 def job_kwargs_from_config(config: WallpaperJobConfig) -> dict[str, Any]:
     """将 Config getter 映射为 ``build_wallpaper_job`` / ``WallpaperJobRef`` 的 kwargs。"""
@@ -67,6 +73,7 @@ def job_kwargs_from_config(config: WallpaperJobConfig) -> dict[str, Any]:
         "reduce_banding": config.is_reduce_banding(),
         "show_typhoon_marker": config.is_show_typhoon_marker(),
         "show_my_location": config.is_show_my_location(),
+        "download_interval_minutes": config.get_download_interval_minutes(),
     }
 
 
@@ -136,6 +143,7 @@ class WallpaperJobRef:
         reduce_banding: bool = False,
         show_typhoon_marker: bool = False,
         show_my_location: bool = False,
+        download_interval_minutes: int = DEFAULT_DOWNLOAD_INTERVAL_MINUTES,
         base_dir: Path | None = None,
         build_job: BuildJob | None = None,
         run_pipeline: RunPipeline | None = None,
@@ -152,6 +160,10 @@ class WallpaperJobRef:
         self._reduce_banding = reduce_banding
         self._show_typhoon_marker = show_typhoon_marker
         self._show_my_location = show_my_location
+        minutes = int(download_interval_minutes)
+        if minutes not in DOWNLOAD_INTERVAL_MINUTES_CHOICES:
+            minutes = DEFAULT_DOWNLOAD_INTERVAL_MINUTES
+        self._download_interval_minutes = minutes
         self._base_dir = base_dir
         self._build_job = build_job or build_wallpaper_job
         self._run_pipeline = run_pipeline or run_wallpaper_pipeline
@@ -429,6 +441,11 @@ class WallpaperJobRef:
         return self._show_my_location
 
     @property
+    def download_interval_minutes(self) -> int:
+        with self._lock:
+            return self._download_interval_minutes
+
+    @property
     def base_dir(self) -> Path | None:
         return self._base_dir
 
@@ -483,6 +500,18 @@ class WallpaperJobRef:
 
     def set_show_my_location(self, show_my_location: bool) -> None:
         self._set_and_rebuild("_show_my_location", show_my_location)
+
+    def set_download_interval_minutes(self, minutes: int) -> None:
+        """更新调度间隔并 reschedule；若已暂停则顺带 resume。不重建流水线 job。"""
+        value = int(minutes)
+        if value not in DOWNLOAD_INTERVAL_MINUTES_CHOICES:
+            logging.warning("Ignoring invalid download_interval_minutes: %r", minutes)
+            return
+        with self._lock:
+            self._download_interval_minutes = value
+        reschedule_interval(value * 60)
+        if is_paused():
+            resume()
 
     def _rebuild_job_locked(self) -> None:
         self._sync_applied_display_unlocked()

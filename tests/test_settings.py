@@ -31,6 +31,7 @@ class SanitizeSettingsTests(unittest.TestCase):
                 "margin_bottom_percent": 12.0,
                 "cleanup_after_apply": False,
                 "use_yesterday_local_time": True,
+                "download_interval_minutes": 20,
                 "logging_enabled": True,
             }
         )
@@ -40,6 +41,7 @@ class SanitizeSettingsTests(unittest.TestCase):
         self.assertEqual(cleaned["margin_bottom_percent"], 12.0)
         self.assertFalse(cleaned["cleanup_after_apply"])
         self.assertTrue(cleaned["use_yesterday_local_time"])
+        self.assertEqual(cleaned["download_interval_minutes"], 20)
         self.assertTrue(cleaned["logging_enabled"])
 
     def test_skips_invalid_fields(self):
@@ -51,6 +53,7 @@ class SanitizeSettingsTests(unittest.TestCase):
                 "margin_bottom_percent": 101,
                 "cleanup_after_apply": 1,
                 "use_yesterday_local_time": "yes",
+                "download_interval_minutes": 7,
                 "logging_enabled": "on",
                 "extra": True,
             }
@@ -59,6 +62,16 @@ class SanitizeSettingsTests(unittest.TestCase):
 
     def test_non_dict_returns_empty(self):
         self.assertEqual(sanitize_settings([1, 2]), {})
+
+    def test_download_interval_minutes_choices(self):
+        self.assertEqual(
+            sanitize_settings({"download_interval_minutes": 5})["download_interval_minutes"],
+            5,
+        )
+        self.assertEqual(sanitize_settings({"download_interval_minutes": 12}), {})
+        self.assertEqual(
+            sanitize_settings({"download_interval_minutes": "10"})["download_interval_minutes"], 10
+        )
 
 
 class SettingsFileIoTests(unittest.TestCase):

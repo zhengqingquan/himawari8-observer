@@ -9,7 +9,11 @@ from collections.abc import Callable
 import pystray
 
 from src.log import is_logging_enabled
-from src.metadata.app_config import IMAGE_RESOLUTION, MARGIN_PERCENT_CHOICES
+from src.metadata.app_config import (
+    DOWNLOAD_INTERVAL_MINUTES_CHOICES,
+    IMAGE_RESOLUTION,
+    MARGIN_PERCENT_CHOICES,
+)
 from src.metadata.app_info import PROGRAM_NAME
 from src.startup import is_startup_set
 from src.tray.actions import (
@@ -66,6 +70,19 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             resume()
         else:
             pause()
+
+    def make_interval_item(minutes: int):
+        def on_select(icon, item):
+            job_ref.set_download_interval_minutes(minutes)
+            persist_job_settings(job_ref)
+            logging.info("Download interval set to %s minutes", minutes)
+
+        return pystray.MenuItem(
+            f"每 {minutes} 分钟",
+            on_select,
+            checked=lambda item: not is_paused() and job_ref.download_interval_minutes == minutes,
+            radio=True,
+        )
 
     def make_bool_toggle(
         *,
@@ -168,6 +185,15 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         icon.update_menu()
 
     resolution_menu = pystray.Menu(*[make_resolution_item(res) for res in IMAGE_RESOLUTION])
+    schedule_menu = pystray.Menu(
+        pystray.MenuItem(
+            "暂停定时更新",
+            on_toggle_pause,
+            checked=lambda item: is_paused(),
+        ),
+        pystray.Menu.SEPARATOR,
+        *[make_interval_item(minutes) for minutes in DOWNLOAD_INTERVAL_MINUTES_CHOICES],
+    )
     margin_menu = pystray.Menu(
         pystray.MenuItem(
             "启用黑边修边",
@@ -234,11 +260,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         pystray.MenuItem(wallpaper_time_utc_text, None),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("立即更新壁纸", on_update_wallpaper),
-        pystray.MenuItem(
-            "暂停更新壁纸",
-            on_toggle_pause,
-            checked=lambda item: is_paused(),
-        ),
+        pystray.MenuItem("定时更新", schedule_menu),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("图片分辨率", resolution_menu),
         pystray.MenuItem("黑边修边", margin_menu),

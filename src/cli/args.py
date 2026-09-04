@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 
-from src.metadata.app_config import IMAGE_RESOLUTION
+from src.metadata.app_config import DOWNLOAD_INTERVAL_MINUTES_CHOICES, IMAGE_RESOLUTION
 from src.metadata.app_info import DESCRIPTION, EPILOG, PROGRAM_NAME, SOFTWARE_VERSION
 from src.settings import resolve_runtime_settings
 
@@ -133,6 +133,17 @@ class Config:
         )
 
         self._parser.add_argument(
+            "--download-interval-minutes",
+            type=int,
+            choices=DOWNLOAD_INTERVAL_MINUTES_CHOICES,
+            default=None,
+            dest="download_interval_minutes",
+            help="Scheduled wallpaper check interval in minutes "
+            f"(choices: {', '.join(str(m) for m in DOWNLOAD_INTERVAL_MINUTES_CHOICES)}; "
+            "default: 10).",
+        )
+
+        self._parser.add_argument(
             "--logging",
             dest="logging_enabled",
             default=None,
@@ -156,6 +167,7 @@ class Config:
             "reduce_banding": self._args.reduce_banding,
             "show_typhoon_marker": self._args.show_typhoon_marker,
             "show_my_location": self._args.show_my_location,
+            "download_interval_minutes": self._args.download_interval_minutes,
             "logging_enabled": self._args.logging_enabled,
         }
         self._resolved = resolve_runtime_settings(cli_values)
@@ -177,6 +189,10 @@ class Config:
         logging.info("Reduce banding: %s", self._resolved["reduce_banding"])
         logging.info("Show typhoon marker: %s", self._resolved["show_typhoon_marker"])
         logging.info("Show my location: %s", self._resolved["show_my_location"])
+        logging.info(
+            "Download interval (minutes): %s",
+            self._resolved["download_interval_minutes"],
+        )
         logging.info("Logging enabled: %s", self._resolved["logging_enabled"])
 
     def get_download_resolution(self):
@@ -205,6 +221,9 @@ class Config:
 
     def is_show_my_location(self):
         return self._resolved["show_my_location"]
+
+    def get_download_interval_minutes(self):
+        return self._resolved["download_interval_minutes"]
 
     def is_logging_enabled(self):
         return self._resolved["logging_enabled"]

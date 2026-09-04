@@ -36,7 +36,13 @@ def main() -> None:
 
         # 托盘与调度共享同一任务引用（托盘可运行中换档）
         threading.Thread(target=lambda: setup_tray_icon(job_ref), daemon=True).start()
-        threading.Thread(target=lambda: start_scheduler(job_ref), daemon=True).start()
+        threading.Thread(
+            target=lambda: start_scheduler(
+                job_ref,
+                interval_seconds=job_ref.download_interval_minutes * 60,
+            ),
+            daemon=True,
+        ).start()
 
         wait_for_shutdown()
     except Exception:

@@ -11,9 +11,11 @@ from pathlib import Path
 from typing import Any
 
 from src.metadata.app_config import (
+    DEFAULT_DOWNLOAD_INTERVAL_MINUTES,
     DEFAULT_MARGIN_BOTTOM_PERCENT,
     DEFAULT_MARGIN_TOP_PERCENT,
     DEFAULT_RESOLUTION,
+    DOWNLOAD_INTERVAL_MINUTES_CHOICES,
     IMAGE_RESOLUTION,
     PROGRAM_DIR_ABS_PATH,
 )
@@ -38,6 +40,7 @@ def default_settings() -> dict[str, Any]:
         "reduce_banding": False,
         "show_typhoon_marker": False,
         "show_my_location": False,
+        "download_interval_minutes": DEFAULT_DOWNLOAD_INTERVAL_MINUTES,
         "startup_enabled": False,
         "logging_enabled": False,
     }
@@ -67,6 +70,16 @@ def _coerce_bool(value: Any) -> bool | None:
     if isinstance(value, bool):
         return value
     return None
+
+
+def _coerce_download_interval_minutes(value: Any) -> int | None:
+    try:
+        minutes = int(value)
+    except (TypeError, ValueError):
+        return None
+    if minutes not in DOWNLOAD_INTERVAL_MINUTES_CHOICES:
+        return None
+    return minutes
 
 
 def _coerce_last_run_key(value: Any) -> list[Any] | None:
@@ -166,6 +179,7 @@ _SETTINGS_FIELD_COERCERS: tuple[tuple[str, Callable[[Any], Any | None]], ...] = 
     ("reduce_banding", _coerce_bool),
     ("show_typhoon_marker", _coerce_bool),
     ("show_my_location", _coerce_bool),
+    ("download_interval_minutes", _coerce_download_interval_minutes),
     ("startup_enabled", _coerce_bool),
     ("logging_enabled", _coerce_bool),
     ("last_run_key", _coerce_last_run_key),
@@ -264,6 +278,7 @@ def settings_dict_from_job(
     reduce_banding: bool = False,
     show_typhoon_marker: bool = False,
     show_my_location: bool = False,
+    download_interval_minutes: int = DEFAULT_DOWNLOAD_INTERVAL_MINUTES,
 ) -> dict[str, Any]:
     """从壁纸任务字段组装可写入的 settings dict（不含 logging / 应用指纹）。"""
     return {
@@ -276,6 +291,7 @@ def settings_dict_from_job(
         "reduce_banding": reduce_banding,
         "show_typhoon_marker": show_typhoon_marker,
         "show_my_location": show_my_location,
+        "download_interval_minutes": download_interval_minutes,
     }
 
 
