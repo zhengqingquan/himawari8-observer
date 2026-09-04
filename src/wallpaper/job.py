@@ -149,6 +149,12 @@ class WallpaperJobRef:
         # 上次成功上墙的观测时间与档位（供托盘展示）；与 applied_run_state 同步。
         self._last_observation_time: str | None = None
         self._last_applied_grade: str | None = None
+        self._sync_applied_display_unlocked()
+        self._on_applied: Callable[[], None] | None = None
+        self._job = self._build_initial_job()
+
+    def _sync_applied_display_unlocked(self) -> None:
+        """从 ``applied_run_state`` 回填托盘展示用的观测时间与档位（调用方须已持锁或尚单线程）。"""
         last = AppliedRunKey.from_raw(self._applied_run_state.get("last"))
         if last is not None:
             self._last_observation_time = last.observation_time
@@ -156,8 +162,6 @@ class WallpaperJobRef:
         applied_grade = self._applied_run_state.get("applied_grade")
         if isinstance(applied_grade, str) and applied_grade:
             self._last_applied_grade = applied_grade
-        self._on_applied: Callable[[], None] | None = None
-        self._job = self._build_initial_job()
 
     def _build_initial_job(self) -> Callable[[], None]:
         return self._build_job(
@@ -178,6 +182,11 @@ class WallpaperJobRef:
         if not self._persist_state:
             return
         persist_applied_run_state(self._applied_run_state)
+
+    def _set_and_rebuild(self, attr: str, value: Any) -> None:
+        with self._lock:
+            setattr(self, attr, value)
+            self._rebuild_job_locked()
 
     def set_on_applied(self, callback: Callable[[], None] | None) -> None:
         """注册本轮流水线正常结束后的回调（锁外调用；供托盘刷新悬停标题等）。"""
@@ -328,21 +337,14 @@ class WallpaperJobRef:
     def applied_observation_time(self) -> str | None:
         """当前壁纸对应的观测时间（``YYYY-MM-DD HH:MM:SS``，UTC）；尚未成功应用则为 ``None``。"""
         with self._lock:
-            last = AppliedRunKey.from_raw(self._applied_run_state.get("last"))
-            if last is not None:
-                self._last_observation_time = last.observation_time
+            self._sync_applied_display_unlocked()
             return self._last_observation_time
 
     @property
     def applied_resolution_grade(self) -> str | None:
         """当前桌面壁纸对应的分辨率档位；尚未成功应用则为 ``None``。"""
         with self._lock:
-            last = AppliedRunKey.from_raw(self._applied_run_state.get("last"))
-            if last is not None:
-                self._last_applied_grade = last.resolution_grade
-            applied_grade = self._applied_run_state.get("applied_grade")
-            if isinstance(applied_grade, str) and applied_grade:
-                self._last_applied_grade = applied_grade
+            self._sync_applied_display_unlocked()
             return self._last_applied_grade
 
     @property
@@ -354,69 +356,35 @@ class WallpaperJobRef:
         return grade_to_pixel(grade)
 
     def set_resolution_grade(self, resolution_grade: str) -> None:
-        with self._lock:
-            self._grade = resolution_grade
-            self._rebuild_job_locked()
+        self._set_and_rebuild("_grade", resolution_grade)
 
     def set_pixel_side(self, pixel_side: int) -> None:
         self.set_resolution_grade(pixel_to_grade(pixel_side))
 
     def set_auto_adjust(self, auto_adjust: bool) -> None:
-        with self._lock:
-            self._auto_adjust = auto_adjust
-            self._rebuild_job_locked()
+        self._set_and_rebuild("_auto_adjust", auto_adjust)
 
     def set_margin_top_percent(self, percent: float) -> None:
-        with self._lock:
-            self._margin_top_percent = percent
-            self._rebuild_job_locked()
+        self._set_and_rebuild("_margin_top_percent", percent)
 
     def set_margin_bottom_percent(self, percent: float) -> None:
-        with self._lock:
-            self._margin_bottom_percent = percent
-            self._rebuild_job_locked()
+        self._set_and_rebuild("_margin_bottom_percent", percent)
 
     def set_cleanup_after_apply(self, cleanup_after_apply: bool) -> None:
-        with self._lock:
-            self._cleanup_after_apply = cleanup_after_apply
-            self._rebuild_job_locked()
+        self._set_and_rebuild("_cleanup_after_apply", cleanup_after_apply)
 
     def set_use_yesterday_local_time(self, use_yesterday_local_time: bool) -> None:
-        with self._lock:
-            self._use_yesterday_local_time = use_yesterday_local_time
-            self._rebuild_job_locked()
+        self._set_and_rebuild("_use_yesterday_local_time", use_yesterday_local_time)
 
     def set_reduce_banding(self, reduce_banding: bool) -> None:
-        with self._lock:
-            self._reduce_banding = reduce_banding
-            self._rebuild_job_locked()
+        self._set_and_rebuild("_reduce_banding", reduce_banding)
 
     def set_show_typhoon_marker(self, show_typhoon_marker: bool) -> None:
-        with self._lock:
-            self._show_typhoon_marker = show_typhoon_marker
-            self._rebuild_job_locked()
+        self._set_and_rebuild("_show_typhoon_marker", show_typhoon_marker)
 
     def _rebuild_job_locked(self) -> None:
-        last = AppliedRunKey.from_raw(self._applied_run_state.get("last"))
-        if last is not None:
-            self._last_observation_time = last.observation_time
-            self._last_applied_grade = last.resolution_grade
-        applied_grade = self._applied_run_state.get("applied_grade")
-        if isinstance(applied_grade, str) and applied_grade:
-            self._last_applied_grade = applied_grade
+        self._sync_applied_display_unlocked()
         # 必须保持同一 dict 引用：进行中的 pipeline 写指纹时与后续 persist 共用这份 state。
         # 若在此 new 一个 dict，当轮完成写到旧对象，persist 读新对象 → 指纹永久停在旧观测时间。
         self._applied_run_state["applied_grade"] = self._last_applied_grade
-        self._job = self._build_job(
-            self._grade,
-            auto_adjust=self._auto_adjust,
-            margin_top_percent=self._margin_top_percent,
-            margin_bottom_percent=self._margin_bottom_percent,
-            cleanup_after_apply=self._cleanup_after_apply,
-            use_yesterday_local_time=self._use_yesterday_local_time,
-            reduce_banding=self._reduce_banding,
-            show_typhoon_marker=self._show_typhoon_marker,
-            base_dir=self._base_dir,
-            run_pipeline=self._run_pipeline,
-            applied_run_state=self._applied_run_state,
-        )
+        self._job = self._build_initial_job()
