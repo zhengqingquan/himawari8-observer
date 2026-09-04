@@ -29,8 +29,8 @@ class PicEqualOnlyTests(unittest.TestCase):
                 pic.final_path_equal,
                 base / "img" / "20210603052000" / "complete" / "2d20210603052000.png",
             )
-            for path, _status in pic.tiles.values():
-                self.assertTrue(str(path).startswith(str(base / "img")))
+            for slot in pic.tiles.values():
+                self.assertTrue(str(slot.path).startswith(str(base / "img")))
 
 
 if __name__ == "__main__":

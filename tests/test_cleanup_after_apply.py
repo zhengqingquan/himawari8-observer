@@ -73,7 +73,7 @@ class CleanupAfterApplyTests(unittest.TestCase):
 
             def download_tiles(pic):
                 for entry in pic.tiles.values():
-                    entry[1] = 1
+                    entry.done = True
                 run_root = Path(pic.folder_path).parent
                 tile_dir = run_root / pic.grade / "0"
                 tile_dir.mkdir(parents=True, exist_ok=True)
@@ -124,7 +124,7 @@ class CleanupAfterApplyTests(unittest.TestCase):
 
             def download_tiles(pic):
                 for entry in pic.tiles.values():
-                    entry[1] = 1
+                    entry.done = True
                 Path(pic.folder_path).mkdir(parents=True, exist_ok=True)
                 tile_dir = Path(pic.folder_path).parent / pic.grade / "0"
                 tile_dir.mkdir(parents=True, exist_ok=True)

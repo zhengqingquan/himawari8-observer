@@ -9,6 +9,8 @@ from unittest.mock import MagicMock
 
 from src.download.pool import _PNG_MAGIC, _build_session, download_file, download_files
 
+from src.pic import TileSlot
+
 
 class DownloadFilesTests(unittest.TestCase):
     def test_calls_download_one_and_marks_success(self):
@@ -21,8 +23,8 @@ class DownloadFilesTests(unittest.TestCase):
             a = str(Path(tmp) / "a.png")
             b = str(Path(tmp) / "b.png")
             urls = {
-                "https://example.test/a.png": [a, 0],
-                "https://example.test/b.png": [b, 0],
+                "https://example.test/a.png": TileSlot(a),
+                "https://example.test/b.png": TileSlot(b),
             }
             download_files(urls, download_one=fake_download_one)
             self.assertEqual(
@@ -32,8 +34,8 @@ class DownloadFilesTests(unittest.TestCase):
                     ("https://example.test/b.png", b),
                 ],
             )
-            self.assertEqual(urls["https://example.test/a.png"][1], 1)
-            self.assertEqual(urls["https://example.test/b.png"][1], 1)
+            self.assertTrue(urls["https://example.test/a.png"].done)
+            self.assertTrue(urls["https://example.test/b.png"].done)
 
     def test_failed_download_leaves_status_zero(self):
         calls = []
@@ -44,9 +46,9 @@ class DownloadFilesTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             path = str(Path(tmp) / "a.png")
-            urls = {"https://example.test/a.png": [path, 0]}
+            urls = {"https://example.test/a.png": TileSlot(path)}
             download_files(urls, download_one=boom, retry_rounds=2)
-            self.assertEqual(urls["https://example.test/a.png"][1], 0)
+            self.assertFalse(urls["https://example.test/a.png"].done)
             self.assertEqual(len(calls), 3)  # pass-1 + 2 retries
 
     def test_failed_tiles_retried_until_success(self):
@@ -60,9 +62,9 @@ class DownloadFilesTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             path = str(Path(tmp) / "a.png")
-            urls = {"https://example.test/a.png": [path, 0]}
+            urls = {"https://example.test/a.png": TileSlot(path)}
             download_files(urls, download_one=flaky, retry_rounds=2)
-            self.assertEqual(urls["https://example.test/a.png"][1], 1)
+            self.assertTrue(urls["https://example.test/a.png"].done)
             self.assertEqual(attempts["https://example.test/a.png"], 3)
 
     def test_retry_rounds_zero_does_not_retry(self):
@@ -74,10 +76,10 @@ class DownloadFilesTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             path = str(Path(tmp) / "a.png")
-            urls = {"https://example.test/a.png": [path, 0]}
+            urls = {"https://example.test/a.png": TileSlot(path)}
             download_files(urls, download_one=boom, retry_rounds=0)
             self.assertEqual(len(calls), 1)
-            self.assertEqual(urls["https://example.test/a.png"][1], 0)
+            self.assertFalse(urls["https://example.test/a.png"].done)
 
     def test_skips_existing_png_file(self):
         calls = []
@@ -90,8 +92,8 @@ class DownloadFilesTests(unittest.TestCase):
             existing.write_bytes(_PNG_MAGIC + b"rest")
             missing = Path(tmp) / "b.png"
             urls = {
-                "https://example.test/a.png": [str(existing), 0],
-                "https://example.test/b.png": [str(missing), 0],
+                "https://example.test/a.png": TileSlot(str(existing)),
+                "https://example.test/b.png": TileSlot(str(missing)),
             }
             with self.assertLogs(level="INFO") as captured:
                 download_files(urls, download_one=fake_download_one)
@@ -99,8 +101,8 @@ class DownloadFilesTests(unittest.TestCase):
             self.assertIn("Skipped 1 existing tile(s)", messages)
             self.assertIn("Tile download pass-1: 1 ok, 0 failed (of 1)", messages)
             self.assertEqual(calls, ["https://example.test/b.png"])
-            self.assertEqual(urls["https://example.test/a.png"][1], 1)
-            self.assertEqual(urls["https://example.test/b.png"][1], 1)
+            self.assertTrue(urls["https://example.test/a.png"].done)
+            self.assertTrue(urls["https://example.test/b.png"].done)
 
     def test_empty_existing_file_is_redownloaded(self):
         calls = []
@@ -112,10 +114,10 @@ class DownloadFilesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             empty = Path(tmp) / "a.png"
             empty.write_bytes(b"")
-            urls = {"https://example.test/a.png": [str(empty), 0]}
+            urls = {"https://example.test/a.png": TileSlot(str(empty))}
             download_files(urls, download_one=fake_download_one)
             self.assertEqual(calls, ["https://example.test/a.png"])
-            self.assertEqual(urls["https://example.test/a.png"][1], 1)
+            self.assertTrue(urls["https://example.test/a.png"].done)
 
     def test_non_png_existing_file_is_redownloaded(self):
         calls = []
@@ -127,10 +129,10 @@ class DownloadFilesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             garbage = Path(tmp) / "a.png"
             garbage.write_bytes(b"half-written-garbage")
-            urls = {"https://example.test/a.png": [str(garbage), 0]}
+            urls = {"https://example.test/a.png": TileSlot(str(garbage))}
             download_files(urls, download_one=fake_download_one)
             self.assertEqual(calls, ["https://example.test/a.png"])
-            self.assertEqual(urls["https://example.test/a.png"][1], 1)
+            self.assertTrue(urls["https://example.test/a.png"].done)
             self.assertTrue(garbage.read_bytes().startswith(_PNG_MAGIC))
 
 

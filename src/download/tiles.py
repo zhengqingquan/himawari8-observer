@@ -17,7 +17,7 @@ def download_tiles(
     download_files_impl: DownloadFiles | None = None,
     **kwargs: Any,
 ) -> None:
-    """下载 ``pic.tiles`` 中的全部瓦片（线程池 + Session/retry/状态位）。
+    """下载 ``pic.tiles`` 中的全部瓦片（线程池 + Session/retry；成功标记 ``TileSlot.done``）。
 
     Args:
         pic: 等分瓦片图实例。

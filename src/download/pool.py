@@ -12,6 +12,8 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 
+from src.pic import TileSlot
+
 DownloadOne = Callable[[str, Any], Any]
 
 # 首轮之外，对仍失败的瓦片再补下的轮数。
@@ -80,27 +82,27 @@ def _existing_tile_ok(path: Any) -> bool:
 
 
 def _run_download_round(
-    batch: Mapping[str, Any],
+    batch: Mapping[str, TileSlot],
     *,
     download_one: DownloadOne,
     max_workers: int,
     round_label: str,
 ) -> None:
-    """并发下载一批瓦片；成功则 ``status=1``，失败保持 ``0``。"""
+    """并发下载一批瓦片；成功则 ``done=True``，失败保持 ``False``。"""
     if not batch:
         return
     ok_count = 0
     fail_count = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_entry = {
-            executor.submit(download_one, url, entry[0]): (url, entry)
+            executor.submit(download_one, url, entry.path): (url, entry)
             for url, entry in batch.items()
         }
         for future in concurrent.futures.as_completed(future_to_entry):
             url, entry = future_to_entry[future]
             try:
                 future.result()
-                entry[1] = 1
+                entry.done = True
                 ok_count += 1
                 logging.debug("Downloaded tile (%s): %s", round_label, url)
             except Exception as exc:
@@ -121,30 +123,30 @@ def _run_download_round(
 
 
 def download_files(
-    urls: Mapping[str, Any],
+    urls: Mapping[str, TileSlot],
     *,
     download_one: DownloadOne | None = None,
     max_workers: int = 16,
     retry_rounds: int = _DEFAULT_RETRY_ROUNDS,
 ) -> None:
-    """使用线程池下载 urls（值为 ``[path, status]``）。成功则 status=1。
+    """使用线程池下载 urls（值为 ``TileSlot``）。成功则 ``done=True``。
 
     已存在且带 PNG 头的本地文件会直接标记成功并跳过网络请求。
     首轮结束后，对仍失败的瓦片再补下最多 ``retry_rounds`` 轮。
 
     Args:
-        urls: url → ``[path, status]`` 映射。
+        urls: url → ``TileSlot`` 映射。
         download_one: 可选单瓦片下载回调 ``(url, path)``；默认走 Session/retry。
         max_workers: 线程池大小（同时作为 Session 连接池上限）。
         retry_rounds: 首轮之外的失败补下轮数；``0`` 表示不补下。
     """
-    pending: dict[str, Any] = {}
+    pending: dict[str, TileSlot] = {}
     skipped = 0
     for url, entry in urls.items():
-        if _existing_tile_ok(entry[0]):
-            entry[1] = 1
+        if _existing_tile_ok(entry.path):
+            entry.done = True
             skipped += 1
-            logging.debug("Skipped existing tile: %s", entry[0])
+            logging.debug("Skipped existing tile: %s", entry.path)
             continue
         pending[url] = entry
 
@@ -170,7 +172,7 @@ def download_files(
     )
 
     for retry_index in range(1, rounds + 1):
-        failed = {url: entry for url, entry in pending.items() if entry[1] == 0}
+        failed = {url: entry for url, entry in pending.items() if not entry.done}
         if not failed:
             break
         logging.info(

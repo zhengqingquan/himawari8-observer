@@ -22,7 +22,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
 
         def download_tiles(pic):
             for entry in pic.tiles.values():
-                entry[1] = 1
+                entry.done = True
 
         def compose_equal(pic):
             Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
@@ -65,7 +65,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
 
         def download_tiles(pic):
             for entry in pic.tiles.values():
-                entry[1] = 1
+                entry.done = True
 
         def compose_equal(pic):
             Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
@@ -105,7 +105,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
         def download_tiles(pic):
             downloads.append(1)
             for entry in pic.tiles.values():
-                entry[1] = 1
+                entry.done = True
 
         def compose_equal(pic):
             Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
@@ -251,7 +251,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
         def download_tiles(pic):
             downloads.append(1)
             for entry in pic.tiles.values():
-                entry[1] = 1
+                entry.done = True
 
         def compose_equal(pic):
             Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
@@ -360,7 +360,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
         def download_tiles(pic):
             downloads.append(pic.grade)
             for entry in pic.tiles.values():
-                entry[1] = 1
+                entry.done = True
 
         def compose_equal(pic):
             Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)

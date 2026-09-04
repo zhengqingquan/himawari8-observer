@@ -68,8 +68,8 @@ def compute_margin_layout(
 def _paste_tiles(joint: Image.Image, pic, *, origin_x: int = 0, origin_y: int = 0) -> None:
     axis_x = 0
     axis_y = 0
-    for _key, val in pic.tiles.items():
-        with Image.open(val[0]) as tile:
+    for slot in pic.tiles.values():
+        with Image.open(slot.path) as tile:
             joint.paste(
                 tile,
                 (origin_x + pic.pic_pixel * axis_x, origin_y + pic.pic_pixel * axis_y),

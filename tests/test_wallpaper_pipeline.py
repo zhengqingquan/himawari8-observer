@@ -22,7 +22,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
         def download_tiles(pic):
             events.append(("download", pic.grade))
             for entry in pic.tiles.values():
-                entry[1] = 1
+                entry.done = True
 
         def compose_equal(pic):
             events.append(("compose", pic.grade))
@@ -59,7 +59,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
         def download_tiles(pic):
             for entry in pic.tiles.values():
-                entry[1] = 1
+                entry.done = True
 
         def compose_equal(pic):
             Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
@@ -94,7 +94,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
         def download_tiles(pic):
             for entry in pic.tiles.values():
-                entry[1] = 1
+                entry.done = True
 
         def compose_equal(pic):
             events.append("compose")
@@ -128,7 +128,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
         def download_tiles(pic):
             for entry in pic.tiles.values():
-                entry[1] = 1
+                entry.done = True
 
         def set_wallpaper(path: Path):
             events.append(("set", path.name))
@@ -182,7 +182,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
         def download_tiles(pic):
             for entry in pic.tiles.values():
-                entry[1] = 1
+                entry.done = True
 
         def compose_equal(pic):
             events.append("compose")
@@ -248,7 +248,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
         def download_tiles(pic):
             events.append("download")
             for entry in pic.tiles.values():
-                entry[1] = 1
+                entry.done = True
 
         def compose_equal(pic):
             events.append("compose")
@@ -340,7 +340,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
         def download_tiles(pic):
             events.append("download")
             for entry in pic.tiles.values():
-                entry[1] = 1
+                entry.done = True
 
         def compose_equal(pic):
             events.append("compose")
@@ -393,7 +393,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
         def download_tiles(pic):
             events.append("download")
             for entry in pic.tiles.values():
-                entry[1] = 1
+                entry.done = True
 
         def compose_equal(pic):
             events.append("compose")
@@ -453,7 +453,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
         def download_tiles(pic):
             events.append(("download", pic.folder_root))
             for entry in pic.tiles.values():
-                entry[1] = 1
+                entry.done = True
 
         def compose_equal(pic):
             events.append("compose")
@@ -498,7 +498,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
         def download_tiles(pic):
             events.append(("download", pic.year + pic.month + pic.day, pic.hour + pic.minute))
             for entry in pic.tiles.values():
-                entry[1] = 1
+                entry.done = True
 
         def compose_equal(pic):
             events.append("compose")
@@ -591,7 +591,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
         def download_tiles(pic):
             downloads.append(1)
             for entry in pic.tiles.values():
-                entry[1] = 1
+                entry.done = True
 
         def compose_equal(pic):
             Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
@@ -668,7 +668,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
         def download_tiles(pic):
             downloads.append(1)
             for entry in pic.tiles.values():
-                entry[1] = 1
+                entry.done = True
 
         def compose_equal(pic):
             Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)

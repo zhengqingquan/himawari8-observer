@@ -3,11 +3,21 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from time import strftime
+from typing import Any
 
 from src.metadata.app_config import PROGRAM_DIR_ABS_PATH
 from src.resolution_grade import grade_to_grid, tile_pixel
+
+
+@dataclass
+class TileSlot:
+    """单瓦片：本地路径与是否已下载成功（可变，供并发下载原地标记）。"""
+
+    path: Any
+    done: bool = False
 
 
 class Pic:
@@ -55,7 +65,7 @@ class Pic:
         self.build_tiles()
 
     def build_tiles(self) -> None:
-        """构建瓦片 url → [path, status] 映射。"""
+        """构建瓦片 url → ``TileSlot`` 映射。"""
         logging.info(
             "Building tile URL/path map for grade %s (%s tiles)",
             self.grade,
@@ -92,9 +102,7 @@ class Pic:
             location_x = 0
             location_y = location_y + 1
 
-        self.tiles = dict(zip(arr_url, arr_path))
-        for key, val in self.tiles.items():
-            self.tiles[key] = [val, 0]
+        self.tiles = {url: TileSlot(path) for url, path in zip(arr_url, arr_path)}
         if self.pic_chip == len(self.tiles):
             logging.info("Tile URL/path map ready: %s entries", len(self.tiles))
         else:
@@ -106,8 +114,5 @@ class Pic:
 
     def download_finish(self) -> bool:
         """全部瓦片下载完成则返回 True。"""
-        self.dl_finish_equal = True
-        for key, val in self.tiles.items():
-            if val[1] == 0:
-                self.dl_finish_equal = False
+        self.dl_finish_equal = all(slot.done for slot in self.tiles.values())
         return self.dl_finish_equal

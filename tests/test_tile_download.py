@@ -18,7 +18,7 @@ class TileDownloadTests(unittest.TestCase):
             def fake_download_files(urls, **_kwargs):
                 seen.append(len(urls))
                 for entry in urls.values():
-                    entry[1] = 1
+                    entry.done = True
 
             download_tiles(pic, download_files_impl=fake_download_files)
             self.assertEqual(seen, [1])

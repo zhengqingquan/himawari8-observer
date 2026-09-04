@@ -18,6 +18,7 @@ from src.compose.equal import (
     get_primary_screen_size,
     reduce_color_banding,
 )
+from src.pic import TileSlot
 
 
 class ComputeMarginLayoutTests(unittest.TestCase):
@@ -114,7 +115,7 @@ class ComposeEqualImageTests(unittest.TestCase):
             for index, color in enumerate(colors):
                 path = root / f"{index}.png"
                 Image.new("RGB", (10, 10), color=color).save(path)
-                tiles[f"url-{index}"] = [str(path), 1]
+                tiles[f"url-{index}"] = TileSlot(str(path), done=True)
 
             out = root / "out.png"
             pic = SimpleNamespace(
@@ -142,7 +143,7 @@ class ComposeEqualImageTests(unittest.TestCase):
             for index, color in enumerate(colors):
                 path = root / f"{index}.png"
                 Image.new("RGB", (10, 10), color=color).save(path)
-                tiles[f"url-{index}"] = [str(path), 1]
+                tiles[f"url-{index}"] = TileSlot(str(path), done=True)
 
             pic = SimpleNamespace(
                 pic_side=20,
