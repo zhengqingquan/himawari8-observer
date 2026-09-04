@@ -14,7 +14,7 @@ from PIL import Image
 from src.compose.equal import compute_margin_layout, get_primary_screen_size
 from src.compose.geo import latlon_to_himawari_fd_xy
 from src.compose.overlay import draw_typhoon_marker
-from src.compose.solar import subsolar_latlon, sunglint_latlon
+from src.compose.solar import is_sunlit, subsolar_latlon, sunglint_latlon
 from src.wallpaper.fingerprint import OBS_TIME_FMT
 from src.wallpaper.paths import AppliedRunState
 
@@ -31,6 +31,20 @@ _SUBSOLAR_MARKER_COLOR = (255, 196, 64)
 _SUBSOLAR_MARKER_LABEL = "SUN"
 _SUNGLINT_MARKER_COLOR = (100, 220, 255)
 _SUNGLINT_MARKER_LABEL = "SG"
+
+
+def _skip_if_night(
+    *,
+    lat: float,
+    lon: float,
+    observation_time: struct_time,
+    label: str,
+) -> bool:
+    """夜侧则记日志并返回 True（调用方应跳过绘制）。"""
+    if is_sunlit(lat, lon, observation_time):
+        return False
+    logging.info("Marker %s on night side; skipping", label)
+    return True
 
 
 def store_typhoon_center_cache(
@@ -104,9 +118,7 @@ def draw_typhoon_marker_at(
                 bottom_percent=margin_bottom_percent,
             )
             draw_xy = (image_x + xy[0], image_y + xy[1])
-    return draw_typhoon_marker(
-        wallpaper_path, draw_xy, label=label, color=color, style=style
-    )
+    return draw_typhoon_marker(wallpaper_path, draw_xy, label=label, color=color, style=style)
 
 
 def apply_typhoon_marker_if_needed(
@@ -127,6 +139,8 @@ def apply_typhoon_marker_if_needed(
     lat, lon = center
     obs_str = strftime(OBS_TIME_FMT, observation_time)
     store_typhoon_center_cache(applied_run_state, obs_str, lat, lon)
+    if _skip_if_night(lat=lat, lon=lon, observation_time=observation_time, label="TY"):
+        return
     draw_typhoon_marker_at(
         wallpaper_path=wallpaper_path,
         pic_side=pic_side,
@@ -158,6 +172,21 @@ def apply_typhoon_marker_cached_or_fetch(
     """
     cached = cached_typhoon_center(applied_run_state, observation_time)
     if cached is not None:
+        try:
+            obs = strptime(observation_time, OBS_TIME_FMT)
+        except ValueError:
+            logging.warning(
+                "Postprocess fast path: invalid observation_time %r; typhoon marker skipped",
+                observation_time,
+            )
+            return
+        if _skip_if_night(
+            lat=cached[0],
+            lon=cached[1],
+            observation_time=obs,
+            label="TY",
+        ):
+            return
         draw_typhoon_marker_at(
             wallpaper_path=wallpaper_path,
             pic_side=pic_side,
@@ -278,6 +307,7 @@ def apply_jtwc_invest_markers_if_needed(
     *,
     wallpaper_path: Path,
     pic_side: int,
+    observation_time: struct_time,
     auto_adjust: bool,
     margin_top_percent: float,
     margin_bottom_percent: float,
@@ -294,15 +324,25 @@ def apply_jtwc_invest_markers_if_needed(
         logging.info("Postprocess fast path: no JTWC invest cache; markers not drawn")
         return
     for item in invests:
+        lat = float(item["lat"])
+        lon = float(item["lon"])
+        label = str(item["id"])
+        if _skip_if_night(
+            lat=lat,
+            lon=lon,
+            observation_time=observation_time,
+            label=label,
+        ):
+            continue
         draw_typhoon_marker_at(
             wallpaper_path=wallpaper_path,
             pic_side=pic_side,
-            lat=float(item["lat"]),
-            lon=float(item["lon"]),
+            lat=lat,
+            lon=lon,
             auto_adjust=auto_adjust,
             margin_top_percent=margin_top_percent,
             margin_bottom_percent=margin_bottom_percent,
-            label=str(item["id"]),
+            label=label,
             color=_JTWC_INVEST_MARKER_COLOR,
             style="corners",
         )
@@ -353,6 +393,7 @@ def apply_my_location_marker_if_needed(
     *,
     wallpaper_path: Path,
     pic_side: int,
+    observation_time: struct_time,
     auto_adjust: bool,
     margin_top_percent: float,
     margin_bottom_percent: float,
@@ -375,6 +416,13 @@ def apply_my_location_marker_if_needed(
             logging.info("Postprocess fast path: no my-location cache; marker not drawn")
         return
     lat, lon = center
+    if _skip_if_night(
+        lat=lat,
+        lon=lon,
+        observation_time=observation_time,
+        label=_MY_LOCATION_MARKER_LABEL,
+    ):
+        return
     draw_typhoon_marker_at(
         wallpaper_path=wallpaper_path,
         pic_side=pic_side,

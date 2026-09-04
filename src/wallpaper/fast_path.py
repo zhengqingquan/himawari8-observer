@@ -231,35 +231,54 @@ def try_postprocess_fast_path(
                 fetch_typhoon_center_fn=fetch_typhoon_center_fn,
                 allow_network=True,
             )
-            apply_jtwc_invest_markers_if_needed(
-                wallpaper_path=wallpaper_path,
-                pic_side=pic_side,
-                auto_adjust=options.auto_adjust,
-                margin_top_percent=options.margin_top_percent,
-                margin_bottom_percent=options.margin_bottom_percent,
-                fetch_jtwc_invests_fn=fetch_jtwc_invests_fn or (lambda: []),
-                applied_run_state=applied_run_state,
-                allow_network=True,
-            )
-        if options.show_my_location:
-            # IP 定位与观测时间无关：快路径无缓存时允许联网，避免首次开启永远不画。
-            apply_my_location_marker_if_needed(
-                wallpaper_path=wallpaper_path,
-                pic_side=pic_side,
-                auto_adjust=options.auto_adjust,
-                margin_top_percent=options.margin_top_percent,
-                margin_bottom_percent=options.margin_bottom_percent,
-                fetch_ip_latlon_fn=fetch_ip_latlon_fn or (lambda: None),
-                applied_run_state=applied_run_state,
-                allow_network=True,
-            )
-        if options.show_subsolar_point:
             try:
                 obs = strptime(observation_time, OBS_TIME_FMT)
             except ValueError:
                 logging.warning(
                     "Postprocess fast path: invalid observation_time %r; "
-                    "subsolar marker skipped",
+                    "JTWC invest markers skipped",
+                    observation_time,
+                )
+            else:
+                apply_jtwc_invest_markers_if_needed(
+                    wallpaper_path=wallpaper_path,
+                    pic_side=pic_side,
+                    observation_time=obs,
+                    auto_adjust=options.auto_adjust,
+                    margin_top_percent=options.margin_top_percent,
+                    margin_bottom_percent=options.margin_bottom_percent,
+                    fetch_jtwc_invests_fn=fetch_jtwc_invests_fn or (lambda: []),
+                    applied_run_state=applied_run_state,
+                    allow_network=True,
+                )
+        if options.show_my_location:
+            # IP 定位与观测时间无关：快路径无缓存时允许联网，避免首次开启永远不画。
+            try:
+                obs = strptime(observation_time, OBS_TIME_FMT)
+            except ValueError:
+                logging.warning(
+                    "Postprocess fast path: invalid observation_time %r; "
+                    "my-location marker skipped",
+                    observation_time,
+                )
+            else:
+                apply_my_location_marker_if_needed(
+                    wallpaper_path=wallpaper_path,
+                    pic_side=pic_side,
+                    observation_time=obs,
+                    auto_adjust=options.auto_adjust,
+                    margin_top_percent=options.margin_top_percent,
+                    margin_bottom_percent=options.margin_bottom_percent,
+                    fetch_ip_latlon_fn=fetch_ip_latlon_fn or (lambda: None),
+                    applied_run_state=applied_run_state,
+                    allow_network=True,
+                )
+        if options.show_subsolar_point:
+            try:
+                obs = strptime(observation_time, OBS_TIME_FMT)
+            except ValueError:
+                logging.warning(
+                    "Postprocess fast path: invalid observation_time %r; subsolar marker skipped",
                     observation_time,
                 )
             else:
@@ -276,8 +295,7 @@ def try_postprocess_fast_path(
                 obs = strptime(observation_time, OBS_TIME_FMT)
             except ValueError:
                 logging.warning(
-                    "Postprocess fast path: invalid observation_time %r; "
-                    "sunglint marker skipped",
+                    "Postprocess fast path: invalid observation_time %r; sunglint marker skipped",
                     observation_time,
                 )
             else:

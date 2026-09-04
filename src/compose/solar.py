@@ -74,18 +74,7 @@ def subsolar_latlon(observation_time: struct_time) -> tuple[float, float]:
     lambda_app = true_long - 0.00569 - 0.00478 * math.sin(math.radians(omega))
 
     # 黄赤交角
-    epsilon0 = (
-        23.0
-        + (
-            26.0
-            + (
-                21.448
-                - t * (46.8150 + t * (0.00059 - t * 0.001813))
-            )
-            / 60.0
-        )
-        / 60.0
-    )
+    epsilon0 = 23.0 + (26.0 + (21.448 - t * (46.8150 + t * (0.00059 - t * 0.001813))) / 60.0) / 60.0
     epsilon = epsilon0 + 0.00256 * math.cos(math.radians(omega))
     eps_rad = math.radians(epsilon)
     lambda_rad = math.radians(lambda_app)
@@ -106,12 +95,22 @@ def subsolar_latlon(observation_time: struct_time) -> tuple[float, float]:
         - 1.25 * e * e * math.sin(2.0 * m_rad)
     )
     ut_hours = (
-        observation_time.tm_hour
-        + observation_time.tm_min / 60.0
-        + observation_time.tm_sec / 3600.0
+        observation_time.tm_hour + observation_time.tm_min / 60.0 + observation_time.tm_sec / 3600.0
     )
     lon = _normalize_lon_deg(-15.0 * (ut_hours - 12.0) - eq_time / 4.0)
     return lat, lon
+
+
+def is_sunlit(
+    lat_deg: float,
+    lon_deg: float,
+    observation_time: struct_time,
+) -> bool:
+    """几何昼侧判定：点与太阳直射点单位矢量点积 ``> 0``（太阳高度角 > 0）。"""
+    sun_lat, sun_lon = subsolar_latlon(observation_time)
+    sx, sy, sz = _latlon_to_unit(sun_lat, sun_lon)
+    px, py, pz = _latlon_to_unit(lat_deg, lon_deg)
+    return (sx * px + sy * py + sz * pz) > 0.0
 
 
 def sunglint_latlon(

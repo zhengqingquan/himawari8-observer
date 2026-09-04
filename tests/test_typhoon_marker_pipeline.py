@@ -27,9 +27,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
 
         def compose_equal(pic):
             Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
-            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(
-                pic.final_path_equal
-            )
+            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(pic.final_path_equal)
 
         def set_wallpaper(path: Path):
             return True
@@ -63,6 +61,50 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
         self.assertEqual(draws[0][2], "TY")
         self.assertEqual(draws[1][2], "97W")
         self.assertIsInstance(draws[0][1], tuple)
+
+    def test_night_side_skips_draw(self):
+        draws = []
+
+        def fetch_observation_time():
+            return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
+
+        def download_tiles(pic):
+            for entry in pic.tiles.values():
+                entry.done = True
+
+        def compose_equal(pic):
+            Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
+            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(pic.final_path_equal)
+
+        def set_wallpaper(path: Path):
+            return True
+
+        def fetch_center(_obs):
+            # 西半球对跖附近：相对 05:20 UTC 直射点为夜侧
+            return (0.0, -90.0)
+
+        def fetch_invests():
+            return [{"id": "97W", "lat": 10.0, "lon": -100.0}]
+
+        def fake_draw(image_path, xy, **kwargs):
+            draws.append(kwargs.get("label", "TY"))
+            return True
+
+        with temporary_base_dir() as base_dir:
+            with patch("src.wallpaper.markers.draw_typhoon_marker", side_effect=fake_draw):
+                run_wallpaper_pipeline(
+                    fetch_observation_time=fetch_observation_time,
+                    download_tiles=download_tiles,
+                    compose_equal=compose_equal,
+                    set_wallpaper=set_wallpaper,
+                    fetch_typhoon_center_fn=fetch_center,
+                    fetch_jtwc_invests_fn=fetch_invests,
+                    options=PostprocessOptions(show_typhoon_marker=True),
+                    cleanup_after_apply=False,
+                    base_dir=base_dir,
+                )
+
+        self.assertEqual(draws, [])
 
     def test_disabled_does_not_fetch(self):
         fetch_calls = []
@@ -123,9 +165,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
 
         def compose_equal(pic):
             Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
-            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(
-                pic.final_path_equal
-            )
+            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(pic.final_path_equal)
 
         def set_wallpaper(path: Path):
             return True
@@ -225,7 +265,18 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
             Image.new("RGB", (64, 64), (1, 2, 3)).save(wall)
             Image.new("RGB", (64, 64), (1, 2, 3)).save(base)
             state = {
-                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False, False, False, False),
+                "last": (
+                    "2021-06-03 05:20:00",
+                    "4d",
+                    False,
+                    0.0,
+                    5.0,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ),
                 "wallpaper_path": str(wall),
                 "wallpaper_base_path": str(base),
                 # 缓存是别的观测时间 → 应回退拉一次并写入当前帧缓存
@@ -277,9 +328,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
 
         def compose_equal(pic):
             Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
-            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(
-                pic.final_path_equal
-            )
+            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(pic.final_path_equal)
 
         def set_wallpaper(path: Path):
             set_paths.append(path.name)
@@ -346,7 +395,18 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
             Image.new("RGB", (64, 64), (1, 2, 3)).save(wall)
             Image.new("RGB", (64, 64), (1, 2, 3)).save(base)
             state = {
-                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False, False, False, False),
+                "last": (
+                    "2021-06-03 05:20:00",
+                    "4d",
+                    False,
+                    0.0,
+                    5.0,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ),
                 "wallpaper_path": str(wall),
                 "wallpaper_base_path": str(base),
                 "typhoon_center_cache": {

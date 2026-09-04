@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from time import strptime
 
-from src.compose.solar import subsolar_latlon, sunglint_latlon
+from src.compose.solar import is_sunlit, subsolar_latlon, sunglint_latlon
 
 
 class SubsolarLatlonTests(unittest.TestCase):
@@ -43,6 +43,29 @@ class SunglintLatlonTests(unittest.TestCase):
         self.assertGreaterEqual(glint_lon, lo - 0.5)
         self.assertLessEqual(glint_lon, hi + 0.5)
         self.assertNotAlmostEqual(glint_lon, sun_lon, delta=1.0)
+
+
+class IsSunlitTests(unittest.TestCase):
+    def test_near_subsolar_is_day(self):
+        obs = strptime("2026-03-20 12:00:00", "%Y-%m-%d %H:%M:%S")
+        sun_lat, sun_lon = subsolar_latlon(obs)
+        self.assertTrue(is_sunlit(sun_lat, sun_lon, obs))
+
+    def test_antipode_is_night(self):
+        obs = strptime("2026-03-20 12:00:00", "%Y-%m-%d %H:%M:%S")
+        sun_lat, sun_lon = subsolar_latlon(obs)
+        antipode_lat = -sun_lat
+        antipode_lon = sun_lon + 180.0 if sun_lon <= 0.0 else sun_lon - 180.0
+        self.assertFalse(is_sunlit(antipode_lat, antipode_lon, obs))
+
+    def test_equinox_noon_longitude_boundary(self):
+        # 春分正午直射点近格林尼治：±90° 经度附近为晨昏线
+        obs = strptime("2026-03-20 12:00:00", "%Y-%m-%d %H:%M:%S")
+        _sun_lat, sun_lon = subsolar_latlon(obs)
+        self.assertTrue(is_sunlit(0.0, sun_lon + 45.0, obs))
+        self.assertTrue(is_sunlit(0.0, sun_lon - 45.0, obs))
+        self.assertFalse(is_sunlit(0.0, sun_lon + 135.0, obs))
+        self.assertFalse(is_sunlit(0.0, sun_lon - 135.0, obs))
 
 
 if __name__ == "__main__":

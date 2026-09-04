@@ -306,6 +306,7 @@ def run_wallpaper_pipeline(
         apply_jtwc_invest_markers_if_needed(
             wallpaper_path=wallpaper_path,
             pic_side=pic.pic_side,
+            observation_time=time_str,
             auto_adjust=opts.auto_adjust,
             margin_top_percent=opts.margin_top_percent,
             margin_bottom_percent=opts.margin_bottom_percent,
@@ -317,6 +318,7 @@ def run_wallpaper_pipeline(
         apply_my_location_marker_if_needed(
             wallpaper_path=wallpaper_path,
             pic_side=pic.pic_side,
+            observation_time=time_str,
             auto_adjust=opts.auto_adjust,
             margin_top_percent=opts.margin_top_percent,
             margin_bottom_percent=opts.margin_bottom_percent,
