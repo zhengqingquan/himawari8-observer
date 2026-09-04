@@ -286,7 +286,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             wall = Path(base_dir) / "wall.png"
             wall.write_bytes(b"img")
             state = {
-                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False),
+                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False),
                 "wallpaper_path": str(wall.resolve()),
             }
 

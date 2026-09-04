@@ -32,6 +32,8 @@ python run.py --version
 | — | `--margin-bottom` | `0`–`100` | `5` | 底边黑边占原图边长的百分比 |
 | — | `--cleanup-after-apply` / `--no-cleanup-after-apply` | 布尔开关 | **开启** | 设壁纸后清理瓦片与旧目录，保留当前壁纸文件 |
 | — | `--use-yesterday-local-time` / `--no-use-yesterday-local-time` | 布尔开关 | **关闭** | 按本机当前钟点取昨日同时刻影像（UTC 向下取整到 10 分钟） |
+| — | `--reduce-banding` / `--no-reduce-banding` | 布尔开关 | **关闭** | 减轻合成壁纸色带 |
+| — | `--show-typhoon-marker` / `--no-show-typhoon-marker` | 布尔开关 | **关闭** | 在壁纸上标注 NICT 台风中心（有 TY 时） |
 | `-v` | `--version` | — | — | 打印版本后退出 |
 | `-h` | `--help` | — | — | 打印帮助后退出 |
 
@@ -122,6 +124,36 @@ python run.py --no-cleanup-after-apply
 ```bash
 python run.py --use-yesterday-local-time
 python run.py --no-use-yesterday-local-time
+```
+
+---
+
+### `--reduce-banding` / `--no-reduce-banding`
+
+开启后对合成图做色带减轻处理。写入成图指纹；与修边等参数一并参与跳过判断。
+
+> **实现说明**：`BooleanOptionalAction`，**默认关闭**；`--reduce-banding` 开启。托盘菜单「减轻色带」可运行时切换。
+
+示例：
+
+```bash
+python run.py --reduce-banding
+python run.py --no-reduce-banding
+```
+
+---
+
+### `--show-typhoon-marker` / `--no-show-typhoon-marker`
+
+开启后，若 NICT `D531108` JSON 在该观测时刻报告 `type == "TY"`，则将台风中心经纬度投影到全圆盘并在最终壁纸上画中心标记。无台风、404 或网络失败时静默跳过，不阻断流水线。写入成图指纹。
+
+> **实现说明**：`BooleanOptionalAction`，**默认关闭**；`--show-typhoon-marker` 开启。托盘菜单「显示台风位置」可运行时切换。
+
+示例：
+
+```bash
+python run.py --show-typhoon-marker
+python run.py --no-show-typhoon-marker
 ```
 
 ---

@@ -115,6 +115,15 @@ class Config:
         )
 
         self._parser.add_argument(
+            "--show-typhoon-marker",
+            dest="show_typhoon_marker",
+            default=None,
+            action=argparse.BooleanOptionalAction,
+            help="Mark typhoon center on wallpaper when NICT D531108 reports TY "
+            "(default: off; use --show-typhoon-marker to enable).",
+        )
+
+        self._parser.add_argument(
             "--logging",
             dest="logging_enabled",
             default=None,
@@ -136,6 +145,7 @@ class Config:
             "cleanup_after_apply": self._args.cleanup_after_apply,
             "use_yesterday_local_time": self._args.use_yesterday_local_time,
             "reduce_banding": self._args.reduce_banding,
+            "show_typhoon_marker": self._args.show_typhoon_marker,
             "logging_enabled": self._args.logging_enabled,
         }
         self._resolved = resolve_runtime_settings(cli_values)
@@ -155,6 +165,7 @@ class Config:
             self._resolved["use_yesterday_local_time"],
         )
         logging.info("Reduce banding: %s", self._resolved["reduce_banding"])
+        logging.info("Show typhoon marker: %s", self._resolved["show_typhoon_marker"])
         logging.info("Logging enabled: %s", self._resolved["logging_enabled"])
 
     def get_download_resolution(self):
@@ -177,6 +188,9 @@ class Config:
 
     def is_reduce_banding(self):
         return self._resolved["reduce_banding"]
+
+    def is_show_typhoon_marker(self):
+        return self._resolved["show_typhoon_marker"]
 
     def is_logging_enabled(self):
         return self._resolved["logging_enabled"]

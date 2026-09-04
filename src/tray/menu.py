@@ -117,6 +117,16 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             daemon=True,
         ).start()
 
+    def on_toggle_show_typhoon_marker(icon, item):
+        enabled = not job_ref.show_typhoon_marker
+        job_ref.set_show_typhoon_marker(enabled)
+        persist_job_settings(job_ref)
+        logging.info("Show typhoon marker %s", "enabled" if enabled else "disabled")
+        threading.Thread(
+            target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
+            daemon=True,
+        ).start()
+
     def make_margin_top_item(percent: float):
         def on_select(icon, item):
             job_ref.set_margin_top_percent(percent)
@@ -234,6 +244,11 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             "减轻色带",
             on_toggle_reduce_banding,
             checked=lambda item: job_ref.reduce_banding,
+        ),
+        pystray.MenuItem(
+            "显示台风位置",
+            on_toggle_show_typhoon_marker,
+            checked=lambda item: job_ref.show_typhoon_marker,
         ),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem(

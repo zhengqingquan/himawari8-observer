@@ -206,5 +206,6 @@ def persist_job_settings(job_ref: WallpaperJobRef) -> None:
             cleanup_after_apply=job_ref.cleanup_after_apply,
             use_yesterday_local_time=job_ref.use_yesterday_local_time,
             reduce_banding=job_ref.reduce_banding,
+            show_typhoon_marker=job_ref.show_typhoon_marker,
         )
     )

@@ -25,6 +25,7 @@ def main() -> None:
         cleanup_after_apply=config.is_cleanup_after_apply(),
         use_yesterday_local_time=config.is_use_yesterday_local_time(),
         reduce_banding=config.is_reduce_banding(),
+        show_typhoon_marker=config.is_show_typhoon_marker(),
     )()
 
 

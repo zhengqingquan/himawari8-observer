@@ -28,6 +28,7 @@ _SETTINGS_KEYS = frozenset(
         "cleanup_after_apply",
         "use_yesterday_local_time",
         "reduce_banding",
+        "show_typhoon_marker",
         "startup_enabled",
         "logging_enabled",
         "last_run_key",
@@ -51,6 +52,7 @@ def default_settings() -> dict[str, Any]:
         "cleanup_after_apply": True,
         "use_yesterday_local_time": False,
         "reduce_banding": False,
+        "show_typhoon_marker": False,
         "startup_enabled": False,
         "logging_enabled": False,
     }
@@ -83,14 +85,16 @@ def _coerce_bool(value: Any) -> bool | None:
 
 
 def _coerce_last_run_key(value: Any) -> list[Any] | None:
-    """校验指纹列表：``[obs_time, grade, auto_adjust, top%, bottom%, reduce_banding]``。
+    """校验指纹列表。
 
-    兼容旧版 5 项指纹（缺省 ``reduce_banding=False``）。
+    完整 7 项：``[obs_time, grade, auto_adjust, top%, bottom%, reduce_banding,
+    show_typhoon_marker]``。兼容旧版 5/6 项（缺省布尔为 ``False``）。
     """
-    if not isinstance(value, (list, tuple)) or len(value) not in (5, 6):
+    if not isinstance(value, (list, tuple)) or len(value) not in (5, 6, 7):
         return None
     obs_time, grade, auto_adjust, top, bottom = value[:5]
-    reduce_banding = value[5] if len(value) == 6 else False
+    reduce_banding = value[5] if len(value) >= 6 else False
+    show_typhoon_marker = value[6] if len(value) == 7 else False
     if not isinstance(obs_time, str) or not obs_time.strip():
         return None
     if not isinstance(grade, str) or not grade.strip():
@@ -98,6 +102,8 @@ def _coerce_last_run_key(value: Any) -> list[Any] | None:
     if not isinstance(auto_adjust, bool):
         return None
     if not isinstance(reduce_banding, bool):
+        return None
+    if not isinstance(show_typhoon_marker, bool):
         return None
     top_f = _coerce_percent(top)
     bottom_f = _coerce_percent(bottom)
@@ -110,6 +116,7 @@ def _coerce_last_run_key(value: Any) -> list[Any] | None:
         top_f,
         bottom_f,
         reduce_banding,
+        show_typhoon_marker,
     ]
 
 
@@ -190,6 +197,16 @@ def sanitize_settings(raw: Any) -> dict[str, Any]:
             )
         else:
             cleaned["reduce_banding"] = reduce_banding
+
+    if "show_typhoon_marker" in raw:
+        show_typhoon_marker = _coerce_bool(raw["show_typhoon_marker"])
+        if show_typhoon_marker is None:
+            logging.warning(
+                "Ignoring invalid settings.show_typhoon_marker: %r",
+                raw["show_typhoon_marker"],
+            )
+        else:
+            cleaned["show_typhoon_marker"] = show_typhoon_marker
 
     if "startup_enabled" in raw:
         startup_enabled = _coerce_bool(raw["startup_enabled"])
@@ -298,6 +315,7 @@ def settings_dict_from_job(
     cleanup_after_apply: bool,
     use_yesterday_local_time: bool = False,
     reduce_banding: bool = False,
+    show_typhoon_marker: bool = False,
 ) -> dict[str, Any]:
     """从壁纸任务字段组装可写入的 settings dict（不含 logging / 应用指纹）。"""
     return {
@@ -308,6 +326,7 @@ def settings_dict_from_job(
         "cleanup_after_apply": cleanup_after_apply,
         "use_yesterday_local_time": use_yesterday_local_time,
         "reduce_banding": reduce_banding,
+        "show_typhoon_marker": show_typhoon_marker,
     }
 
 
@@ -317,7 +336,7 @@ def applied_run_state_from_settings(settings: dict[str, Any] | None) -> dict[str
     if not settings:
         return state
     run_key = settings.get("last_run_key")
-    if isinstance(run_key, list) and len(run_key) == 6:
+    if isinstance(run_key, list) and len(run_key) == 7:
         state["last"] = (
             str(run_key[0]),
             str(run_key[1]),
@@ -325,6 +344,7 @@ def applied_run_state_from_settings(settings: dict[str, Any] | None) -> dict[str
             float(run_key[3]),
             float(run_key[4]),
             bool(run_key[5]),
+            bool(run_key[6]),
         )
     path = settings.get("last_wallpaper_path")
     if isinstance(path, str) and path.strip():
@@ -340,7 +360,7 @@ def persist_applied_run_state(
     """将内存指纹与壁纸路径写回 settings.json。"""
     payload: dict[str, Any] = {}
     last = state.get("last")
-    if isinstance(last, tuple) and len(last) == 6:
+    if isinstance(last, tuple) and len(last) == 7:
         payload["last_run_key"] = [
             str(last[0]),
             str(last[1]),
@@ -348,6 +368,7 @@ def persist_applied_run_state(
             float(last[3]),
             float(last[4]),
             bool(last[5]),
+            bool(last[6]),
         ]
     wallpaper = state.get("wallpaper_path")
     if isinstance(wallpaper, str) and wallpaper.strip():

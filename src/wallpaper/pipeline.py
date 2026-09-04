@@ -1,4 +1,4 @@
-"""壁纸更新流水线：编排观测时间→瓦片→等分合成图→可选修边→设桌面→可选清理。"""
+"""壁纸更新流水线：编排观测时间→瓦片→等分合成图→可选修边→可选台风标注→设桌面→可选清理。"""
 
 from __future__ import annotations
 
@@ -8,22 +8,33 @@ from pathlib import Path
 from time import strftime, struct_time
 from typing import Any
 
-from src.wallpaper.cleanup import cleanup_after_wallpaper_apply
-from src.compose.equal import apply_margins, compose_equal_image, compose_equal_image_with_margins
+from PIL import Image
+
+from src.compose.equal import (
+    apply_margins,
+    compose_equal_image,
+    compose_equal_image_with_margins,
+    compute_margin_layout,
+    get_primary_screen_size,
+)
+from src.compose.geo import latlon_to_himawari_fd_xy
+from src.compose.overlay import draw_typhoon_marker
 from src.download.observation import create_session
 from src.download.observation import fetch_observation_time as fetch_latest_observation_time
 from src.download.observation import observation_time_yesterday_local
 from src.download.tiles import download_tiles
-from src.wallpaper.folders import create_pic_folders
+from src.download.typhoon import fetch_typhoon_center
 from src.metadata.app_config import (
     DEFAULT_MARGIN_BOTTOM_PERCENT,
     DEFAULT_MARGIN_TOP_PERCENT,
 )
 from src.pic import Pic
 from src.resolution_grade import default_grade
+from src.wallpaper.cleanup import cleanup_after_wallpaper_apply
 from src.wallpaper.desktop import get_desktop_wallpaper as read_desktop_wallpaper
 from src.wallpaper.desktop import set_wallpaper as apply_desktop_wallpaper
 from src.wallpaper.desktop import wallpaper_paths_match
+from src.wallpaper.folders import create_pic_folders
 
 FetchObservationTime = Callable[[], struct_time]
 DownloadTiles = Callable[[Pic], None]
@@ -31,7 +42,9 @@ ComposeEqual = Callable[[Pic], None]
 AdjustWallpaper = Callable[[Pic], Path]
 SetWallpaper = Callable[[Path], bool | None]
 GetDesktopWallpaper = Callable[[], str | None]
+FetchTyphoonCenter = Callable[[struct_time], tuple[float, float] | None]
 AppliedRunState = MutableMapping[str, Any]
+AppliedRunKey = tuple[str, str, bool, float, float, bool, bool]
 
 _OBS_TIME_FMT = "%Y-%m-%d %H:%M:%S"
 
@@ -61,7 +74,8 @@ def build_applied_run_key(
     margin_top_percent: float,
     margin_bottom_percent: float,
     reduce_banding: bool = False,
-) -> tuple[str, str, bool, float, float, bool]:
+    show_typhoon_marker: bool = False,
+) -> AppliedRunKey:
     """用于判断是否可跳过重复下载的指纹（观测时间 + 影响成图的参数）。"""
     return (
         strftime(_OBS_TIME_FMT, observation_time),
@@ -70,13 +84,14 @@ def build_applied_run_key(
         float(margin_top_percent),
         float(margin_bottom_percent),
         bool(reduce_banding),
+        bool(show_typhoon_marker),
     )
 
 
 def _remember_applied(
     applied_run_state: AppliedRunState | None,
     *,
-    run_key: tuple[str, str, bool, float, float, bool],
+    run_key: AppliedRunKey,
     wallpaper_path: Path,
     record_run_key: bool,
 ) -> None:
@@ -92,6 +107,46 @@ def _remember_applied(
         applied_run_state["wallpaper_path"] = str(wallpaper_path)
 
 
+def _apply_typhoon_marker_if_needed(
+    *,
+    wallpaper_path: Path,
+    pic: Pic,
+    observation_time: struct_time,
+    auto_adjust: bool,
+    margin_top_percent: float,
+    margin_bottom_percent: float,
+    fetch_typhoon_center_fn: FetchTyphoonCenter,
+) -> None:
+    """在最终壁纸文件上标注台风中心；失败只记日志。"""
+    center = fetch_typhoon_center_fn(observation_time)
+    if center is None:
+        return
+    lat, lon = center
+    xy = latlon_to_himawari_fd_xy(lat, lon, pic.pic_side)
+    if xy is None:
+        logging.info("Typhoon center projects outside full-disk frame; skipping marker")
+        return
+    draw_xy = xy
+    if auto_adjust:
+        try:
+            with Image.open(wallpaper_path) as img:
+                canvas_w, canvas_h = img.size
+        except OSError:
+            logging.exception("Failed to open wallpaper for typhoon marker offset: %s", wallpaper_path)
+            return
+        if canvas_w != pic.pic_side or canvas_h != pic.pic_side:
+            screen_width, screen_height = get_primary_screen_size()
+            _, _, image_x, image_y = compute_margin_layout(
+                pic.pic_side,
+                screen_width,
+                screen_height,
+                top_percent=margin_top_percent,
+                bottom_percent=margin_bottom_percent,
+            )
+            draw_xy = (image_x + xy[0], image_y + xy[1])
+    draw_typhoon_marker(wallpaper_path, draw_xy)
+
+
 def run_wallpaper_pipeline(
     *,
     fetch_observation_time: FetchObservationTime | None = None,
@@ -100,6 +155,7 @@ def run_wallpaper_pipeline(
     adjust_wallpaper: AdjustWallpaper | None = None,
     set_wallpaper: SetWallpaper | None = None,
     get_desktop_wallpaper: GetDesktopWallpaper | None = None,
+    fetch_typhoon_center_fn: FetchTyphoonCenter | None = None,
     resolution_grade: str | None = None,
     auto_adjust: bool = False,
     margin_top_percent: float = DEFAULT_MARGIN_TOP_PERCENT,
@@ -107,6 +163,7 @@ def run_wallpaper_pipeline(
     cleanup_after_apply: bool = True,
     use_yesterday_local_time: bool = False,
     reduce_banding: bool = False,
+    show_typhoon_marker: bool = False,
     base_dir: Path | None = None,
     applied_run_state: AppliedRunState | None = None,
     record_run_key: bool = True,
@@ -129,6 +186,7 @@ def run_wallpaper_pipeline(
     download = download_tiles or _default_download_tiles
     set_desktop = set_wallpaper or _default_set_wallpaper
     read_desktop = get_desktop_wallpaper or read_desktop_wallpaper
+    typhoon_fetch = fetch_typhoon_center_fn or fetch_typhoon_center
     grade = resolution_grade if resolution_grade is not None else default_grade()
     use_direct_margin_compose = auto_adjust and compose_equal is None and adjust_wallpaper is None
 
@@ -157,6 +215,7 @@ def run_wallpaper_pipeline(
         margin_top_percent=margin_top_percent,
         margin_bottom_percent=margin_bottom_percent,
         reduce_banding=reduce_banding,
+        show_typhoon_marker=show_typhoon_marker,
     )
     observation_time = run_key[0]
     if applied_run_state is not None and applied_run_state.get("last") == run_key:
@@ -208,6 +267,16 @@ def run_wallpaper_pipeline(
         else:
             compose_equal(pic)
         wallpaper_path = adjust(pic) if auto_adjust else Path(pic.final_path_equal)
+    if show_typhoon_marker:
+        _apply_typhoon_marker_if_needed(
+            wallpaper_path=Path(wallpaper_path),
+            pic=pic,
+            observation_time=time_str,
+            auto_adjust=auto_adjust,
+            margin_top_percent=margin_top_percent,
+            margin_bottom_percent=margin_bottom_percent,
+            fetch_typhoon_center_fn=typhoon_fetch,
+        )
     applied = set_desktop(wallpaper_path)
     if applied is False:
         logging.warning(
