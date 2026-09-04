@@ -101,9 +101,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         return pystray.MenuItem(
             f"每 {minutes} 分钟",
             on_select,
-            checked=lambda item: (
-                not is_paused() and job_ref.download_interval_minutes == minutes
-            ),
+            checked=lambda item: not is_paused() and job_ref.download_interval_minutes == minutes,
             radio=True,
         )
 
@@ -247,6 +245,29 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             for p in MARGIN_PERCENT_CHOICES
         ],
     )
+    markers_menu = pystray.Menu(
+        pystray.MenuItem(
+            "台风位置",
+            on_toggle_show_typhoon_marker,
+            checked=lambda item: job_ref.show_typhoon_marker,
+        ),
+        pystray.MenuItem(
+            "我的位置",
+            on_toggle_show_my_location,
+            checked=lambda item: job_ref.show_my_location,
+        ),
+        pystray.MenuItem(
+            "太阳直射点",
+            on_toggle_show_subsolar_point,
+            checked=lambda item: job_ref.show_subsolar_point,
+        ),
+        pystray.MenuItem(
+            "海面耀斑",
+            on_toggle_show_sunglint_point,
+            checked=lambda item: job_ref.show_sunglint_point,
+        ),
+    )
+
     def on_startup_and_refresh(icon_arg, item):
         on_startup(icon_arg, item)
         refresh_tray_menu()
@@ -311,26 +332,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             on_toggle_reduce_banding,
             checked=lambda item: job_ref.reduce_banding,
         ),
-        pystray.MenuItem(
-            "显示台风位置",
-            on_toggle_show_typhoon_marker,
-            checked=lambda item: job_ref.show_typhoon_marker,
-        ),
-        pystray.MenuItem(
-            "显示我的位置",
-            on_toggle_show_my_location,
-            checked=lambda item: job_ref.show_my_location,
-        ),
-        pystray.MenuItem(
-            "显示太阳直射点",
-            on_toggle_show_subsolar_point,
-            checked=lambda item: job_ref.show_subsolar_point,
-        ),
-        pystray.MenuItem(
-            "显示海面耀斑",
-            on_toggle_show_sunglint_point,
-            checked=lambda item: job_ref.show_sunglint_point,
-        ),
+        pystray.MenuItem("显示位置", markers_menu),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem(
             "开机启动",
