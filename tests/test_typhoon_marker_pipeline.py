@@ -96,6 +96,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
         downloads = []
         draws = []
         fetches = []
+        center_fetches = []
 
         def fetch_observation_time():
             fetches.append(1)
@@ -116,6 +117,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
             return True
 
         def fetch_center(_obs):
+            center_fetches.append(1)
             return (29.024, 128.437)
 
         def fake_draw(image_path, xy, **kwargs):
@@ -125,6 +127,30 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
         state = {"last": None, "wallpaper_path": None}
         with temporary_base_dir() as base_dir:
             with patch("src.wallpaper.pipeline.draw_typhoon_marker", side_effect=fake_draw):
+                # 全量开台风：拉中心并写入缓存
+                run_wallpaper_pipeline(
+                    resolution_grade="4d",
+                    fetch_observation_time=fetch_observation_time,
+                    download_tiles=download_tiles,
+                    compose_equal=compose_equal,
+                    set_wallpaper=set_wallpaper,
+                    fetch_typhoon_center_fn=fetch_center,
+                    show_typhoon_marker=True,
+                    cleanup_after_apply=False,
+                    applied_run_state=state,
+                    base_dir=base_dir,
+                )
+                self.assertEqual(downloads, [1])
+                self.assertEqual(fetches, [1])
+                self.assertEqual(center_fetches, [1])
+                self.assertEqual(len(draws), 1)
+                self.assertTrue(state["last"][6])
+                self.assertEqual(
+                    state["typhoon_center_cache"]["observation_time"],
+                    "2021-06-03 05:20:00",
+                )
+
+                # 关掉（复原底图）
                 run_wallpaper_pipeline(
                     resolution_grade="4d",
                     fetch_observation_time=fetch_observation_time,
@@ -137,11 +163,9 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                     applied_run_state=state,
                     base_dir=base_dir,
                 )
-                self.assertEqual(downloads, [1])
-                self.assertEqual(fetches, [1])
-                self.assertEqual(draws, [])
                 self.assertFalse(state["last"][6])
 
+                # 再开：只用缓存，不请求网络
                 run_wallpaper_pipeline(
                     resolution_grade="4d",
                     fetch_observation_time=fetch_observation_time,
@@ -157,7 +181,62 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
 
         self.assertEqual(downloads, [1])
         self.assertEqual(fetches, [1], "typhoon toggle must not fetch latest.json")
-        self.assertEqual(len(draws), 1)
+        self.assertEqual(center_fetches, [1], "typhoon toggle must use cache only")
+        self.assertEqual(len(draws), 2)
+        self.assertTrue(state["last"][6])
+
+    def test_typhoon_toggle_on_without_matching_cache_skips_marker(self):
+        draws = []
+        center_fetches = []
+
+        def set_wallpaper(path: Path):
+            return True
+
+        def fetch_center(_obs):
+            center_fetches.append(1)
+            return (29.024, 128.437)
+
+        def fake_draw(image_path, xy, **kwargs):
+            draws.append(xy)
+            return True
+
+        with temporary_base_dir() as base_dir:
+            complete = Path(base_dir) / "img" / "20210603052000" / "complete"
+            complete.mkdir(parents=True)
+            wall = complete / "4d20210603052000.png"
+            base = complete / "4d20210603052000_base.png"
+            Image.new("RGB", (64, 64), (1, 2, 3)).save(wall)
+            Image.new("RGB", (64, 64), (1, 2, 3)).save(base)
+            state = {
+                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False),
+                "wallpaper_path": str(wall),
+                "wallpaper_base_path": str(base),
+                # 缓存是别的观测时间 → 不得画
+                "typhoon_center_cache": {
+                    "observation_time": "2021-06-03 05:10:00",
+                    "lat": 29.024,
+                    "lon": 128.437,
+                },
+            }
+            with patch("src.wallpaper.pipeline.draw_typhoon_marker", side_effect=fake_draw):
+                result = run_wallpaper_pipeline(
+                    resolution_grade="4d",
+                    fetch_observation_time=lambda: (_ for _ in ()).throw(
+                        RuntimeError("must not fetch latest")
+                    ),
+                    download_tiles=lambda pic: None,
+                    compose_equal=lambda pic: None,
+                    set_wallpaper=set_wallpaper,
+                    fetch_typhoon_center_fn=fetch_center,
+                    show_typhoon_marker=True,
+                    cleanup_after_apply=False,
+                    applied_run_state=state,
+                    base_dir=base_dir,
+                )
+
+        self.assertEqual(result, "2021-06-03 05:20:00")
+        self.assertEqual(draws, [])
+        self.assertEqual(center_fetches, [])
         self.assertTrue(state["last"][6])
 
     def test_typhoon_only_toggle_off_restores_base_without_download(self):
@@ -227,7 +306,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
         self.assertEqual(set_paths[-1], wall.name)
 
     def test_typhoon_toggle_skips_latest_even_if_fetch_would_fail(self):
-        """回归：开关不得先拉 latest，否则网络超时会拖死托盘。"""
+        """回归：开关不得先拉 latest；有匹配缓存时从缓存画点。"""
 
         def fetch_observation_time():
             raise RuntimeError("latest.json must not be fetched on typhoon toggle")
@@ -246,15 +325,22 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                 "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False),
                 "wallpaper_path": str(wall),
                 "wallpaper_base_path": str(base),
+                "typhoon_center_cache": {
+                    "observation_time": "2021-06-03 05:20:00",
+                    "lat": 29.024,
+                    "lon": 128.437,
+                },
             }
-            with patch("src.wallpaper.pipeline.draw_typhoon_marker", return_value=True):
+            with patch("src.wallpaper.pipeline.draw_typhoon_marker", return_value=True) as draw:
                 result = run_wallpaper_pipeline(
                     resolution_grade="4d",
                     fetch_observation_time=fetch_observation_time,
                     download_tiles=lambda pic: None,
                     compose_equal=lambda pic: None,
                     set_wallpaper=set_wallpaper,
-                    fetch_typhoon_center_fn=lambda _obs: (29.024, 128.437),
+                    fetch_typhoon_center_fn=lambda _obs: (_ for _ in ()).throw(
+                        RuntimeError("must not fetch typhoon json")
+                    ),
                     show_typhoon_marker=True,
                     cleanup_after_apply=False,
                     applied_run_state=state,
@@ -263,6 +349,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
 
         self.assertEqual(result, "2021-06-03 05:20:00")
         self.assertTrue(state["last"][6])
+        self.assertTrue(draw.called)
 
     def test_grade_change_still_downloads(self):
         downloads = []

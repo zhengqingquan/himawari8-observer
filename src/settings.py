@@ -33,6 +33,7 @@ _SETTINGS_KEYS = frozenset(
         "logging_enabled",
         "last_run_key",
         "last_wallpaper_path",
+        "typhoon_center_cache",
     }
 )
 
@@ -125,6 +126,24 @@ def _coerce_wallpaper_path(value: Any) -> str | None:
         return None
     text = value.strip()
     return text or None
+
+
+def _coerce_typhoon_center_cache(value: Any) -> dict[str, Any] | None:
+    """校验 ``{observation_time, lat, lon}``。"""
+    if not isinstance(value, dict):
+        return None
+    obs = value.get("observation_time")
+    lat = value.get("lat")
+    lon = value.get("lon")
+    if not isinstance(obs, str) or not obs.strip():
+        return None
+    if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+        return None
+    return {
+        "observation_time": obs.strip(),
+        "lat": float(lat),
+        "lon": float(lon),
+    }
 
 
 def sanitize_settings(raw: Any) -> dict[str, Any]:
@@ -245,6 +264,16 @@ def sanitize_settings(raw: Any) -> dict[str, Any]:
         else:
             cleaned["last_wallpaper_path"] = wallpaper_path
 
+    if "typhoon_center_cache" in raw:
+        cache = _coerce_typhoon_center_cache(raw["typhoon_center_cache"])
+        if cache is None:
+            logging.warning(
+                "Ignoring invalid settings.typhoon_center_cache: %r",
+                raw["typhoon_center_cache"],
+            )
+        else:
+            cleaned["typhoon_center_cache"] = cache
+
     unknown = set(raw) - _SETTINGS_KEYS
     if unknown:
         logging.info("Ignoring unknown settings keys: %s", sorted(unknown))
@@ -349,6 +378,11 @@ def applied_run_state_from_settings(settings: dict[str, Any] | None) -> dict[str
     path = settings.get("last_wallpaper_path")
     if isinstance(path, str) and path.strip():
         state["wallpaper_path"] = path.strip()
+    cache = settings.get("typhoon_center_cache")
+    if isinstance(cache, dict):
+        coerced = _coerce_typhoon_center_cache(cache)
+        if coerced is not None:
+            state["typhoon_center_cache"] = coerced
     return state
 
 
@@ -373,6 +407,10 @@ def persist_applied_run_state(
     wallpaper = state.get("wallpaper_path")
     if isinstance(wallpaper, str) and wallpaper.strip():
         payload["last_wallpaper_path"] = wallpaper.strip()
+    cache = state.get("typhoon_center_cache")
+    coerced = _coerce_typhoon_center_cache(cache) if cache is not None else None
+    if coerced is not None:
+        payload["typhoon_center_cache"] = coerced
     if not payload:
         return False
     return save_settings(payload, path=path)

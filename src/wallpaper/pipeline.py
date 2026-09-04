@@ -6,7 +6,7 @@ import logging
 import shutil
 from collections.abc import Callable, MutableMapping
 from pathlib import Path
-from time import strftime, strptime, struct_time
+from time import strftime, struct_time
 from typing import Any
 
 from PIL import Image
@@ -177,25 +177,56 @@ def _provisional_run_key_from_last(
     )
 
 
-def _apply_typhoon_marker_if_needed(
+def _store_typhoon_center_cache(
+    applied_run_state: AppliedRunState | None,
+    observation_time: str,
+    lat: float,
+    lon: float,
+) -> None:
+    if applied_run_state is None:
+        return
+    applied_run_state["typhoon_center_cache"] = {
+        "observation_time": observation_time,
+        "lat": float(lat),
+        "lon": float(lon),
+    }
+
+
+def _cached_typhoon_center(
+    applied_run_state: AppliedRunState | None,
+    observation_time: str,
+) -> tuple[float, float] | None:
+    """仅当缓存观测时间与当前一致时返回 ``(lat, lon)``。"""
+    if applied_run_state is None:
+        return None
+    raw = applied_run_state.get("typhoon_center_cache")
+    if not isinstance(raw, dict):
+        return None
+    obs = raw.get("observation_time")
+    lat = raw.get("lat")
+    lon = raw.get("lon")
+    if obs != observation_time:
+        return None
+    if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+        return None
+    return float(lat), float(lon)
+
+
+def _draw_typhoon_marker_at(
     *,
     wallpaper_path: Path,
     pic_side: int,
-    observation_time: struct_time,
+    lat: float,
+    lon: float,
     auto_adjust: bool,
     margin_top_percent: float,
     margin_bottom_percent: float,
-    fetch_typhoon_center_fn: FetchTyphoonCenter,
-) -> None:
-    """在最终壁纸文件上标注台风中心；失败只记日志。"""
-    center = fetch_typhoon_center_fn(observation_time)
-    if center is None:
-        return
-    lat, lon = center
+) -> bool:
+    """按经纬度在壁纸上画标记；成功返回 True。"""
     xy = latlon_to_himawari_fd_xy(lat, lon, pic_side)
     if xy is None:
         logging.info("Typhoon center projects outside full-disk frame; skipping marker")
-        return
+        return False
     draw_xy = xy
     if auto_adjust:
         try:
@@ -203,7 +234,7 @@ def _apply_typhoon_marker_if_needed(
                 canvas_w, canvas_h = img.size
         except OSError:
             logging.exception("Failed to open wallpaper for typhoon marker offset: %s", wallpaper_path)
-            return
+            return False
         if canvas_w != pic_side or canvas_h != pic_side:
             screen_width, screen_height = get_primary_screen_size()
             _, _, image_x, image_y = compute_margin_layout(
@@ -214,23 +245,50 @@ def _apply_typhoon_marker_if_needed(
                 bottom_percent=margin_bottom_percent,
             )
             draw_xy = (image_x + xy[0], image_y + xy[1])
-    draw_typhoon_marker(wallpaper_path, draw_xy)
+    return draw_typhoon_marker(wallpaper_path, draw_xy)
+
+
+def _apply_typhoon_marker_if_needed(
+    *,
+    wallpaper_path: Path,
+    pic_side: int,
+    observation_time: struct_time,
+    auto_adjust: bool,
+    margin_top_percent: float,
+    margin_bottom_percent: float,
+    fetch_typhoon_center_fn: FetchTyphoonCenter,
+    applied_run_state: AppliedRunState | None = None,
+) -> None:
+    """拉取台风中心、写入对应该观测时间的缓存并标注；失败只记日志。"""
+    center = fetch_typhoon_center_fn(observation_time)
+    if center is None:
+        return
+    lat, lon = center
+    obs_str = strftime(_OBS_TIME_FMT, observation_time)
+    _store_typhoon_center_cache(applied_run_state, obs_str, lat, lon)
+    _draw_typhoon_marker_at(
+        wallpaper_path=wallpaper_path,
+        pic_side=pic_side,
+        lat=lat,
+        lon=lon,
+        auto_adjust=auto_adjust,
+        margin_top_percent=margin_top_percent,
+        margin_bottom_percent=margin_bottom_percent,
+    )
 
 
 def _try_typhoon_marker_fast_path(
     *,
     applied_run_state: AppliedRunState,
     run_key: AppliedRunKey,
-    observation_time_struct: struct_time,
     auto_adjust: bool,
     margin_top_percent: float,
     margin_bottom_percent: float,
     show_typhoon_marker: bool,
     set_desktop: SetWallpaper,
-    typhoon_fetch: FetchTyphoonCenter,
     record_run_key: bool,
 ) -> str | None:
-    """仅台风开关变化且成品仍在时：复用底图，不下载瓦片。
+    """仅台风开关变化且成品仍在时：复用底图；开启时仅用匹配观测时间的缓存画点（不请求网络）。
 
     Returns:
         成功时返回观测时间字符串；无法走快路径时 ``None``（调用方应继续全量）。
@@ -263,17 +321,27 @@ def _try_typhoon_marker_fast_path(
     try:
         if show_typhoon_marker:
             shutil.copy2(base, wallpaper_path)
-            _apply_typhoon_marker_if_needed(
-                wallpaper_path=wallpaper_path,
-                pic_side=pic_side,
-                observation_time=observation_time_struct,
-                auto_adjust=auto_adjust,
-                margin_top_percent=margin_top_percent,
-                margin_bottom_percent=margin_bottom_percent,
-                fetch_typhoon_center_fn=typhoon_fetch,
-            )
+            cached = _cached_typhoon_center(applied_run_state, observation_time)
+            if cached is None:
+                logging.info(
+                    "Typhoon marker fast path: no center cache for %s; marker not drawn",
+                    observation_time,
+                )
+            else:
+                _draw_typhoon_marker_at(
+                    wallpaper_path=wallpaper_path,
+                    pic_side=pic_side,
+                    lat=cached[0],
+                    lon=cached[1],
+                    auto_adjust=auto_adjust,
+                    margin_top_percent=margin_top_percent,
+                    margin_bottom_percent=margin_bottom_percent,
+                )
+                logging.info(
+                    "Typhoon marker fast path: overlaid from cache for %s",
+                    observation_time,
+                )
             apply_path = wallpaper_path
-            logging.info("Typhoon marker fast path: overlaid on existing wallpaper")
         else:
             shutil.copy2(base, wallpaper_path)
             apply_path = wallpaper_path
@@ -371,25 +439,18 @@ def run_wallpaper_pipeline(
             show_typhoon_marker=show_typhoon_marker,
         )
         if provisional is not None and _typhoon_flag_only_differs(last, provisional):
-            try:
-                obs_struct = strptime(provisional[0], _OBS_TIME_FMT)
-            except ValueError:
-                obs_struct = None
-            if obs_struct is not None:
-                fast = _try_typhoon_marker_fast_path(
-                    applied_run_state=applied_run_state,
-                    run_key=provisional,
-                    observation_time_struct=obs_struct,
-                    auto_adjust=auto_adjust,
-                    margin_top_percent=margin_top_percent,
-                    margin_bottom_percent=margin_bottom_percent,
-                    show_typhoon_marker=show_typhoon_marker,
-                    set_desktop=set_desktop,
-                    typhoon_fetch=typhoon_fetch,
-                    record_run_key=record_run_key,
-                )
-                if fast is not None:
-                    return fast
+            fast = _try_typhoon_marker_fast_path(
+                applied_run_state=applied_run_state,
+                run_key=provisional,
+                auto_adjust=auto_adjust,
+                margin_top_percent=margin_top_percent,
+                margin_bottom_percent=margin_bottom_percent,
+                show_typhoon_marker=show_typhoon_marker,
+                set_desktop=set_desktop,
+                record_run_key=record_run_key,
+            )
+            if fast is not None:
+                return fast
 
     if use_yesterday_local_time:
         time_str = observation_time_yesterday_local()
@@ -439,13 +500,11 @@ def run_wallpaper_pipeline(
         fast = _try_typhoon_marker_fast_path(
             applied_run_state=applied_run_state,
             run_key=run_key,
-            observation_time_struct=time_str,
             auto_adjust=auto_adjust,
             margin_top_percent=margin_top_percent,
             margin_bottom_percent=margin_bottom_percent,
             show_typhoon_marker=show_typhoon_marker,
             set_desktop=set_desktop,
-            typhoon_fetch=typhoon_fetch,
             record_run_key=record_run_key,
         )
         if fast is not None:
@@ -488,6 +547,7 @@ def run_wallpaper_pipeline(
             margin_top_percent=margin_top_percent,
             margin_bottom_percent=margin_bottom_percent,
             fetch_typhoon_center_fn=typhoon_fetch,
+            applied_run_state=applied_run_state,
         )
     applied = set_desktop(wallpaper_path)
     if applied is False:
