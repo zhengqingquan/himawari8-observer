@@ -1,9 +1,11 @@
-# himawari.asia API 文档
+# himawari.asia / NICT 同源 API 文档
 
-> 来源：历史上对 `https://himawari.asia/` 的浏览器抓包整理（约 2026-07-16；另对照过 `himawari8.nict.go.jp` 同源页面）  
-> 站点配置：`https://himawari.asia/js/env.js`（appVersion `6.4.1k4`）
+> 来源：  
+> 1. 历史上对 `https://himawari.asia/` 的浏览器抓包整理（约 2026-07-16）  
+> 2. `doc/himawari8.nict.go.jp.har`（`https://himawari8.nict.go.jp/`，约 2026-09-04，含台风区 JSON / `event.js` / GPS 前端逻辑）  
+> 站点配置：`/js/env.js`（himawari.asia 曾见 `6.4.1k4`；NICT 抓包为 `6.4.1n`）
 
-本文档整理该 HAR 中**实际请求到的接口**，以及 `env.js` 中定义、用于拼装瓦片/缩略图的 URL 模板。静态资源（CSS/JS/图标字体等）仅作分类索引，不逐条展开。
+本文档整理 HAR 中**实际请求到的接口**、前端拼装用的 URL 模板，以及**明确不是 HTTP API** 的能力（如 GPS）。静态资源（CSS/图标字体等）仅作分类索引。
 
 ---
 
@@ -11,8 +13,11 @@
 
 | 角色 | Base URL | 说明 |
 |------|----------|------|
-| 前端站点 | `https://himawari.asia` | 页面、配置、台风区域 JSON |
-| 影像数据 CDN | `https://jh190005-4.kudpc.kyoto-u.ac.jp/himawari/` | `latest.json`、瓦片、缩略图、蓝石底图（由 `env.js` 的 `imgBaseUrl` / `thumbnailBaseUrl` / `movieBaseUrl` 指定） |
+| NICT 官方站 | `https://himawari8.nict.go.jp/` | 页面、配置、台风区 JSON、影像（`env.js` 中 `imgBaseUrl` 等均指向本域） |
+| himawari.asia 前端 | `https://himawari.asia` | 同源页面镜像；影像可能改走京都大学 CDN（以该站 `env.js` 为准） |
+| 影像 CDN（asia 配置） | `https://jh190005-4.kudpc.kyoto-u.ac.jp/himawari/` | 仅 himawari.asia 的 `imgBaseUrl` / `thumbnailBaseUrl` / `movieBaseUrl` 曾指向此处 |
+
+下文 `{imgBaseUrl}` / `{host}`：NICT 抓包均为 `https://himawari8.nict.go.jp/`；asia 站请读其 `env.js`。
 
 产品（`showImage` / path 中的产品 ID）：
 
@@ -21,7 +26,7 @@
 | `D531106` | 全盘真彩色（FD） | 600000 ms（10 分钟） | 550×550 |
 | `D531107` | 日本区域等 | 150000 ms（2.5 分钟） | 600×480 |
 | `FULL_24h` | 红外波段 + 蓝石底图 | 600000 ms | 550×550 |
-| `D531108` | 台风/目标区域坐标（站点 JSON） | — | — |
+| `D531108` | 台风/目标区域坐标 JSON（站点 `/json/`，非瓦片产品） | 随观测时刻 | — |
 
 ---
 
@@ -41,6 +46,7 @@ GET {imgBaseUrl}img/D531106/latest.json?_={timestamp}
 
 ```
 GET https://jh190005-4.kudpc.kyoto-u.ac.jp/himawari/img/D531106/latest.json?_=1784212009139
+GET https://himawari8.nict.go.jp/img/D531106/latest.json?_=1788487475411
 ```
 
 | 项 | 值 |
@@ -56,6 +62,15 @@ GET https://jh190005-4.kudpc.kyoto-u.ac.jp/himawari/img/D531106/latest.json?_=17
 {
   "date": "2026-07-16 14:10:00",
   "file": "PI_H09_20260716_1410_TRC_FLDK_R10_PGPFD.png"
+}
+```
+
+NICT 抓包（2026-09-04）同结构：
+
+```json
+{
+  "date": "2026-09-04 00:50:00",
+  "file": "PI_H09_20260904_0050_TRC_FLDK_R10_PGPFD.png"
 }
 ```
 
@@ -221,59 +236,107 @@ img/FULL_24h/thumbnail/BlueMarble/550/BlueMarble_0_0.png
 
 ---
 
-### 2.4 台风 / 目标区域坐标
+### 2.4 台风 / 目标区域坐标（D531108）
+
+前端在切换观测时刻时请求（`himawari8-image.js`）：
 
 ```
-GET https://himawari.asia/json/D531108/{YYYY}/{MM}/{DD}/{HHMMSS}.json
-```
-
-**HAR 中示例**
-
-```
-GET https://himawari.asia/json/D531108/2026/07/16/141000.json
+GET {host}/json/D531108/{YYYY}/{MM}/{DD}/{HHMMSS}.json
 ```
 
 | 项 | 值 |
 |----|-----|
 | Method | `GET` |
-| Status | `200` |
+| Status | `200`（有台风目标区时）；无数据时前端显示 `No Typhoon Now`（`no_typhoon`） |
 | Content-Type | `application/json` |
+| `env.js` | `targetArea: { visible: true, visibleType: "TY" }` |
 
-**响应示例**
+**NICT HAR 示例（2026-09-04）**
+
+```
+GET https://himawari8.nict.go.jp/json/D531108/2026/09/04/005000.json
+```
+
+**himawari.asia 历史示例**
+
+```
+GET https://himawari.asia/json/D531108/2026/07/16/141000.json
+```
+
+**响应示例（NICT）**
 
 ```json
 {
-  "northwest": [9.765, 148.040],
-  "north": [9.797, 153.238],
-  "northeast": [9.835, 157.518],
-  "west": [5.177, 147.949],
-  "center": [5.193, 153.081],
-  "east": [5.213, 157.302],
-  "southeast": [0.641, 147.915],
-  "south": [0.643, 153.021],
-  "southwest": [0.645, 157.220],
+  "northwest": [35.119, 120.753],
+  "north": [34.890, 127.489],
+  "northeast": [34.776, 132.645],
+  "west": [29.189, 122.248],
+  "center": [29.024, 128.437],
+  "east": [28.941, 133.211],
+  "southeast": [23.759, 123.264],
+  "south": [23.637, 129.088],
+  "southwest": [23.576, 133.602],
   "type": "TY"
 }
 ```
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `northwest` … `southwest` | `[lat, lon]` | 九宫格方位点经纬度 |
-| `center` | `[lat, lon]` | 中心点 |
-| `type` | string | 如 `"TY"`（台风），与 `env.js` 中 `targetArea.visibleType` 对应 |
+| `northwest` … `southwest` | `[lat, lon]` | 九宫格方位点经纬度（画目标框） |
+| `center` | `[lat, lon]` | 中心点（台风场景下即台风中心附近） |
+| `type` | string | `"TY"` = 台风目标区；与 `visibleType: "TY"`、UI `[type="TY"]` 对应 |
+
+> 时刻 `{HHMMSS}` 通常与当前展示的 `D531106`（或所选产品）观测时间对齐（示例中全盘 `latest` 为 `00:50:00` → `005000.json`）。
+
+#### 相关媒体模板（前端拼装；本 NICT HAR 未逐条请求）
+
+点击目标区后可能播放快照/动画（`himawari8-image.js`）：
+
+```
+{imgBaseUrl}img/D531108/SnapShot/{YYYY}/{MM}/{DD}/{480|720}/hima8{YYYY}{MM}{DD}{HHMMSS}r3.png
+{movieBaseUrl}{YYYY}{MM}{DD}_pir3.mp4
+```
 
 ---
 
-### 2.5 事件列表（本 HAR 中失败）
+### 2.5 事件列表
 
 ```
-GET https://himawari.asia/json/event.js?_={timestamp}
+GET {host}/json/event.js?_={timestamp}
 ```
 
-| 项 | 值 |
-|----|-----|
-| Status | `404` |
-| 说明 | 请求时资源不存在；前端 `showEvent: true` 仍会尝试加载 |
+| 站点 | Status | 说明 |
+|------|--------|------|
+| `himawari8.nict.go.jp`（2026-09-04 HAR） | `200` | 返回 JSON 数组（历史问答/事件条目：`status`、`category`、`view_url`、`st`/`et` 等） |
+| `himawari.asia`（历史 HAR） | `404` | 当时资源不存在；前端 `showEvent: true` 仍会尝试加载 |
+
+**NICT 条目字段（摘录）**
+
+| 字段 | 说明 |
+|------|------|
+| `status` | 如 `"1"` |
+| `category` | 如 `"qa"` |
+| `view_url` / `url` | 站点内深链 |
+| `st` / `et` | 事件起止时间文案 |
+| `organization` / `user` | 发布方信息 |
+
+---
+
+### 2.6 用户当前位置（非 HTTP API）
+
+页面「GPS」按钮**不请求** NICT 位置接口，而是浏览器本地定位：
+
+```
+navigator.geolocation.getCurrentPosition → 地图移到 (longitude, latitude) → 叠加 #gps_pin
+```
+
+| 项 | 说明 |
+|----|------|
+| HAR 可见 | 仅 `gps_button*.svg`、`gps_pin.png` 等静态图 |
+| 无服务端响应 | 抓包中不会出现「当前用户 lat/lon」的 JSON |
+| 不支持时 | `!navigator.geolocation` 则移除 GPS 按钮；失败弹 `gps_error` 对话框 |
+
+若程序需要「当前位置」，应使用本机 OS / Geolocation，**不能**从 Himawari HTTP API 获取。
 
 ---
 
@@ -282,27 +345,30 @@ GET https://himawari.asia/json/event.js?_={timestamp}
 ### 3.1 环境配置
 
 ```
-GET https://himawari.asia/js/env.js
+GET {host}/js/env.js
 ```
 
-| 项 | 值 |
-|----|-----|
-| Status | `200` |
-| Content-Type | `application/javascript` |
+| 项 | himawari.asia（历史） | himawari8.nict.go.jp（2026-09-04） |
+|----|----------------------|-----------------------------------|
+| Status | `200` | `200` |
+| Content-Type | `application/javascript` | 同左 |
+| `appVersion` | `6.4.1k4` | `6.4.1n` |
 
 以全局变量 `$Env` 暴露配置，与本项目相关的关键字段：
 
-| 字段 | 示例值 | 说明 |
-|------|--------|------|
-| `host` | `https://himawari.asia` | 站点根 |
-| `imgBaseUrl` | `https://jh190005-4.kudpc.kyoto-u.ac.jp/himawari/` | 影像根路径 |
+| 字段 | NICT 抓包示例 | 说明 |
+|------|---------------|------|
+| `host` | `https://himawari8.nict.go.jp` | 站点根 |
+| `imgBaseUrl` | `https://himawari8.nict.go.jp/` | 影像根路径（asia 站可能为京都 CDN） |
 | `thumbnailBaseUrl` | 同上 | 缩略图根路径 |
 | `movieBaseUrl` | 同上 | 动画根路径 |
 | `oldestDate` | `2015-07-07T01:50:00Z` | 可回溯最早时间 |
 | `latestDateCheckInterval` | `60000` | 最新时间轮询间隔（ms） |
 | `showImage` | `D531106` | 默认产品 |
-| `image.download.url` | `https://sc-nc-web.nict.go.jp/wsdb_osndisk/shareDirDownload/bDw2maKV` | 官方完整图下载页（HAR 未请求） |
-
+| `showEvent` | `true` | 是否拉 `json/event.js` |
+| `targetArea.visibleType` | `"TY"` | 目标区类型（台风） |
+| `navigateBand13` | `{ latitude: 36, longitude: 140, altitude: 10 }` | 红外导航用参考点（非用户 GPS） |
+| `image.download.url` | `https://sc-web.nict.go.jp/himawari/`（NICT）；asia 历史曾为 `sc-nc-web.../shareDirDownload/...` | 官方完整图下载页 |
 ---
 
 ## 4. 推荐调用流程（壁纸类程序）
@@ -340,15 +406,15 @@ https://jh190005-4.kudpc.kyoto-u.ac.jp/himawari/img/D531106/4d/550/2026/07/16/14
 
 以下为页面静态/第三方资源，实现数据下载时一般**无需**对接。
 
-### 5.1 himawari.asia 静态资源
+### 5.1 站点静态资源（himawari.asia / himawari8.nict.go.jp 同源结构）
 
 | 类型 | 路径前缀 | 说明 |
 |------|----------|------|
 | 文档 | `/` | 首页 HTML |
-| JS | `/js/*.js` | 业务脚本、jQuery 等 |
-| CSS | `/css/*.css` | 样式 |
+| JS | `/js/*.js` | `env.js`、`himawari8-image.js` 等 |
+| CSS | `/css/*.css` | 含 `no_typhoon` / GPS 按钮文案样式 |
 | 字体 | `/font/pe-icon-7-*` | 图标字体 |
-| 图片 | `/img/*` | UI 按钮 SVG/PNG、Logo |
+| 图片 | `/img/*` | UI；含 `gps_button*.svg`、`gps_pin.png`、`target_area_button*.svg`（**不是**位置 API） |
 | 组件 | `/tileViewer/`、`/timeline/`、`/picker/`、`/eventViewer/` | 前端组件 |
 
 ### 5.2 第三方
@@ -362,47 +428,66 @@ https://jh190005-4.kudpc.kyoto-u.ac.jp/himawari/img/D531106/4d/550/2026/07/16/14
 
 ---
 
-## 6. 与旧 NICT 域名对照
+## 6. 与旧 NICT 下载域对照
 
-本项目历史代码曾使用：
+本项目运行时使用（下载瓦片）：
 
 ```
 https://himawari8-dl.nict.go.jp/himawari8/img/D531106/latest.json
 https://himawari8.nict.go.jp/img/D531106/...
 ```
 
-当前 himawari.asia 前端已改用京都大学镜像：
+官方实时网页（`himawari8.nict.go.jp`）的 `env.js` 将影像也放在**同域**：
+
+```
+https://himawari8.nict.go.jp/img/D531106/latest.json
+https://himawari8.nict.go.jp/img/D531106/{scale}/550/...
+https://himawari8.nict.go.jp/json/D531108/{YYYY}/{MM}/{DD}/{HHMMSS}.json
+```
+
+himawari.asia 前端曾改用京都大学镜像：
 
 ```
 https://jh190005-4.kudpc.kyoto-u.ac.jp/himawari/img/D531106/...
 ```
 
-路径结构（`img/{product}/latest.json`、`img/{product}/{scale}/{size}/...`）与旧站一致，**仅需替换 Base URL**。
+路径结构（`img/{product}/latest.json`、`img/{product}/{scale}/{size}/...`、`json/D531108/...`）一致，**按 `env.js` 的 Base URL 替换即可**。
 
 ---
 
 ## 7. HAR 请求清单（数据相关）
+
+### 7.1 himawari.asia / 京都 CDN（历史）
 
 | # | Method | URL 模式 | Status |
 |---|--------|----------|--------|
 | 1 | GET | `.../img/D531106/latest.json` | 200 |
 | 2 | GET | `.../img/D531107/latest.json` | 200 |
 | 3 | GET | `.../img/FULL_24h/latest.json` | 200 |
-| 4 | GET | `.../img/D531106/1d/550/{date}/..._{x}_{y}.png` | 200 / 304 |
-| 5 | GET | `.../img/D531106/2d/550/{date}/..._{x}_{y}.png` | 200 / 304 |
-| 6 | GET | `.../img/D531106/4d/550/{date}/..._{x}_{y}.png` | 200 / 304 |
-| 7 | GET | `.../img/D531106/8d/550/{date}/..._{x}_{y}.png` | 200 / 304 |
-| 8 | GET | `.../img/D531106/16d/550/{date}/..._{x}_{y}.png` | 200 / 304 |
-| 9 | GET | `.../img/D531106/20d/550/{date}/..._{x}_{y}.png` | 200 / 304 |
+| 4–9 | GET | `.../img/D531106/{1d…20d}/550/{date}/..._{x}_{y}.png` | 200 / 304 |
 | 10 | GET | `.../img/D531106/thumbnail/550/{date}/..._0_0.png` | 200 / 304 |
 | 11 | GET | `.../img/FULL_24h/B13/1d/550/{date}/..._0_0.png` | 200 / 304 |
 | 12 | GET | `.../img/FULL_24h/BlueMarble/1d/275/BlueMarble_0_0.png` | 200 |
-| 13 | GET | `https://himawari.asia/json/D531108/{date}.json`（NICT 同源：`himawari8.nict.go.jp`） | 200 |
+| 13 | GET | `https://himawari.asia/json/D531108/{date}.json` | 200 |
 | 14 | GET | `…/json/event.js` | 404 |
 | 15 | GET | `…/js/env.js` | 200 |
+
+### 7.2 himawari8.nict.go.jp（`doc/himawari8.nict.go.jp.har`，2026-09-04）
+
+| # | Method | URL 模式 | Status |
+|---|--------|----------|--------|
+| 1 | GET | `/img/D531106/latest.json` | 200 |
+| 2 | GET | `/img/D531107/latest.json` | 200 |
+| 3 | GET | `/img/FULL_24h/latest.json` | 200 |
+| 4 | GET | `/json/D531108/2026/09/04/005000.json` | 200（`type: TY`） |
+| 5 | GET | `/json/event.js` | 200 |
+| 6 | GET | `/js/env.js` | 200（`appVersion` `6.4.1n`） |
+| 7 | GET | `/img/D531106/thumbnail/550/2026/09/04/005000_0_0.png` | 200 |
+| 8 | GET | `/img/D531106/2d/550/2026/09/04/005000_{x}_{y}.png` | 200（视口局部） |
+| — | — | 用户 GPS 坐标 | **无 HTTP 请求**（仅 `navigator.geolocation`） |
 
 > 高档位（`8d` / `16d` / `20d`）在浏览器 HAR 中多为**视口局部瓦片**，不一定请求满 N×N 网格；壁纸程序若要整图合成，仍应按档位拉齐全部瓦片。
 
 ---
 
-*文档根据 himawari.asia / NICT 同源页面的历史抓包整理；镜像主机名可能随站点配置变更，以 `env.js` 中 `imgBaseUrl` 为准。*
+*文档根据 himawari.asia 与 `himawari8.nict.go.jp` 抓包整理；镜像主机名可能随站点配置变更，以对应站 `env.js` 中 `imgBaseUrl` 为准。*
