@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from pathlib import Path
 from time import struct_time
-from typing import Any
 
 from src.compose.equal import apply_deband_to_file, apply_margins, compose_equal_image
 from src.download.geoip import fetch_ip_latlon
@@ -15,25 +14,23 @@ from src.download.observation import fetch_observation_time as fetch_latest_obse
 from src.download.observation import observation_time_yesterday_local
 from src.download.tiles import download_tiles
 from src.download.typhoon import fetch_typhoon_center
-from src.metadata.app_config import (
-    DEFAULT_MARGIN_BOTTOM_PERCENT,
-    DEFAULT_MARGIN_TOP_PERCENT,
-)
 from src.pic import Pic
 from src.resolution_grade import default_grade
 from src.wallpaper.cleanup import cleanup_after_wallpaper_apply
 from src.wallpaper.desktop import get_desktop_wallpaper as read_desktop_wallpaper
 from src.wallpaper.desktop import set_wallpaper as apply_desktop_wallpaper
 from src.wallpaper.desktop import wallpaper_paths_match
-from src.wallpaper.folders import create_pic_folders
 from src.wallpaper.fast_path import try_postprocess_fast_path
 from src.wallpaper.fingerprint import (
     AppliedRunKey,
+    LivePostprocess,
+    PostprocessOptions,
     build_applied_run_key,
     layout_or_postprocess_differs,
     provisional_run_key_from_last,
     remember_applied,
 )
+from src.wallpaper.folders import create_pic_folders
 from src.wallpaper.markers import (
     apply_my_location_marker_if_needed,
     apply_typhoon_marker_if_needed,
@@ -56,7 +53,7 @@ SetWallpaper = Callable[[Path], bool | None]
 GetDesktopWallpaper = Callable[[], str | None]
 FetchTyphoonCenter = Callable[[struct_time], tuple[float, float] | None]
 FetchIpLatlon = Callable[[], tuple[float, float] | None]
-RefreshPostprocess = Callable[[], Mapping[str, Any]]
+RefreshPostprocess = Callable[[], LivePostprocess]
 
 
 def _default_fetch_observation_time() -> struct_time:
@@ -88,14 +85,9 @@ def run_wallpaper_pipeline(
     fetch_ip_latlon_fn: FetchIpLatlon | None = None,
     refresh_postprocess: RefreshPostprocess | None = None,
     resolution_grade: str | None = None,
-    auto_adjust: bool = False,
-    margin_top_percent: float = DEFAULT_MARGIN_TOP_PERCENT,
-    margin_bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
+    options: PostprocessOptions | None = None,
     cleanup_after_apply: bool = True,
     use_yesterday_local_time: bool = False,
-    reduce_banding: bool = False,
-    show_typhoon_marker: bool = False,
-    show_my_location: bool = False,
     base_dir: Path | None = None,
     applied_run_state: AppliedRunState | None = None,
     record_run_key: bool = True,
@@ -126,6 +118,7 @@ def run_wallpaper_pipeline(
     typhoon_fetch = fetch_typhoon_center_fn or fetch_typhoon_center
     ip_fetch = fetch_ip_latlon_fn or fetch_ip_latlon
     grade = resolution_grade if resolution_grade is not None else default_grade()
+    opts = options if options is not None else PostprocessOptions()
 
     def default_adjust(pic: Pic) -> Path:
         out = _adjusted_output_path(pic)
@@ -133,8 +126,8 @@ def run_wallpaper_pipeline(
             str(pic.final_path_equal),
             pic.pic_side,
             str(out),
-            top_percent=margin_top_percent,
-            bottom_percent=margin_bottom_percent,
+            top_percent=opts.margin_top_percent,
+            bottom_percent=opts.margin_bottom_percent,
             deband=False,
         )
         return out
@@ -147,23 +140,12 @@ def run_wallpaper_pipeline(
         provisional = provisional_run_key_from_last(
             last,
             resolution_grade=grade,
-            auto_adjust=auto_adjust,
-            margin_top_percent=margin_top_percent,
-            margin_bottom_percent=margin_bottom_percent,
-            reduce_banding=reduce_banding,
-            show_typhoon_marker=show_typhoon_marker,
-            show_my_location=show_my_location,
+            options=opts,
         )
         if provisional is not None and layout_or_postprocess_differs(last, provisional):
             fast = try_postprocess_fast_path(
                 applied_run_state=applied_run_state,
                 run_key=provisional,
-                auto_adjust=auto_adjust,
-                margin_top_percent=margin_top_percent,
-                margin_bottom_percent=margin_bottom_percent,
-                reduce_banding=reduce_banding,
-                show_typhoon_marker=show_typhoon_marker,
-                show_my_location=show_my_location,
                 set_desktop=set_desktop,
                 record_run_key=record_run_key,
                 fetch_ip_latlon_fn=ip_fetch,
@@ -179,12 +161,7 @@ def run_wallpaper_pipeline(
     run_key = build_applied_run_key(
         time_str,
         resolution_grade=grade,
-        auto_adjust=auto_adjust,
-        margin_top_percent=margin_top_percent,
-        margin_bottom_percent=margin_bottom_percent,
-        reduce_banding=reduce_banding,
-        show_typhoon_marker=show_typhoon_marker,
-        show_my_location=show_my_location,
+        options=opts,
     )
     observation_time = run_key.observation_time
     if not use_yesterday_local_time and applied_run_state is not None:
@@ -232,12 +209,6 @@ def run_wallpaper_pipeline(
         fast = try_postprocess_fast_path(
             applied_run_state=applied_run_state,
             run_key=run_key,
-            auto_adjust=auto_adjust,
-            margin_top_percent=margin_top_percent,
-            margin_bottom_percent=margin_bottom_percent,
-            reduce_banding=reduce_banding,
-            show_typhoon_marker=show_typhoon_marker,
-            show_my_location=show_my_location,
             set_desktop=set_desktop,
             record_run_key=record_run_key,
             fetch_ip_latlon_fn=ip_fetch,
@@ -256,29 +227,15 @@ def run_wallpaper_pipeline(
     # 下载可能很长：上墙前再读托盘最新成图开关，避免闪回已关闭的台风/定位等。
     if refresh_postprocess is not None:
         live = refresh_postprocess()
-        auto_adjust = bool(live.get("auto_adjust", auto_adjust))
-        margin_top_percent = float(live.get("margin_top_percent", margin_top_percent))
-        margin_bottom_percent = float(live.get("margin_bottom_percent", margin_bottom_percent))
-        reduce_banding = bool(live.get("reduce_banding", reduce_banding))
-        show_typhoon_marker = bool(live.get("show_typhoon_marker", show_typhoon_marker))
-        show_my_location = bool(live.get("show_my_location", show_my_location))
-        cleanup_after_apply = bool(live.get("cleanup_after_apply", cleanup_after_apply))
-        run_key = AppliedRunKey(
-            observation_time,
-            grade,
-            auto_adjust,
-            margin_top_percent,
-            margin_bottom_percent,
-            reduce_banding,
-            show_typhoon_marker,
-            show_my_location,
-        )
+        opts = live.options
+        cleanup_after_apply = live.cleanup_after_apply
+        run_key = AppliedRunKey(observation_time, grade, *opts)
         logging.info(
             "Post-download postprocess refresh: adjust=%s banding=%s typhoon=%s my_location=%s",
-            auto_adjust,
-            reduce_banding,
-            show_typhoon_marker,
-            show_my_location,
+            opts.auto_adjust,
+            opts.reduce_banding,
+            opts.show_typhoon_marker,
+            opts.show_my_location,
         )
 
     # 始终先落等分圆盘，再修边；保留 *_disk 供改边距时后处理。
@@ -293,7 +250,7 @@ def run_wallpaper_pipeline(
         logging.exception("Failed to save equal disk copy: %s", equal_path)
         disk_path = wallpaper_disk_path(equal_path)
 
-    preferred = Path(adjust(pic) if auto_adjust else equal_path)
+    preferred = Path(adjust(pic) if opts.auto_adjust else equal_path)
     wallpaper_path = pick_writable_wallpaper_path(
         preferred,
         current_desktop=read_desktop(),
@@ -314,31 +271,31 @@ def run_wallpaper_pipeline(
         logging.exception("Failed to save unmarked wallpaper base: %s", wallpaper_path)
         base_path = wallpaper_base_path(wallpaper_path)
 
-    if reduce_banding:
+    if opts.reduce_banding:
         try:
             apply_deband_to_file(base_path, wallpaper_path)
         except OSError:
             logging.exception("Failed to apply deband to wallpaper: %s", wallpaper_path)
             return None
 
-    if show_typhoon_marker:
+    if opts.show_typhoon_marker:
         apply_typhoon_marker_if_needed(
             wallpaper_path=wallpaper_path,
             pic_side=pic.pic_side,
             observation_time=time_str,
-            auto_adjust=auto_adjust,
-            margin_top_percent=margin_top_percent,
-            margin_bottom_percent=margin_bottom_percent,
+            auto_adjust=opts.auto_adjust,
+            margin_top_percent=opts.margin_top_percent,
+            margin_bottom_percent=opts.margin_bottom_percent,
             fetch_typhoon_center_fn=typhoon_fetch,
             applied_run_state=applied_run_state,
         )
-    if show_my_location:
+    if opts.show_my_location:
         apply_my_location_marker_if_needed(
             wallpaper_path=wallpaper_path,
             pic_side=pic.pic_side,
-            auto_adjust=auto_adjust,
-            margin_top_percent=margin_top_percent,
-            margin_bottom_percent=margin_bottom_percent,
+            auto_adjust=opts.auto_adjust,
+            margin_top_percent=opts.margin_top_percent,
+            margin_bottom_percent=opts.margin_bottom_percent,
             fetch_ip_latlon_fn=ip_fetch,
             applied_run_state=applied_run_state,
             allow_network=True,

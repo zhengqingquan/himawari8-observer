@@ -6,6 +6,7 @@ from pathlib import Path
 
 from src.wallpaper.cleanup import cleanup_after_wallpaper_apply
 from src.wallpaper.pipeline import run_wallpaper_pipeline
+from src.wallpaper.fingerprint import PostprocessOptions
 from tests.workdir_paths import temporary_base_dir
 
 
@@ -100,7 +101,7 @@ class CleanupAfterApplyTests(unittest.TestCase):
                 compose_equal=compose_equal,
                 adjust_wallpaper=adjust_wallpaper,
                 set_wallpaper=set_wallpaper,
-                auto_adjust=True,
+                options=PostprocessOptions(auto_adjust=True),
                 cleanup_after_apply=True,
                 base_dir=base,
             )
@@ -143,7 +144,7 @@ class CleanupAfterApplyTests(unittest.TestCase):
                 download_tiles=download_tiles,
                 compose_equal=compose_equal,
                 set_wallpaper=set_wallpaper,
-                auto_adjust=False,
+                options=PostprocessOptions(auto_adjust=False),
                 cleanup_after_apply=True,
                 base_dir=base,
             )

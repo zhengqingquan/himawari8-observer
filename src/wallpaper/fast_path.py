@@ -178,12 +178,6 @@ def try_postprocess_fast_path(
     *,
     applied_run_state: AppliedRunState,
     run_key: AppliedRunKey,
-    auto_adjust: bool,
-    margin_top_percent: float,
-    margin_bottom_percent: float,
-    reduce_banding: bool,
-    show_typhoon_marker: bool,
-    show_my_location: bool = False,
     set_desktop: SetWallpaper,
     record_run_key: bool,
     fetch_ip_latlon_fn: FetchIpLatlon | None = None,
@@ -198,6 +192,7 @@ def try_postprocess_fast_path(
     if last is None or not layout_or_postprocess_differs(last, run_key):
         return None
 
+    options = run_key.options
     last_path_raw = applied_run_state.get("wallpaper_path")
     if not isinstance(last_path_raw, str) or not last_path_raw.strip():
         return None
@@ -210,7 +205,7 @@ def try_postprocess_fast_path(
     preferred = (
         last_wallpaper
         if layout_same
-        else wallpaper_output_path(equal_path, auto_adjust=auto_adjust)
+        else wallpaper_output_path(equal_path, auto_adjust=options.auto_adjust)
     )
     current_desktop = get_desktop() if get_desktop is not None else None
     wallpaper_path = pick_writable_wallpaper_path(
@@ -226,7 +221,7 @@ def try_postprocess_fast_path(
                 last=last,
                 last_wallpaper=last_wallpaper,
                 wallpaper_path=wallpaper_path,
-                reduce_banding=reduce_banding,
+                reduce_banding=options.reduce_banding,
             )
         else:
             # 修边/边距变了：从 *_disk 重建。
@@ -234,33 +229,33 @@ def try_postprocess_fast_path(
                 disk=disk,
                 wallpaper_path=wallpaper_path,
                 pic_side=pic_side,
-                auto_adjust=auto_adjust,
-                margin_top_percent=margin_top_percent,
-                margin_bottom_percent=margin_bottom_percent,
-                reduce_banding=reduce_banding,
+                auto_adjust=options.auto_adjust,
+                margin_top_percent=options.margin_top_percent,
+                margin_bottom_percent=options.margin_bottom_percent,
+                reduce_banding=options.reduce_banding,
             )
         if rebuilt is None:
             return None
         base, wallpaper_path = rebuilt
 
-        if show_typhoon_marker:
+        if options.show_typhoon_marker:
             _overlay_typhoon_from_cache(
                 applied_run_state=applied_run_state,
                 wallpaper_path=wallpaper_path,
                 pic_side=pic_side,
                 observation_time=observation_time,
-                auto_adjust=auto_adjust,
-                margin_top_percent=margin_top_percent,
-                margin_bottom_percent=margin_bottom_percent,
+                auto_adjust=options.auto_adjust,
+                margin_top_percent=options.margin_top_percent,
+                margin_bottom_percent=options.margin_bottom_percent,
             )
-        if show_my_location:
+        if options.show_my_location:
             # IP 定位与观测时间无关：快路径无缓存时允许联网，避免首次开启永远不画。
             apply_my_location_marker_if_needed(
                 wallpaper_path=wallpaper_path,
                 pic_side=pic_side,
-                auto_adjust=auto_adjust,
-                margin_top_percent=margin_top_percent,
-                margin_bottom_percent=margin_bottom_percent,
+                auto_adjust=options.auto_adjust,
+                margin_top_percent=options.margin_top_percent,
+                margin_bottom_percent=options.margin_bottom_percent,
                 fetch_ip_latlon_fn=fetch_ip_latlon_fn or (lambda: None),
                 applied_run_state=applied_run_state,
                 allow_network=True,
@@ -269,9 +264,9 @@ def try_postprocess_fast_path(
             "Postprocess fast path: rebuilt wallpaper "
             "(layout_same=%s banding=%s typhoon=%s my_location=%s)",
             layout_same,
-            reduce_banding,
-            show_typhoon_marker,
-            show_my_location,
+            options.reduce_banding,
+            options.show_typhoon_marker,
+            options.show_my_location,
         )
     except OSError:
         logging.exception("Postprocess fast path failed while rebuilding wallpaper")

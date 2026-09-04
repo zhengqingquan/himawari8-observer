@@ -8,6 +8,7 @@ from unittest.mock import patch
 from PIL import Image
 
 from src.wallpaper.pipeline import run_wallpaper_pipeline
+from src.wallpaper.fingerprint import PostprocessOptions
 from tests.workdir_paths import temporary_base_dir
 
 
@@ -113,7 +114,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 compose_equal=compose_equal,
                 adjust_wallpaper=adjust_wallpaper,
                 set_wallpaper=set_wallpaper,
-                auto_adjust=True,
+                options=PostprocessOptions(auto_adjust=True),
                 cleanup_after_apply=False,
                 base_dir=base_dir,
             )
@@ -159,7 +160,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                     fetch_observation_time=fetch_observation_time,
                     download_tiles=download_tiles,
                     set_wallpaper=set_wallpaper,
-                    auto_adjust=True,
+                    options=PostprocessOptions(auto_adjust=True),
                     cleanup_after_apply=False,
                     applied_run_state=state,
                     base_dir=base_dir,
@@ -201,7 +202,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 compose_equal=compose_equal,
                 adjust_wallpaper=adjust_wallpaper,
                 set_wallpaper=set_wallpaper,
-                auto_adjust=False,
+                options=PostprocessOptions(auto_adjust=False),
                 cleanup_after_apply=False,
                 base_dir=base_dir,
             )
@@ -318,9 +319,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 compose_equal=compose_equal,
                 set_wallpaper=set_wallpaper,
                 get_desktop_wallpaper=get_desktop_wallpaper,
-                auto_adjust=False,
-                margin_top_percent=0.0,
-                margin_bottom_percent=5.0,
+                options=PostprocessOptions(auto_adjust=False, margin_top_percent=0.0, margin_bottom_percent=5.0),
                 cleanup_after_apply=False,
                 applied_run_state=state,
                 base_dir=base_dir,
@@ -568,9 +567,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 download_tiles=download_tiles,
                 compose_equal=compose_equal,
                 set_wallpaper=set_wallpaper,
-                auto_adjust=False,
-                margin_top_percent=0.0,
-                margin_bottom_percent=5.0,
+                options=PostprocessOptions(auto_adjust=False, margin_top_percent=0.0, margin_bottom_percent=5.0),
                 cleanup_after_apply=False,
                 applied_run_state=state,
                 base_dir=base_dir,
@@ -610,7 +607,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 download_tiles=download_tiles,
                 compose_equal=compose_equal,
                 set_wallpaper=set_wallpaper,
-                reduce_banding=False,
+                options=PostprocessOptions(reduce_banding=False),
                 cleanup_after_apply=False,
                 applied_run_state=state,
                 base_dir=base_dir,
@@ -629,7 +626,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 download_tiles=download_tiles,
                 compose_equal=compose_equal,
                 set_wallpaper=set_wallpaper,
-                reduce_banding=True,
+                options=PostprocessOptions(reduce_banding=True),
                 cleanup_after_apply=False,
                 applied_run_state=state,
                 base_dir=base_dir,
@@ -645,7 +642,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 download_tiles=download_tiles,
                 compose_equal=compose_equal,
                 set_wallpaper=set_wallpaper,
-                reduce_banding=False,
+                options=PostprocessOptions(reduce_banding=False),
                 cleanup_after_apply=False,
                 applied_run_state=state,
                 base_dir=base_dir,
@@ -692,9 +689,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                     download_tiles=download_tiles,
                     compose_equal=compose_equal,
                     set_wallpaper=set_wallpaper,
-                    auto_adjust=True,
-                    margin_top_percent=0.0,
-                    margin_bottom_percent=5.0,
+                    options=PostprocessOptions(auto_adjust=True, margin_top_percent=0.0, margin_bottom_percent=5.0),
                     cleanup_after_apply=False,
                     applied_run_state=state,
                     base_dir=base_dir,
@@ -713,9 +708,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                     download_tiles=download_tiles,
                     compose_equal=compose_equal,
                     set_wallpaper=set_wallpaper,
-                    auto_adjust=True,
-                    margin_top_percent=0.0,
-                    margin_bottom_percent=10.0,
+                    options=PostprocessOptions(auto_adjust=True, margin_top_percent=0.0, margin_bottom_percent=10.0),
                     cleanup_after_apply=False,
                     applied_run_state=state,
                     base_dir=base_dir,
@@ -756,19 +749,23 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             draws.append(kwargs.get("label"))
             return True
 
+        from src.wallpaper.fingerprint import LivePostprocess
+
         live = {"show_typhoon_marker": True, "show_my_location": False}
 
         def refresh():
             live["show_typhoon_marker"] = False
-            return {
-                "auto_adjust": False,
-                "margin_top_percent": 0.0,
-                "margin_bottom_percent": 5.0,
-                "cleanup_after_apply": False,
-                "reduce_banding": False,
-                "show_typhoon_marker": live["show_typhoon_marker"],
-                "show_my_location": False,
-            }
+            return LivePostprocess(
+                options=PostprocessOptions(
+                    auto_adjust=False,
+                    margin_top_percent=0.0,
+                    margin_bottom_percent=5.0,
+                    reduce_banding=False,
+                    show_typhoon_marker=live["show_typhoon_marker"],
+                    show_my_location=False,
+                ),
+                cleanup_after_apply=False,
+            )
 
         with temporary_base_dir() as base_dir:
             with patch("src.wallpaper.markers.draw_typhoon_marker", side_effect=fake_draw):
@@ -779,7 +776,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                     compose_equal=compose_equal,
                     set_wallpaper=set_wallpaper,
                     fetch_typhoon_center_fn=fetch_center,
-                    show_typhoon_marker=True,
+                    options=PostprocessOptions(show_typhoon_marker=True),
                     refresh_postprocess=refresh,
                     cleanup_after_apply=False,
                     applied_run_state={"last": None, "wallpaper_path": None},

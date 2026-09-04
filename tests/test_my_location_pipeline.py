@@ -10,6 +10,7 @@ from unittest.mock import patch
 from PIL import Image
 
 from src.wallpaper.pipeline import run_wallpaper_pipeline
+from src.wallpaper.fingerprint import PostprocessOptions
 from tests.workdir_paths import temporary_base_dir
 
 
@@ -46,7 +47,7 @@ class MyLocationMarkerPipelineTests(unittest.TestCase):
                     compose_equal=compose_equal,
                     set_wallpaper=set_wallpaper,
                     fetch_ip_latlon_fn=fetch_ip,
-                    show_my_location=True,
+                    options=PostprocessOptions(show_my_location=True),
                     cleanup_after_apply=False,
                     base_dir=base_dir,
                 )
@@ -84,7 +85,7 @@ class MyLocationMarkerPipelineTests(unittest.TestCase):
                 compose_equal=compose_equal,
                 set_wallpaper=set_wallpaper,
                 fetch_ip_latlon_fn=fetch_ip,
-                show_my_location=False,
+                options=PostprocessOptions(show_my_location=False),
                 cleanup_after_apply=False,
                 base_dir=base_dir,
             )
@@ -131,7 +132,7 @@ class MyLocationMarkerPipelineTests(unittest.TestCase):
                     compose_equal=compose_equal,
                     set_wallpaper=set_wallpaper,
                     fetch_ip_latlon_fn=fetch_ip,
-                    show_my_location=True,
+                    options=PostprocessOptions(show_my_location=True),
                     cleanup_after_apply=False,
                     applied_run_state=state,
                     base_dir=base_dir,
@@ -148,7 +149,7 @@ class MyLocationMarkerPipelineTests(unittest.TestCase):
                     compose_equal=compose_equal,
                     set_wallpaper=set_wallpaper,
                     fetch_ip_latlon_fn=fetch_ip,
-                    show_my_location=False,
+                    options=PostprocessOptions(show_my_location=False),
                     cleanup_after_apply=False,
                     applied_run_state=state,
                     base_dir=base_dir,
@@ -162,7 +163,7 @@ class MyLocationMarkerPipelineTests(unittest.TestCase):
                     compose_equal=compose_equal,
                     set_wallpaper=set_wallpaper,
                     fetch_ip_latlon_fn=fetch_ip,
-                    show_my_location=True,
+                    options=PostprocessOptions(show_my_location=True),
                     cleanup_after_apply=False,
                     applied_run_state=state,
                     base_dir=base_dir,
@@ -219,7 +220,7 @@ class MyLocationMarkerPipelineTests(unittest.TestCase):
                     compose_equal=lambda pic: None,
                     set_wallpaper=set_wallpaper,
                     fetch_ip_latlon_fn=fetch_ip,
-                    show_my_location=True,
+                    options=PostprocessOptions(show_my_location=True),
                     cleanup_after_apply=False,
                     applied_run_state=state,
                     base_dir=base_dir,

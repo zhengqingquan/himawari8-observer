@@ -3,19 +3,27 @@
 import unittest
 
 from src.wallpaper.job import WallpaperJobRef
+from src.wallpaper.fingerprint import PostprocessOptions
 
 
 class WallpaperJobRefTests(unittest.TestCase):
     def test_call_uses_current_grade(self):
         grades = []
 
-        def fake_build(resolution_grade, *, auto_adjust=False, **_kwargs):
+        def fake_build(resolution_grade, *, options=None, **_kwargs):
+            opts = options or PostprocessOptions()
+
             def job():
-                grades.append((resolution_grade, auto_adjust))
+                grades.append((resolution_grade, opts.auto_adjust))
 
             return job
 
-        ref = WallpaperJobRef("4d", auto_adjust=True, build_job=fake_build, persist_state=False)
+        ref = WallpaperJobRef(
+            "4d",
+            options=PostprocessOptions(auto_adjust=True),
+            build_job=fake_build,
+            persist_state=False,
+        )
         ref()
         ref.set_resolution_grade("8d")
         ref()
@@ -24,7 +32,7 @@ class WallpaperJobRefTests(unittest.TestCase):
     def test_set_pixel_side_maps_to_grade(self):
         grades = []
 
-        def fake_build(resolution_grade, *, auto_adjust=False, **_kwargs):
+        def fake_build(resolution_grade, *, options=None, **_kwargs):
             def job():
                 grades.append(resolution_grade)
 
@@ -43,13 +51,17 @@ class WallpaperJobRefTests(unittest.TestCase):
         def fake_build(
             resolution_grade,
             *,
-            auto_adjust=False,
-            margin_top_percent=5.0,
-            margin_bottom_percent=5.0,
+            options=None,
             **_kwargs,
         ):
+            opts = options or PostprocessOptions()
             builds.append(
-                (resolution_grade, auto_adjust, margin_top_percent, margin_bottom_percent)
+                (
+                    resolution_grade,
+                    opts.auto_adjust,
+                    opts.margin_top_percent,
+                    opts.margin_bottom_percent,
+                )
             )
 
             def job():
@@ -59,8 +71,7 @@ class WallpaperJobRefTests(unittest.TestCase):
 
         ref = WallpaperJobRef(
             "4d",
-            margin_top_percent=5.0,
-            margin_bottom_percent=5.0,
+            options=PostprocessOptions(margin_top_percent=5.0, margin_bottom_percent=5.0),
             build_job=fake_build,
             persist_state=False,
         )
@@ -174,9 +185,7 @@ class WallpaperJobRefTests(unittest.TestCase):
         }
         ref = WallpaperJobRef(
             "4d",
-            auto_adjust=True,
-            margin_top_percent=0.0,
-            margin_bottom_percent=5.0,
+            options=PostprocessOptions(auto_adjust=True, margin_top_percent=0.0, margin_bottom_percent=5.0),
             build_job=_noop_build,
             applied_run_state=state,
             persist_state=False,

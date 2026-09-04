@@ -4,6 +4,7 @@ import unittest
 from types import SimpleNamespace
 
 from src.wallpaper.job import build_wallpaper_job, job_kwargs_from_config
+from src.wallpaper.fingerprint import PostprocessOptions
 
 
 class JobKwargsFromConfigTests(unittest.TestCase):
@@ -22,14 +23,19 @@ class JobKwargsFromConfigTests(unittest.TestCase):
         )
         kwargs = job_kwargs_from_config(config)
         self.assertEqual(kwargs["resolution_grade"], "4d")
-        self.assertTrue(kwargs["auto_adjust"])
-        self.assertEqual(kwargs["margin_top_percent"], 1.0)
-        self.assertEqual(kwargs["margin_bottom_percent"], 2.0)
+        self.assertEqual(
+            kwargs["options"],
+            PostprocessOptions(
+                auto_adjust=True,
+                margin_top_percent=1.0,
+                margin_bottom_percent=2.0,
+                reduce_banding=True,
+                show_typhoon_marker=True,
+                show_my_location=True,
+            ),
+        )
         self.assertFalse(kwargs["cleanup_after_apply"])
         self.assertTrue(kwargs["use_yesterday_local_time"])
-        self.assertTrue(kwargs["reduce_banding"])
-        self.assertTrue(kwargs["show_typhoon_marker"])
-        self.assertTrue(kwargs["show_my_location"])
         self.assertEqual(kwargs["download_interval_minutes"], 15)
 
 
@@ -61,10 +67,14 @@ class BuildWallpaperJobTests(unittest.TestCase):
     def test_job_freezes_auto_adjust(self):
         flags = []
 
-        def fake_pipeline(*, auto_adjust=False, **_kwargs):
-            flags.append(auto_adjust)
+        def fake_pipeline(*, options=None, **_kwargs):
+            flags.append(options.auto_adjust if options is not None else False)
 
-        job = build_wallpaper_job("4d", auto_adjust=True, run_pipeline=fake_pipeline)
+        job = build_wallpaper_job(
+            "4d",
+            options=PostprocessOptions(auto_adjust=True),
+            run_pipeline=fake_pipeline,
+        )
         job()
         job()
         self.assertEqual(flags, [True, True])
@@ -72,13 +82,13 @@ class BuildWallpaperJobTests(unittest.TestCase):
     def test_job_freezes_margin_percents(self):
         margins = []
 
-        def fake_pipeline(*, margin_top_percent=5.0, margin_bottom_percent=5.0, **_kwargs):
-            margins.append((margin_top_percent, margin_bottom_percent))
+        def fake_pipeline(*, options=None, **_kwargs):
+            opts = options or PostprocessOptions()
+            margins.append((opts.margin_top_percent, opts.margin_bottom_percent))
 
         job = build_wallpaper_job(
             "4d",
-            margin_top_percent=3.0,
-            margin_bottom_percent=12.0,
+            options=PostprocessOptions(margin_top_percent=3.0, margin_bottom_percent=12.0),
             run_pipeline=fake_pipeline,
         )
         job()

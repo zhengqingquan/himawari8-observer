@@ -10,8 +10,6 @@ from typing import Any, Protocol
 
 from src.metadata.app_config import (
     DEFAULT_DOWNLOAD_INTERVAL_MINUTES,
-    DEFAULT_MARGIN_BOTTOM_PERCENT,
-    DEFAULT_MARGIN_TOP_PERCENT,
     DOWNLOAD_INTERVAL_MINUTES_CHOICES,
 )
 from src.resolution_grade import (
@@ -24,13 +22,15 @@ from src.scheduler import reschedule_interval
 from src.settings import persist_applied_run_state
 from src.wallpaper.desktop import get_desktop_wallpaper as read_desktop_wallpaper
 from src.wallpaper.desktop import set_wallpaper as apply_desktop_wallpaper
-from src.wallpaper.pipeline import run_wallpaper_pipeline
 from src.wallpaper.fast_path import try_postprocess_fast_path
 from src.wallpaper.fingerprint import (
     AppliedRunKey,
+    LivePostprocess,
+    PostprocessOptions,
     layout_or_postprocess_differs,
     provisional_run_key_from_last,
 )
+from src.wallpaper.pipeline import run_wallpaper_pipeline
 from src.wallpaper.update import is_paused, resume
 
 BuildJob = Callable[..., Callable[[], None]]
@@ -62,17 +62,19 @@ class WallpaperJobConfig(Protocol):
 
 
 def job_kwargs_from_config(config: WallpaperJobConfig) -> dict[str, Any]:
-    """将 Config getter 映射为 ``build_wallpaper_job`` / ``WallpaperJobRef`` 的 kwargs。"""
+    """将 Config getter 映射为 ``WallpaperJobRef`` 的 kwargs。"""
     return {
         "resolution_grade": pixel_to_grade(config.get_download_resolution()),
-        "auto_adjust": config.is_auto_adjust_picture(),
-        "margin_top_percent": config.get_margin_top_percent(),
-        "margin_bottom_percent": config.get_margin_bottom_percent(),
+        "options": PostprocessOptions(
+            auto_adjust=config.is_auto_adjust_picture(),
+            margin_top_percent=config.get_margin_top_percent(),
+            margin_bottom_percent=config.get_margin_bottom_percent(),
+            reduce_banding=config.is_reduce_banding(),
+            show_typhoon_marker=config.is_show_typhoon_marker(),
+            show_my_location=config.is_show_my_location(),
+        ),
         "cleanup_after_apply": config.is_cleanup_after_apply(),
         "use_yesterday_local_time": config.is_use_yesterday_local_time(),
-        "reduce_banding": config.is_reduce_banding(),
-        "show_typhoon_marker": config.is_show_typhoon_marker(),
-        "show_my_location": config.is_show_my_location(),
         "download_interval_minutes": config.get_download_interval_minutes(),
     }
 
@@ -80,18 +82,13 @@ def job_kwargs_from_config(config: WallpaperJobConfig) -> dict[str, Any]:
 def build_wallpaper_job(
     resolution_grade: str,
     *,
-    auto_adjust: bool = False,
-    margin_top_percent: float = DEFAULT_MARGIN_TOP_PERCENT,
-    margin_bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
+    options: PostprocessOptions | None = None,
     cleanup_after_apply: bool = True,
     use_yesterday_local_time: bool = False,
-    reduce_banding: bool = False,
-    show_typhoon_marker: bool = False,
-    show_my_location: bool = False,
     base_dir: Path | None = None,
     run_pipeline: RunPipeline | None = None,
     applied_run_state: dict[str, Any] | None = None,
-    refresh_postprocess: Callable[[], dict[str, Any]] | None = None,
+    refresh_postprocess: Callable[[], LivePostprocess] | None = None,
 ) -> Callable[[], None]:
     """返回零参 callable；每次调用使用构造时冻结的参数。
 
@@ -100,6 +97,7 @@ def build_wallpaper_job(
     ``refresh_postprocess`` 在下载完成后上墙前再读最新成图开关（由 WallpaperJobRef 注入）。
     """
     pipeline = run_pipeline or run_wallpaper_pipeline
+    opts = options if options is not None else PostprocessOptions()
     state = (
         applied_run_state
         if applied_run_state is not None
@@ -109,14 +107,9 @@ def build_wallpaper_job(
     def job() -> None:
         pipeline(
             resolution_grade=resolution_grade,
-            auto_adjust=auto_adjust,
-            margin_top_percent=margin_top_percent,
-            margin_bottom_percent=margin_bottom_percent,
+            options=opts,
             cleanup_after_apply=cleanup_after_apply,
             use_yesterday_local_time=use_yesterday_local_time,
-            reduce_banding=reduce_banding,
-            show_typhoon_marker=show_typhoon_marker,
-            show_my_location=show_my_location,
             base_dir=base_dir,
             applied_run_state=state,
             refresh_postprocess=refresh_postprocess,
@@ -135,14 +128,9 @@ class WallpaperJobRef:
         self,
         resolution_grade: str,
         *,
-        auto_adjust: bool = False,
-        margin_top_percent: float = DEFAULT_MARGIN_TOP_PERCENT,
-        margin_bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
+        options: PostprocessOptions | None = None,
         cleanup_after_apply: bool = True,
         use_yesterday_local_time: bool = False,
-        reduce_banding: bool = False,
-        show_typhoon_marker: bool = False,
-        show_my_location: bool = False,
         download_interval_minutes: int = DEFAULT_DOWNLOAD_INTERVAL_MINUTES,
         base_dir: Path | None = None,
         build_job: BuildJob | None = None,
@@ -152,14 +140,9 @@ class WallpaperJobRef:
     ) -> None:
         self._lock = threading.Lock()
         self._live_postprocess_lock = threading.Lock()
-        self._auto_adjust = auto_adjust
-        self._margin_top_percent = margin_top_percent
-        self._margin_bottom_percent = margin_bottom_percent
+        self._options = options if options is not None else PostprocessOptions()
         self._cleanup_after_apply = cleanup_after_apply
         self._use_yesterday_local_time = use_yesterday_local_time
-        self._reduce_banding = reduce_banding
-        self._show_typhoon_marker = show_typhoon_marker
-        self._show_my_location = show_my_location
         minutes = int(download_interval_minutes)
         if minutes not in DOWNLOAD_INTERVAL_MINUTES_CHOICES:
             minutes = DEFAULT_DOWNLOAD_INTERVAL_MINUTES
@@ -196,14 +179,9 @@ class WallpaperJobRef:
     def _build_initial_job(self) -> Callable[[], None]:
         return self._build_job(
             self._grade,
-            auto_adjust=self._auto_adjust,
-            margin_top_percent=self._margin_top_percent,
-            margin_bottom_percent=self._margin_bottom_percent,
+            options=self._options,
             cleanup_after_apply=self._cleanup_after_apply,
             use_yesterday_local_time=self._use_yesterday_local_time,
-            reduce_banding=self._reduce_banding,
-            show_typhoon_marker=self._show_typhoon_marker,
-            show_my_location=self._show_my_location,
             base_dir=self._base_dir,
             run_pipeline=self._run_pipeline,
             applied_run_state=self._applied_run_state,
@@ -218,6 +196,11 @@ class WallpaperJobRef:
     def _set_and_rebuild(self, attr: str, value: Any) -> None:
         with self._lock:
             setattr(self, attr, value)
+            self._rebuild_job_locked()
+
+    def _replace_options(self, **changes: Any) -> None:
+        with self._lock:
+            self._options = self._options._replace(**changes)
             self._rebuild_job_locked()
 
     def set_on_applied(self, callback: Callable[[], None] | None) -> None:
@@ -243,20 +226,15 @@ class WallpaperJobRef:
             self._persist_applied_state_unlocked()
         self._notify_applied()
 
-    def _postprocess_snapshot_unlocked(self) -> dict[str, Any]:
-        return {
-            "auto_adjust": self._auto_adjust,
-            "margin_top_percent": self._margin_top_percent,
-            "margin_bottom_percent": self._margin_bottom_percent,
-            "cleanup_after_apply": self._cleanup_after_apply,
-            "reduce_banding": self._reduce_banding,
-            "show_typhoon_marker": self._show_typhoon_marker,
-            "show_my_location": self._show_my_location,
-        }
+    def _live_postprocess_unlocked(self) -> LivePostprocess:
+        return LivePostprocess(
+            options=self._options,
+            cleanup_after_apply=self._cleanup_after_apply,
+        )
 
-    def _refresh_postprocess(self) -> dict[str, Any]:
+    def _refresh_postprocess(self) -> LivePostprocess:
         with self._lock:
-            return self._postprocess_snapshot_unlocked()
+            return self._live_postprocess_unlocked()
 
     def _run_with_live_postprocess(
         self,
@@ -271,17 +249,18 @@ class WallpaperJobRef:
             base_dir = self._base_dir
             state = self._applied_run_state
             pipeline = self._run_pipeline
-            pp = self._postprocess_snapshot_unlocked()
+            live = self._live_postprocess_unlocked()
         if cleanup_after_apply is not None:
-            pp = {**pp, "cleanup_after_apply": cleanup_after_apply}
+            live = live._replace(cleanup_after_apply=cleanup_after_apply)
         return pipeline(
             resolution_grade=grade,
+            options=live.options,
+            cleanup_after_apply=live.cleanup_after_apply,
             use_yesterday_local_time=use_yesterday,
             base_dir=base_dir,
             applied_run_state=state,
             record_run_key=record_run_key,
             refresh_postprocess=self._refresh_postprocess,
-            **pp,
         )
 
     def try_live_postprocess(self) -> bool:
@@ -296,23 +275,13 @@ class WallpaperJobRef:
             with self._lock:
                 state = self._applied_run_state
                 grade = self._grade
-                auto_adjust = self._auto_adjust
-                margin_top_percent = self._margin_top_percent
-                margin_bottom_percent = self._margin_bottom_percent
-                reduce_banding = self._reduce_banding
-                show_typhoon_marker = self._show_typhoon_marker
-                show_my_location = self._show_my_location
+                options = self._options
                 last = state.get("last")
 
             provisional = provisional_run_key_from_last(
                 last,
                 resolution_grade=grade,
-                auto_adjust=auto_adjust,
-                margin_top_percent=margin_top_percent,
-                margin_bottom_percent=margin_bottom_percent,
-                reduce_banding=reduce_banding,
-                show_typhoon_marker=show_typhoon_marker,
-                show_my_location=show_my_location,
+                options=options,
             )
             if provisional is None or not layout_or_postprocess_differs(last, provisional):
                 return False
@@ -320,12 +289,6 @@ class WallpaperJobRef:
             obs = try_postprocess_fast_path(
                 applied_run_state=state,
                 run_key=provisional,
-                auto_adjust=auto_adjust,
-                margin_top_percent=margin_top_percent,
-                margin_bottom_percent=margin_bottom_percent,
-                reduce_banding=reduce_banding,
-                show_typhoon_marker=show_typhoon_marker,
-                show_my_location=show_my_location,
                 set_desktop=apply_desktop_wallpaper,
                 record_run_key=True,
                 get_desktop=read_desktop_wallpaper,
@@ -409,16 +372,21 @@ class WallpaperJobRef:
         return grade_to_pixel(self.resolution_grade)
 
     @property
+    def options(self) -> PostprocessOptions:
+        with self._lock:
+            return self._options
+
+    @property
     def auto_adjust(self) -> bool:
-        return self._auto_adjust
+        return self.options.auto_adjust
 
     @property
     def margin_top_percent(self) -> float:
-        return self._margin_top_percent
+        return self.options.margin_top_percent
 
     @property
     def margin_bottom_percent(self) -> float:
-        return self._margin_bottom_percent
+        return self.options.margin_bottom_percent
 
     @property
     def cleanup_after_apply(self) -> bool:
@@ -430,15 +398,15 @@ class WallpaperJobRef:
 
     @property
     def reduce_banding(self) -> bool:
-        return self._reduce_banding
+        return self.options.reduce_banding
 
     @property
     def show_typhoon_marker(self) -> bool:
-        return self._show_typhoon_marker
+        return self.options.show_typhoon_marker
 
     @property
     def show_my_location(self) -> bool:
-        return self._show_my_location
+        return self.options.show_my_location
 
     @property
     def download_interval_minutes(self) -> int:
@@ -478,13 +446,13 @@ class WallpaperJobRef:
         self.set_resolution_grade(pixel_to_grade(pixel_side))
 
     def set_auto_adjust(self, auto_adjust: bool) -> None:
-        self._set_and_rebuild("_auto_adjust", auto_adjust)
+        self._replace_options(auto_adjust=auto_adjust)
 
     def set_margin_top_percent(self, percent: float) -> None:
-        self._set_and_rebuild("_margin_top_percent", percent)
+        self._replace_options(margin_top_percent=percent)
 
     def set_margin_bottom_percent(self, percent: float) -> None:
-        self._set_and_rebuild("_margin_bottom_percent", percent)
+        self._replace_options(margin_bottom_percent=percent)
 
     def set_cleanup_after_apply(self, cleanup_after_apply: bool) -> None:
         self._set_and_rebuild("_cleanup_after_apply", cleanup_after_apply)
@@ -493,13 +461,13 @@ class WallpaperJobRef:
         self._set_and_rebuild("_use_yesterday_local_time", use_yesterday_local_time)
 
     def set_reduce_banding(self, reduce_banding: bool) -> None:
-        self._set_and_rebuild("_reduce_banding", reduce_banding)
+        self._replace_options(reduce_banding=reduce_banding)
 
     def set_show_typhoon_marker(self, show_typhoon_marker: bool) -> None:
-        self._set_and_rebuild("_show_typhoon_marker", show_typhoon_marker)
+        self._replace_options(show_typhoon_marker=show_typhoon_marker)
 
     def set_show_my_location(self, show_my_location: bool) -> None:
-        self._set_and_rebuild("_show_my_location", show_my_location)
+        self._replace_options(show_my_location=show_my_location)
 
     def set_download_interval_minutes(self, minutes: int) -> None:
         """更新调度间隔并 reschedule；若已暂停则顺带 resume。不重建流水线 job。"""
