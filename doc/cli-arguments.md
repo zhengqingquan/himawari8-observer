@@ -18,7 +18,7 @@ python run.py -v
 python run.py --version
 ```
 
-当前版本字符串来自 `src/metadata/app_info.py`（例如 `himawari8-observer v1.5.0`）。
+当前版本字符串来自 `src/metadata/app_info.py`（例如 `himawari8-observer v1.6.0`）。
 
 ---
 

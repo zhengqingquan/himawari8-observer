@@ -9,7 +9,7 @@
 # himawari8-observer
 
 定时将葵花 8 号（Himawari-8）卫星影像设为 Windows 桌面壁纸<br>
-轻量托盘常驻 · 本地合成 · 当前版本 **v1.5.0**
+轻量托盘常驻 · 本地合成 · 当前版本 **v1.6.0**
 
 [反馈问题](https://github.com/zhengqingquan/himawari8-observer/issues) · [Releases](https://github.com/zhengqingquan/himawari8-observer/releases) · [更新记录](CHANGELOG.md)
 
