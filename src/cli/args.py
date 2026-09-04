@@ -142,6 +142,15 @@ class Config:
         )
 
         self._parser.add_argument(
+            "--show-sunglint-point",
+            dest="show_sunglint_point",
+            default=None,
+            action=argparse.BooleanOptionalAction,
+            help="Mark Himawari sunglint (specular) point for the observation time "
+            "(default: off; use --show-sunglint-point to enable).",
+        )
+
+        self._parser.add_argument(
             "--download-interval-minutes",
             type=int,
             choices=DOWNLOAD_INTERVAL_MINUTES_CHOICES,
@@ -177,6 +186,7 @@ class Config:
             "show_typhoon_marker": self._args.show_typhoon_marker,
             "show_my_location": self._args.show_my_location,
             "show_subsolar_point": self._args.show_subsolar_point,
+            "show_sunglint_point": self._args.show_sunglint_point,
             "download_interval_minutes": self._args.download_interval_minutes,
             "logging_enabled": self._args.logging_enabled,
         }
@@ -200,6 +210,7 @@ class Config:
         logging.info("Show typhoon marker: %s", self._resolved["show_typhoon_marker"])
         logging.info("Show my location: %s", self._resolved["show_my_location"])
         logging.info("Show subsolar point: %s", self._resolved["show_subsolar_point"])
+        logging.info("Show sunglint point: %s", self._resolved["show_sunglint_point"])
         logging.info(
             "Download interval (minutes): %s",
             self._resolved["download_interval_minutes"],
@@ -235,6 +246,9 @@ class Config:
 
     def is_show_subsolar_point(self):
         return self._resolved["show_subsolar_point"]
+
+    def is_show_sunglint_point(self):
+        return self._resolved["show_sunglint_point"]
 
     def get_download_interval_minutes(self):
         return self._resolved["download_interval_minutes"]

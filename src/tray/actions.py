@@ -222,6 +222,7 @@ def persist_job_settings(job_ref: WallpaperJobRef) -> None:
             show_typhoon_marker=job_ref.show_typhoon_marker,
             show_my_location=job_ref.show_my_location,
             show_subsolar_point=job_ref.show_subsolar_point,
+            show_sunglint_point=job_ref.show_sunglint_point,
             download_interval_minutes=job_ref.download_interval_minutes,
         )
     )

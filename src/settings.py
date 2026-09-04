@@ -41,6 +41,7 @@ def default_settings() -> dict[str, Any]:
         "show_typhoon_marker": False,
         "show_my_location": False,
         "show_subsolar_point": False,
+        "show_sunglint_point": False,
         "download_interval_minutes": DEFAULT_DOWNLOAD_INTERVAL_MINUTES,
         "startup_enabled": False,
         "logging_enabled": False,
@@ -84,13 +85,13 @@ def _coerce_download_interval_minutes(value: Any) -> int | None:
 
 
 def _coerce_last_run_key(value: Any) -> list[Any] | None:
-    """校验指纹列表，统一为完整 9 项。
+    """校验指纹列表，统一为完整 10 项。
 
     ``[obs_time, grade, auto_adjust, top%, bottom%, reduce_banding,
-    show_typhoon_marker, show_my_location, show_subsolar_point]``。
-    旧版 5/6/7/8 项缺省布尔补 ``False``。
+    show_typhoon_marker, show_my_location, show_subsolar_point,
+    show_sunglint_point]``。旧版 5～9 项缺省布尔补 ``False``。
     """
-    if not isinstance(value, (list, tuple)) or len(value) not in (5, 6, 7, 8, 9):
+    if not isinstance(value, (list, tuple)) or len(value) not in (5, 6, 7, 8, 9, 10):
         return None
     (
         obs_time,
@@ -102,7 +103,8 @@ def _coerce_last_run_key(value: Any) -> list[Any] | None:
         show_typhoon_marker,
         show_my_location,
         show_subsolar_point,
-    ) = list(value) + [False] * (9 - len(value))
+        show_sunglint_point,
+    ) = list(value) + [False] * (10 - len(value))
     if not isinstance(obs_time, str) or not obs_time.strip():
         return None
     if not isinstance(grade, str) or not grade.strip():
@@ -116,6 +118,8 @@ def _coerce_last_run_key(value: Any) -> list[Any] | None:
     if not isinstance(show_my_location, bool):
         return None
     if not isinstance(show_subsolar_point, bool):
+        return None
+    if not isinstance(show_sunglint_point, bool):
         return None
     top_f = _coerce_percent(top)
     bottom_f = _coerce_percent(bottom)
@@ -131,6 +135,7 @@ def _coerce_last_run_key(value: Any) -> list[Any] | None:
         show_typhoon_marker,
         show_my_location,
         show_subsolar_point,
+        show_sunglint_point,
     ]
 
 
@@ -220,6 +225,7 @@ _SETTINGS_FIELD_COERCERS: tuple[tuple[str, Callable[[Any], Any | None]], ...] = 
     ("show_typhoon_marker", _coerce_bool),
     ("show_my_location", _coerce_bool),
     ("show_subsolar_point", _coerce_bool),
+    ("show_sunglint_point", _coerce_bool),
     ("download_interval_minutes", _coerce_download_interval_minutes),
     ("startup_enabled", _coerce_bool),
     ("logging_enabled", _coerce_bool),
@@ -258,7 +264,7 @@ def sanitize_settings(raw: Any) -> dict[str, Any]:
 def load_settings(path: Path | None = None) -> dict[str, Any]:
     """从 JSON 加载配置；缺失或损坏时返回空 dict。
 
-    若 ``last_run_key`` 仍为旧版 5/6/7/8 项，sanitize 补齐后写回完整 9 项。
+    若 ``last_run_key`` 仍为旧版 5～9 项，sanitize 补齐后写回完整 10 项。
     """
     settings_path = path if path is not None else default_settings_path()
     if not settings_path.is_file():
@@ -275,18 +281,18 @@ def load_settings(path: Path | None = None) -> dict[str, Any]:
     if _should_rewrite_upgraded_fingerprint(raw, cleaned):
         payload = sanitize_settings({**default_settings(), **cleaned})
         if _write_settings_payload(settings_path, payload):
-            logging.info("Upgraded last_run_key to 9 items in %s", settings_path)
+            logging.info("Upgraded last_run_key to 10 items in %s", settings_path)
     logging.info("Loaded settings from %s", settings_path)
     logging.debug("Loaded settings payload: %s", cleaned)
     return cleaned
 
 
 def _should_rewrite_upgraded_fingerprint(raw: Any, cleaned: dict[str, Any]) -> bool:
-    """磁盘上仍是短指纹、sanitize 已得到完整 9 项时需要写回。"""
+    """磁盘上仍是短指纹、sanitize 已得到完整 10 项时需要写回。"""
     if not isinstance(raw, dict) or "last_run_key" not in cleaned:
         return False
     raw_key = raw.get("last_run_key")
-    return isinstance(raw_key, (list, tuple)) and len(raw_key) in (5, 6, 7, 8)
+    return isinstance(raw_key, (list, tuple)) and len(raw_key) in (5, 6, 7, 8, 9)
 
 
 def _write_settings_payload(settings_path: Path, payload: dict[str, Any]) -> bool:
@@ -340,6 +346,7 @@ def settings_dict_from_job(
     show_typhoon_marker: bool = False,
     show_my_location: bool = False,
     show_subsolar_point: bool = False,
+    show_sunglint_point: bool = False,
     download_interval_minutes: int = DEFAULT_DOWNLOAD_INTERVAL_MINUTES,
 ) -> dict[str, Any]:
     """从壁纸任务字段组装可写入的 settings dict（不含 logging / 应用指纹）。"""
@@ -354,6 +361,7 @@ def settings_dict_from_job(
         "show_typhoon_marker": show_typhoon_marker,
         "show_my_location": show_my_location,
         "show_subsolar_point": show_subsolar_point,
+        "show_sunglint_point": show_sunglint_point,
         "download_interval_minutes": download_interval_minutes,
     }
 

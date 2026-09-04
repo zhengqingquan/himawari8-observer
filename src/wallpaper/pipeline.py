@@ -36,6 +36,7 @@ from src.wallpaper.markers import (
     apply_jtwc_invest_markers_if_needed,
     apply_my_location_marker_if_needed,
     apply_subsolar_marker_if_needed,
+    apply_sunglint_marker_if_needed,
     apply_typhoon_marker_if_needed,
 )
 from src.wallpaper.paths import (
@@ -242,12 +243,13 @@ def run_wallpaper_pipeline(
         run_key = AppliedRunKey.from_observation(observation_time, grade, opts)
         logging.info(
             "Post-download postprocess refresh: "
-            "adjust=%s banding=%s typhoon=%s my_location=%s subsolar=%s",
+            "adjust=%s banding=%s typhoon=%s my_location=%s subsolar=%s sunglint=%s",
             opts.auto_adjust,
             opts.reduce_banding,
             opts.show_typhoon_marker,
             opts.show_my_location,
             opts.show_subsolar_point,
+            opts.show_sunglint_point,
         )
 
     # 始终先落等分圆盘，再修边；保留 *_disk 供改边距时后处理。
@@ -324,6 +326,15 @@ def run_wallpaper_pipeline(
         )
     if opts.show_subsolar_point:
         apply_subsolar_marker_if_needed(
+            wallpaper_path=wallpaper_path,
+            pic_side=pic.pic_side,
+            observation_time=time_str,
+            auto_adjust=opts.auto_adjust,
+            margin_top_percent=opts.margin_top_percent,
+            margin_bottom_percent=opts.margin_bottom_percent,
+        )
+    if opts.show_sunglint_point:
+        apply_sunglint_marker_if_needed(
             wallpaper_path=wallpaper_path,
             pic_side=pic.pic_side,
             observation_time=time_str,

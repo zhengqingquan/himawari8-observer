@@ -1,9 +1,12 @@
-"""太阳直射点：由 UTC 观测时间本地计算（NOAA 近似，无网络）。"""
+"""太阳位置与葵花视角耀斑：由 UTC 观测时间本地计算（无网络）。"""
 
 from __future__ import annotations
 
 import math
 from time import struct_time
+
+# 与 ``compose.geo`` 全盘投影星下点经度一致（Himawari-8/9）。
+_HIMAWARI_SUB_SATELLITE_LON_DEG = 140.7
 
 
 def _julian_day_utc(observation_time: struct_time) -> float:
@@ -29,6 +32,20 @@ def _normalize_lon_deg(lon: float) -> float:
     if lon == -180.0:
         return 180.0
     return lon
+
+
+def _latlon_to_unit(lat_deg: float, lon_deg: float) -> tuple[float, float, float]:
+    lat = math.radians(lat_deg)
+    lon = math.radians(lon_deg)
+    cos_lat = math.cos(lat)
+    return (cos_lat * math.cos(lon), cos_lat * math.sin(lon), math.sin(lat))
+
+
+def _unit_to_latlon(x: float, y: float, z: float) -> tuple[float, float]:
+    hyp = math.hypot(x, y)
+    lat = math.degrees(math.atan2(z, hyp))
+    lon = _normalize_lon_deg(math.degrees(math.atan2(y, x)))
+    return lat, lon
 
 
 def subsolar_latlon(observation_time: struct_time) -> tuple[float, float]:
@@ -95,3 +112,24 @@ def subsolar_latlon(observation_time: struct_time) -> tuple[float, float]:
     )
     lon = _normalize_lon_deg(-15.0 * (ut_hours - 12.0) - eq_time / 4.0)
     return lat, lon
+
+
+def sunglint_latlon(
+    observation_time: struct_time,
+    *,
+    sub_satellite_lon_deg: float = _HIMAWARI_SUB_SATELLITE_LON_DEG,
+) -> tuple[float, float]:
+    """葵花视角下球面镜面耀斑点 ``(lat, lon)``（度）。
+
+    对圆球近似：表面法向平分「指向太阳」与「指向卫星」的单位矢量，
+    即 ``normalize(u_sun + u_sat)``。与直射点不同；耀斑亮心通常落在
+    直射点与星下点 ``(0, 140.7°E)`` 之间。
+    """
+    sun_lat, sun_lon = subsolar_latlon(observation_time)
+    ux, uy, uz = _latlon_to_unit(sun_lat, sun_lon)
+    sx, sy, sz = _latlon_to_unit(0.0, sub_satellite_lon_deg)
+    vx, vy, vz = ux + sx, uy + sy, uz + sz
+    norm = math.sqrt(vx * vx + vy * vy + vz * vz)
+    if norm <= 0.0:
+        return sun_lat, sun_lon
+    return _unit_to_latlon(vx / norm, vy / norm, vz / norm)

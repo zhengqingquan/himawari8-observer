@@ -121,6 +121,7 @@ class SettingsFileIoTests(unittest.TestCase):
             self.assertFalse(raw["show_typhoon_marker"])
             self.assertFalse(raw["show_my_location"])
             self.assertFalse(raw["show_subsolar_point"])
+            self.assertFalse(raw["show_sunglint_point"])
             self.assertFalse(raw["startup_enabled"])
 
     def test_partial_save_preserves_logging_flag(self):
@@ -148,6 +149,7 @@ class SettingsFileIoTests(unittest.TestCase):
                             False,
                             False,
                             False,
+                            False,
                         ],
                         "last_wallpaper_path": r"E:\app\img\wall.png",
                     },
@@ -167,6 +169,7 @@ class SettingsFileIoTests(unittest.TestCase):
                     False,
                     False,
                     False,
+                    False,
                 ],
             )
             self.assertEqual(loaded["last_wallpaper_path"], r"E:\app\img\wall.png")
@@ -179,6 +182,7 @@ class SettingsFileIoTests(unittest.TestCase):
                     True,
                     0.0,
                     5.0,
+                    False,
                     False,
                     False,
                     False,
@@ -224,23 +228,23 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
         self.assertFalse(resolved["show_typhoon_marker"])
         self.assertFalse(resolved["show_my_location"])
         self.assertFalse(resolved["show_subsolar_point"])
+        self.assertFalse(resolved["show_sunglint_point"])
 
     def test_short_fingerprint_pads_missing_bools(self):
+        full = [
+            "2026-09-03 02:10:00",
+            "20d",
+            True,
+            0.0,
+            5.0,
+            False,
+            False,
+            False,
+            False,
+            False,
+        ]
         cases = (
-            (
-                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0],
-                [
-                    "2026-09-03 02:10:00",
-                    "20d",
-                    True,
-                    0.0,
-                    5.0,
-                    False,
-                    False,
-                    False,
-                    False,
-                ],
-            ),
+            (["2026-09-03 02:10:00", "20d", True, 0.0, 5.0], full),
             (
                 ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, True],
                 [
@@ -250,6 +254,7 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                     0.0,
                     5.0,
                     True,
+                    False,
                     False,
                     False,
                     False,
@@ -267,6 +272,7 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                     True,
                     False,
                     False,
+                    False,
                 ],
             ),
             (
@@ -278,6 +284,32 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                     0.0,
                     5.0,
                     False,
+                    True,
+                    True,
+                    False,
+                    False,
+                ],
+            ),
+            (
+                [
+                    "2026-09-03 02:10:00",
+                    "20d",
+                    True,
+                    0.0,
+                    5.0,
+                    False,
+                    True,
+                    True,
+                    True,
+                ],
+                [
+                    "2026-09-03 02:10:00",
+                    "20d",
+                    True,
+                    0.0,
+                    5.0,
+                    False,
+                    True,
                     True,
                     True,
                     False,
@@ -320,6 +352,7 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                     False,
                     False,
                     False,
+                    False,
                 ],
             )
             on_disk = json.loads(path.read_text(encoding="utf-8"))
@@ -335,11 +368,12 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                     False,
                     False,
                     False,
+                    False,
                 ],
             )
             self.assertEqual(on_disk["resolution"], 4400)
 
-    def test_nine_item_fingerprint_round_trip(self):
+    def test_ten_item_fingerprint_round_trip(self):
         cleaned = sanitize_settings(
             {
                 "last_run_key": [
@@ -352,17 +386,40 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                     True,
                     True,
                     True,
+                    True,
                 ]
             }
         )
         self.assertEqual(
             cleaned["last_run_key"],
-            ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True, True, True],
+            [
+                "2026-09-03 02:10:00",
+                "20d",
+                True,
+                0.0,
+                5.0,
+                False,
+                True,
+                True,
+                True,
+                True,
+            ],
         )
         state = applied_run_state_from_settings(cleaned)
         self.assertEqual(
             state["last"],
-            ("2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True, True, True),
+            (
+                "2026-09-03 02:10:00",
+                "20d",
+                True,
+                0.0,
+                5.0,
+                False,
+                True,
+                True,
+                True,
+                True,
+            ),
         )
 
     def test_cli_overrides_file(self):

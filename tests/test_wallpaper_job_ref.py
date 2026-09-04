@@ -242,7 +242,7 @@ class WallpaperJobRefTests(unittest.TestCase):
             Image.new("RGB", (64, 64), (1, 2, 3)).save(wall)
             Image.new("RGB", (64, 64), (1, 2, 3)).save(base)
             state = {
-                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False, False, False),
+                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False, False, False, False),
                 "wallpaper_path": str(wall),
                 "wallpaper_base_path": str(base),
             }
@@ -270,7 +270,7 @@ class WallpaperJobRefTests(unittest.TestCase):
             "4d",
             build_job=_noop_build,
             applied_run_state={
-                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False, False, False),
+                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False, False, False, False),
                 "wallpaper_path": r"E:\app\img\wall.png",
             },
             persist_state=False,

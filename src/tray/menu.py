@@ -202,6 +202,11 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         set_value=job_ref.set_show_subsolar_point,
         log_label="Show subsolar point",
     )
+    on_toggle_show_sunglint_point = make_bool_toggle(
+        get_value=lambda: job_ref.show_sunglint_point,
+        set_value=job_ref.set_show_sunglint_point,
+        log_label="Show sunglint point",
+    )
 
     resolution_menu = pystray.Menu(*[make_resolution_item(res) for res in IMAGE_RESOLUTION])
     schedule_menu = pystray.Menu(
@@ -320,6 +325,11 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             "显示太阳直射点",
             on_toggle_show_subsolar_point,
             checked=lambda item: job_ref.show_subsolar_point,
+        ),
+        pystray.MenuItem(
+            "显示海面耀斑",
+            on_toggle_show_sunglint_point,
+            checked=lambda item: job_ref.show_sunglint_point,
         ),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem(

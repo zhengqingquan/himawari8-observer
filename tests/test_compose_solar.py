@@ -1,11 +1,11 @@
-"""subsolar_latlon: equinox / solstice anchors and noon longitude."""
+"""subsolar / sunglint latlon anchors."""
 
 from __future__ import annotations
 
 import unittest
 from time import strptime
 
-from src.compose.solar import subsolar_latlon
+from src.compose.solar import subsolar_latlon, sunglint_latlon
 
 
 class SubsolarLatlonTests(unittest.TestCase):
@@ -29,6 +29,20 @@ class SubsolarLatlonTests(unittest.TestCase):
         _lat, lon = subsolar_latlon(strptime("2026-01-01 00:00:00", "%Y-%m-%d %H:%M:%S"))
         self.assertGreaterEqual(lon, -180.0)
         self.assertLessEqual(lon, 180.0)
+
+
+class SunglintLatlonTests(unittest.TestCase):
+    def test_between_subsolar_and_sub_satellite(self):
+        obs = strptime("2026-09-04 04:20:00", "%Y-%m-%d %H:%M:%S")
+        sun_lat, sun_lon = subsolar_latlon(obs)
+        glint_lat, glint_lon = sunglint_latlon(obs)
+        # 耀斑应落在直射点与星下点 (0, 140.7°E) 之间
+        self.assertGreater(glint_lat, 0.0)
+        self.assertLess(glint_lat, sun_lat)
+        lo, hi = sorted((sun_lon, 140.7))
+        self.assertGreaterEqual(glint_lon, lo - 0.5)
+        self.assertLessEqual(glint_lon, hi + 0.5)
+        self.assertNotAlmostEqual(glint_lon, sun_lon, delta=1.0)
 
 
 if __name__ == "__main__":
