@@ -131,6 +131,42 @@ class WallpaperJobRefTests(unittest.TestCase):
         )
         self.assertEqual(ref.applied_observation_time, "2026-09-03 02:10:00")
 
+    def test_rebuild_keeps_same_applied_run_state_object(self):
+        """下载中途改参不得换掉 state dict，否则完成写指纹与 persist 会脱节。"""
+        held: list = []
+
+        def capturing_build(resolution_grade, *, applied_run_state=None, **_kwargs):
+            held.append(applied_run_state)
+
+            def job() -> None:
+                assert applied_run_state is not None
+                applied_run_state["last"] = (
+                    "2026-09-04 01:40:00",
+                    resolution_grade,
+                    True,
+                    0.0,
+                    5.0,
+                    False,
+                    True,
+                )
+                applied_run_state["wallpaper_path"] = r"E:\app\img\20260904014000\wall.png"
+
+            return job
+
+        ref = WallpaperJobRef("4d", build_job=capturing_build, persist_state=False)
+        state_id = id(ref._applied_run_state)
+        # 模拟进行中：取出当前 job，中途 rebuild，再跑旧 job 写指纹
+        with ref._lock:
+            inflight = ref._job
+        ref.set_show_typhoon_marker(True)
+        self.assertEqual(id(ref._applied_run_state), state_id)
+        inflight()
+        self.assertEqual(ref._applied_run_state["last"][0], "2026-09-04 01:40:00")
+        self.assertEqual(
+            ref._applied_run_state["wallpaper_path"],
+            r"E:\app\img\20260904014000\wall.png",
+        )
+
     def test_init_hydrates_observation_time_from_applied_state(self):
         state = {
             "last": ("2026-09-03 02:10:00", "4d", True, 0.0, 5.0, False),

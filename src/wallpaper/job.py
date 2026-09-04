@@ -111,7 +111,7 @@ class WallpaperJobRef:
         )
         if "wallpaper_path" not in self._applied_run_state:
             self._applied_run_state["wallpaper_path"] = None
-        # 上次成功上墙的观测时间与档位；换参重建 job 清空指纹时仍保留，供托盘展示。
+        # 上次成功上墙的观测时间与档位（供托盘展示）；与 applied_run_state 同步。
         self._last_observation_time: str | None = None
         self._last_applied_grade: str | None = None
         last = self._applied_run_state.get("last")
@@ -371,17 +371,9 @@ class WallpaperJobRef:
         applied_grade = self._applied_run_state.get("applied_grade")
         if isinstance(applied_grade, str) and applied_grade:
             self._last_applied_grade = applied_grade
-        # 保留 last / 壁纸路径 / 台风中心缓存，供开关快路径使用。
-        wallpaper_path = self._applied_run_state.get("wallpaper_path")
-        wallpaper_base_path = self._applied_run_state.get("wallpaper_base_path")
-        typhoon_center_cache = self._applied_run_state.get("typhoon_center_cache")
-        self._applied_run_state = {
-            "last": last,
-            "wallpaper_path": wallpaper_path,
-            "wallpaper_base_path": wallpaper_base_path,
-            "typhoon_center_cache": typhoon_center_cache,
-            "applied_grade": self._last_applied_grade,
-        }
+        # 必须保持同一 dict 引用：进行中的 pipeline 写指纹时与后续 persist 共用这份 state。
+        # 若在此 new 一个 dict，当轮完成写到旧对象，persist 读新对象 → 指纹永久停在旧观测时间。
+        self._applied_run_state["applied_grade"] = self._last_applied_grade
         self._job = self._build_job(
             self._grade,
             auto_adjust=self._auto_adjust,
