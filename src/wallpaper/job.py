@@ -20,6 +20,7 @@ from src.resolution_grade import (
 )
 from src.settings import persist_applied_run_state
 from src.wallpaper.pipeline import run_wallpaper_pipeline
+from src.wallpaper.postprocess import AppliedRunKey
 
 BuildJob = Callable[..., Callable[[], None]]
 RunPipeline = Callable[..., str | None]
@@ -148,11 +149,10 @@ class WallpaperJobRef:
         # 上次成功上墙的观测时间与档位（供托盘展示）；与 applied_run_state 同步。
         self._last_observation_time: str | None = None
         self._last_applied_grade: str | None = None
-        last = self._applied_run_state.get("last")
-        if isinstance(last, tuple) and last:
-            self._last_observation_time = str(last[0])
-            if len(last) > 1:
-                self._last_applied_grade = str(last[1])
+        last = AppliedRunKey.from_raw(self._applied_run_state.get("last"))
+        if last is not None:
+            self._last_observation_time = last.observation_time
+            self._last_applied_grade = last.resolution_grade
         applied_grade = self._applied_run_state.get("applied_grade")
         if isinstance(applied_grade, str) and applied_grade:
             self._last_applied_grade = applied_grade
@@ -328,18 +328,18 @@ class WallpaperJobRef:
     def applied_observation_time(self) -> str | None:
         """当前壁纸对应的观测时间（``YYYY-MM-DD HH:MM:SS``，UTC）；尚未成功应用则为 ``None``。"""
         with self._lock:
-            last = self._applied_run_state.get("last")
-            if isinstance(last, tuple) and last:
-                self._last_observation_time = str(last[0])
+            last = AppliedRunKey.from_raw(self._applied_run_state.get("last"))
+            if last is not None:
+                self._last_observation_time = last.observation_time
             return self._last_observation_time
 
     @property
     def applied_resolution_grade(self) -> str | None:
         """当前桌面壁纸对应的分辨率档位；尚未成功应用则为 ``None``。"""
         with self._lock:
-            last = self._applied_run_state.get("last")
-            if isinstance(last, tuple) and len(last) > 1:
-                self._last_applied_grade = str(last[1])
+            last = AppliedRunKey.from_raw(self._applied_run_state.get("last"))
+            if last is not None:
+                self._last_applied_grade = last.resolution_grade
             applied_grade = self._applied_run_state.get("applied_grade")
             if isinstance(applied_grade, str) and applied_grade:
                 self._last_applied_grade = applied_grade
@@ -397,11 +397,10 @@ class WallpaperJobRef:
             self._rebuild_job_locked()
 
     def _rebuild_job_locked(self) -> None:
-        last = self._applied_run_state.get("last")
-        if isinstance(last, tuple) and last:
-            self._last_observation_time = str(last[0])
-            if len(last) > 1:
-                self._last_applied_grade = str(last[1])
+        last = AppliedRunKey.from_raw(self._applied_run_state.get("last"))
+        if last is not None:
+            self._last_observation_time = last.observation_time
+            self._last_applied_grade = last.resolution_grade
         applied_grade = self._applied_run_state.get("applied_grade")
         if isinstance(applied_grade, str) and applied_grade:
             self._last_applied_grade = applied_grade

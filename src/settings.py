@@ -251,20 +251,15 @@ def settings_dict_from_job(
 
 def applied_run_state_from_settings(settings: dict[str, Any] | None) -> dict[str, Any]:
     """从 settings 字段还原内存中的 ``applied_run_state``。"""
+    # 延迟导入：避免 settings ↔ wallpaper 顶层环依赖。
+    from src.wallpaper.postprocess import AppliedRunKey
+
     state: dict[str, Any] = {"last": None, "wallpaper_path": None}
     if not settings:
         return state
-    run_key = settings.get("last_run_key")
-    if isinstance(run_key, list) and len(run_key) == 7:
-        state["last"] = (
-            str(run_key[0]),
-            str(run_key[1]),
-            bool(run_key[2]),
-            float(run_key[3]),
-            float(run_key[4]),
-            bool(run_key[5]),
-            bool(run_key[6]),
-        )
+    run_key = AppliedRunKey.from_raw(settings.get("last_run_key"))
+    if run_key is not None:
+        state["last"] = run_key
     path = settings.get("last_wallpaper_path")
     if isinstance(path, str) and path.strip():
         state["wallpaper_path"] = path.strip()
@@ -282,18 +277,12 @@ def persist_applied_run_state(
     path: Path | None = None,
 ) -> bool:
     """将内存指纹与壁纸路径写回 settings.json。"""
+    from src.wallpaper.postprocess import AppliedRunKey
+
     payload: dict[str, Any] = {}
-    last = state.get("last")
-    if isinstance(last, tuple) and len(last) == 7:
-        payload["last_run_key"] = [
-            str(last[0]),
-            str(last[1]),
-            bool(last[2]),
-            float(last[3]),
-            float(last[4]),
-            bool(last[5]),
-            bool(last[6]),
-        ]
+    last = AppliedRunKey.from_raw(state.get("last"))
+    if last is not None:
+        payload["last_run_key"] = list(last)
     wallpaper = state.get("wallpaper_path")
     if isinstance(wallpaper, str) and wallpaper.strip():
         payload["last_wallpaper_path"] = wallpaper.strip()

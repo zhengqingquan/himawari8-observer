@@ -25,6 +25,7 @@ from src.wallpaper.desktop import set_wallpaper as apply_desktop_wallpaper
 from src.wallpaper.desktop import wallpaper_paths_match
 from src.wallpaper.folders import create_pic_folders
 from src.wallpaper.postprocess import (
+    AppliedRunKey,
     AppliedRunState,
     apply_typhoon_marker_if_needed,
     build_applied_run_key,
@@ -43,6 +44,7 @@ from src.wallpaper.postprocess import (
 # 对外仍可从 pipeline 导入路径/指纹辅助（兼容既有引用）。
 __all__ = [
     "run_wallpaper_pipeline",
+    "AppliedRunKey",
     "build_applied_run_key",
     "wallpaper_base_path",
     "wallpaper_disk_path",
@@ -174,19 +176,14 @@ def run_wallpaper_pipeline(
         reduce_banding=reduce_banding,
         show_typhoon_marker=show_typhoon_marker,
     )
-    observation_time = run_key[0]
+    observation_time = run_key.observation_time
     if not use_yesterday_local_time and applied_run_state is not None:
-        last = applied_run_state.get("last")
-        if (
-            isinstance(last, tuple)
-            and len(last) >= 1
-            and isinstance(last[0], str)
-            and observation_time < last[0]
-        ):
+        last = AppliedRunKey.from_raw(applied_run_state.get("last"))
+        if last is not None and observation_time < last.observation_time:
             logging.info(
                 "Latest observation %s is older than applied %s; skipping update",
                 observation_time,
-                last[0],
+                last.observation_time,
             )
             return None
     if applied_run_state is not None and applied_run_state.get("last") == run_key:

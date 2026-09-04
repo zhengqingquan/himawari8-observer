@@ -7,7 +7,7 @@ import shutil
 from collections.abc import Callable
 from pathlib import Path
 from time import strftime, struct_time
-from typing import Any, MutableMapping
+from typing import Any, MutableMapping, NamedTuple
 
 from PIL import Image
 
@@ -22,11 +22,60 @@ from src.compose.overlay import draw_typhoon_marker
 from src.resolution_grade import grade_to_pixel
 
 AppliedRunState = MutableMapping[str, Any]
-AppliedRunKey = tuple[str, str, bool, float, float, bool, bool]
 SetWallpaper = Callable[[Path], bool | None]
 FetchTyphoonCenter = Callable[[struct_time], tuple[float, float] | None]
 
 _OBS_TIME_FMT = "%Y-%m-%d %H:%M:%S"
+
+
+class AppliedRunKey(NamedTuple):
+    """成图指纹：观测时间 + 影响成品的参数（落盘仍为 7 项 list）。"""
+
+    observation_time: str
+    resolution_grade: str
+    auto_adjust: bool
+    margin_top_percent: float
+    margin_bottom_percent: float
+    reduce_banding: bool
+    show_typhoon_marker: bool
+
+    @property
+    def layout(self) -> tuple[bool, float, float]:
+        """修边开关与上下边距（与色带/台风无关）。"""
+        return (
+            self.auto_adjust,
+            self.margin_top_percent,
+            self.margin_bottom_percent,
+        )
+
+    @classmethod
+    def from_raw(cls, value: Any) -> AppliedRunKey | None:
+        """接受本类型或 5/6/7 项序列（缺省布尔为 ``False``）；非法则 ``None``。"""
+        if isinstance(value, cls):
+            return value
+        if not isinstance(value, (tuple, list)) or len(value) not in (5, 6, 7):
+            return None
+        try:
+            obs_time = str(value[0])
+            grade = str(value[1])
+            auto_adjust = bool(value[2])
+            top = float(value[3])
+            bottom = float(value[4])
+            reduce_banding = bool(value[5]) if len(value) >= 6 else False
+            show_typhoon = bool(value[6]) if len(value) == 7 else False
+        except (TypeError, ValueError):
+            return None
+        if not obs_time or not grade:
+            return None
+        return cls(
+            obs_time,
+            grade,
+            auto_adjust,
+            top,
+            bottom,
+            reduce_banding,
+            show_typhoon,
+        )
 
 
 def wallpaper_base_path(wallpaper_path: Path) -> Path:
@@ -70,7 +119,7 @@ def build_applied_run_key(
     show_typhoon_marker: bool = False,
 ) -> AppliedRunKey:
     """用于判断是否可跳过重复下载的指纹（观测时间 + 影响成图的参数）。"""
-    return (
+    return AppliedRunKey(
         strftime(_OBS_TIME_FMT, observation_time),
         resolution_grade,
         auto_adjust,
@@ -93,7 +142,7 @@ def remember_applied(
     if applied_run_state is None:
         return
     # 展示用：即使不写跳过指纹，也记下实际上墙档位。
-    applied_run_state["applied_grade"] = run_key[1]
+    applied_run_state["applied_grade"] = run_key.resolution_grade
     if record_run_key:
         applied_run_state["last"] = run_key
     try:
@@ -170,18 +219,19 @@ def resolve_disk_path(
     return wallpaper_disk_path(wallpaper_path)
 
 
-def obs_grade_match(last: Any, run_key: AppliedRunKey) -> bool:
+def obs_grade_match(last: AppliedRunKey, run_key: AppliedRunKey) -> bool:
     return (
-        isinstance(last, tuple)
-        and len(last) == 7
-        and last[0] == run_key[0]
-        and last[1] == run_key[1]
+        last.observation_time == run_key.observation_time
+        and last.resolution_grade == run_key.resolution_grade
     )
 
 
 def layout_or_postprocess_differs(last: Any, run_key: AppliedRunKey) -> bool:
     """同观测与档位，修边/色带/台风任一不同。"""
-    return obs_grade_match(last, run_key) and last != run_key
+    last_key = AppliedRunKey.from_raw(last)
+    if last_key is None:
+        return False
+    return obs_grade_match(last_key, run_key) and last_key != run_key
 
 
 def provisional_run_key_from_last(
@@ -195,10 +245,11 @@ def provisional_run_key_from_last(
     show_typhoon_marker: bool,
 ) -> AppliedRunKey | None:
     """用上次指纹的观测时间 + 当前成图参数拼临时指纹（不访问网络）。"""
-    if not isinstance(last, tuple) or len(last) < 1 or not isinstance(last[0], str):
+    last_key = AppliedRunKey.from_raw(last)
+    if last_key is None:
         return None
-    return (
-        last[0],
+    return AppliedRunKey(
+        last_key.observation_time,
         resolution_grade,
         auto_adjust,
         float(margin_top_percent),
@@ -310,6 +361,101 @@ def apply_typhoon_marker_if_needed(
     )
 
 
+def _overlay_typhoon_from_cache(
+    *,
+    applied_run_state: AppliedRunState,
+    wallpaper_path: Path,
+    pic_side: int,
+    observation_time: str,
+    auto_adjust: bool,
+    margin_top_percent: float,
+    margin_bottom_percent: float,
+) -> None:
+    cached = cached_typhoon_center(applied_run_state, observation_time)
+    if cached is None:
+        logging.info(
+            "Postprocess fast path: no typhoon center cache for %s; marker not drawn",
+            observation_time,
+        )
+        return
+    draw_typhoon_marker_at(
+        wallpaper_path=wallpaper_path,
+        pic_side=pic_side,
+        lat=cached[0],
+        lon=cached[1],
+        auto_adjust=auto_adjust,
+        margin_top_percent=margin_top_percent,
+        margin_bottom_percent=margin_bottom_percent,
+    )
+    logging.info(
+        "Postprocess fast path: typhoon marker overlaid from cache for %s",
+        observation_time,
+    )
+
+
+def _rebuild_from_base(
+    *,
+    applied_run_state: AppliedRunState,
+    last: AppliedRunKey,
+    last_wallpaper: Path,
+    wallpaper_path: Path,
+    reduce_banding: bool,
+) -> Path | None:
+    """布局未变：从 ``*_base`` 重建成品（可从无标记成品回填 base）。"""
+    base = resolve_base_path(applied_run_state, last_wallpaper)
+    if (
+        not base.is_file()
+        and last_wallpaper.is_file()
+        and not last.reduce_banding
+        and not last.show_typhoon_marker
+    ):
+        try:
+            base = ensure_unmarked_base(last_wallpaper)
+        except OSError:
+            logging.exception("Failed to create unmarked base from %s", last_wallpaper)
+            return None
+    if not base.is_file():
+        logging.info("Postprocess fast path skipped: unmarked base missing (%s)", base)
+        return None
+    if reduce_banding:
+        apply_deband_to_file(base, wallpaper_path)
+    else:
+        shutil.copy2(base, wallpaper_path)
+    return base
+
+
+def _rebuild_from_disk(
+    *,
+    disk: Path,
+    wallpaper_path: Path,
+    pic_side: int,
+    auto_adjust: bool,
+    margin_top_percent: float,
+    margin_bottom_percent: float,
+    reduce_banding: bool,
+) -> Path | None:
+    """边距/修边变了：从 ``*_disk`` 再修边，写入新 base，可选去色带。"""
+    if not disk.is_file():
+        logging.info("Postprocess fast path skipped: equal disk missing (%s)", disk)
+        return None
+    wallpaper_path.parent.mkdir(parents=True, exist_ok=True)
+    if auto_adjust:
+        apply_margins(
+            str(disk),
+            pic_side,
+            str(wallpaper_path),
+            top_percent=margin_top_percent,
+            bottom_percent=margin_bottom_percent,
+            deband=False,
+        )
+    else:
+        shutil.copy2(disk, wallpaper_path)
+    base = save_unmarked_base(wallpaper_path)
+    if reduce_banding:
+        apply_deband_to_file(base, wallpaper_path)
+    return base
+
+
 def try_postprocess_fast_path(
     *,
     applied_run_state: AppliedRunState,
@@ -327,17 +473,17 @@ def try_postprocess_fast_path(
     Returns:
         成功时返回观测时间字符串；无法走快路径时 ``None``（调用方应继续全量）。
     """
-    last = applied_run_state.get("last")
-    if not layout_or_postprocess_differs(last, run_key):
+    last = AppliedRunKey.from_raw(applied_run_state.get("last"))
+    if last is None or not layout_or_postprocess_differs(last, run_key):
         return None
 
     last_path_raw = applied_run_state.get("wallpaper_path")
     if not isinstance(last_path_raw, str) or not last_path_raw.strip():
         return None
     last_wallpaper = Path(last_path_raw.strip())
-    layout_same = last[2:5] == run_key[2:5]
-    observation_time = run_key[0]
-    pic_side = grade_to_pixel(run_key[1])
+    layout_same = last.layout == run_key.layout
+    observation_time = run_key.observation_time
+    pic_side = grade_to_pixel(run_key.resolution_grade)
     disk = resolve_disk_path(applied_run_state, last_wallpaper)
     equal_path = equal_path_from_disk(disk)
     wallpaper_path = (
@@ -345,70 +491,41 @@ def try_postprocess_fast_path(
         if layout_same
         else wallpaper_output_path(equal_path, auto_adjust=auto_adjust)
     )
-    base: Path
 
     try:
         if layout_same:
-            base = resolve_base_path(applied_run_state, last_wallpaper)
-            if (
-                not base.is_file()
-                and last_wallpaper.is_file()
-                and not bool(last[5])
-                and not bool(last[6])
-            ):
-                try:
-                    base = ensure_unmarked_base(last_wallpaper)
-                except OSError:
-                    logging.exception("Failed to create unmarked base from %s", last_wallpaper)
-                    return None
-            if not base.is_file():
-                logging.info("Postprocess fast path skipped: unmarked base missing (%s)", base)
-                return None
-            if reduce_banding:
-                apply_deband_to_file(base, wallpaper_path)
-            else:
-                shutil.copy2(base, wallpaper_path)
+            # 同布局：复用 *_base（色带/台风开关变化）。
+            base = _rebuild_from_base(
+                applied_run_state=applied_run_state,
+                last=last,
+                last_wallpaper=last_wallpaper,
+                wallpaper_path=wallpaper_path,
+                reduce_banding=reduce_banding,
+            )
         else:
-            if not disk.is_file():
-                logging.info("Postprocess fast path skipped: equal disk missing (%s)", disk)
-                return None
-            wallpaper_path.parent.mkdir(parents=True, exist_ok=True)
-            if auto_adjust:
-                apply_margins(
-                    str(disk),
-                    pic_side,
-                    str(wallpaper_path),
-                    top_percent=margin_top_percent,
-                    bottom_percent=margin_bottom_percent,
-                    deband=False,
-                )
-            else:
-                shutil.copy2(disk, wallpaper_path)
-            base = save_unmarked_base(wallpaper_path)
-            if reduce_banding:
-                apply_deband_to_file(base, wallpaper_path)
+            # 修边/边距变了：从 *_disk 重建。
+            base = _rebuild_from_disk(
+                disk=disk,
+                wallpaper_path=wallpaper_path,
+                pic_side=pic_side,
+                auto_adjust=auto_adjust,
+                margin_top_percent=margin_top_percent,
+                margin_bottom_percent=margin_bottom_percent,
+                reduce_banding=reduce_banding,
+            )
+        if base is None:
+            return None
 
         if show_typhoon_marker:
-            cached = cached_typhoon_center(applied_run_state, observation_time)
-            if cached is None:
-                logging.info(
-                    "Postprocess fast path: no typhoon center cache for %s; marker not drawn",
-                    observation_time,
-                )
-            else:
-                draw_typhoon_marker_at(
-                    wallpaper_path=wallpaper_path,
-                    pic_side=pic_side,
-                    lat=cached[0],
-                    lon=cached[1],
-                    auto_adjust=auto_adjust,
-                    margin_top_percent=margin_top_percent,
-                    margin_bottom_percent=margin_bottom_percent,
-                )
-                logging.info(
-                    "Postprocess fast path: typhoon marker overlaid from cache for %s",
-                    observation_time,
-                )
+            _overlay_typhoon_from_cache(
+                applied_run_state=applied_run_state,
+                wallpaper_path=wallpaper_path,
+                pic_side=pic_side,
+                observation_time=observation_time,
+                auto_adjust=auto_adjust,
+                margin_top_percent=margin_top_percent,
+                margin_bottom_percent=margin_bottom_percent,
+            )
         logging.info(
             "Postprocess fast path: rebuilt wallpaper (layout_same=%s banding=%s typhoon=%s)",
             layout_same,
