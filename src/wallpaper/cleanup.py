@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import shutil
+from collections.abc import Iterable
 from pathlib import Path
 
 
@@ -11,27 +12,40 @@ def cleanup_after_wallpaper_apply(
     *,
     img_root: Path,
     current_run_root: Path,
-    keep_file: Path,
+    keep_file: Path | None = None,
+    keep_files: Iterable[Path] | None = None,
 ) -> None:
-    """保留 keep_file，删除本次瓦片与多余中间图，并清掉其它旧观测目录。
+    """保留 keep 文件，删除本次瓦片与多余中间图，并清掉其它旧观测目录。
 
     删除失败只记日志，不向外抛。
 
     Args:
         img_root: 影像缓存根目录（通常为 ``.../img``）。
         current_run_root: 本次观测时间对应的运行目录。
-        keep_file: 设壁纸后需保留的文件（须位于 img_root 下）。
+        keep_file: 单个需保留的文件（兼容旧调用）。
+        keep_files: 额外或批量需保留的文件（须位于 img_root 下）。
     """
+    paths: list[Path] = []
+    if keep_file is not None:
+        paths.append(keep_file)
+    if keep_files is not None:
+        paths.extend(keep_files)
+    if not paths:
+        logging.warning("Cleanup skipped: no keep_file(s) provided")
+        return
+
     try:
         img_root = img_root.resolve()
         current_run_root = current_run_root.resolve()
-        keep_file = keep_file.resolve()
+        keep_resolved: set[Path] = set()
+        for path in paths:
+            keep_resolved.add(path.resolve())
     except OSError:
         logging.exception(
             "Cleanup skipped: failed to resolve paths (img=%s run=%s keep=%s)",
             img_root,
             current_run_root,
-            keep_file,
+            paths,
         )
         return
 
@@ -41,20 +55,21 @@ def cleanup_after_wallpaper_apply(
 
     try:
         current_run_root.relative_to(img_root)
-        keep_file.relative_to(img_root)
+        for keep in keep_resolved:
+            keep.relative_to(img_root)
     except ValueError:
         logging.warning(
             "Cleanup skipped: path outside img root (img=%s run=%s keep=%s)",
             img_root,
             current_run_root,
-            keep_file,
+            keep_resolved,
         )
         return
 
     _delete_sibling_run_dirs(img_root, current_run_root)
     _delete_tile_trees(current_run_root)
-    _delete_extra_complete_files(current_run_root, keep_file)
-    logging.info("Cleanup finished; kept wallpaper file: %s", keep_file)
+    _delete_extra_complete_files(current_run_root, keep_resolved)
+    logging.info("Cleanup finished; kept wallpaper file(s): %s", sorted(str(p) for p in keep_resolved))
 
 
 def _delete_sibling_run_dirs(img_root: Path, current_run_root: Path) -> None:
@@ -79,7 +94,7 @@ def _delete_tile_trees(current_run_root: Path) -> None:
             _rmtree(child)
 
 
-def _delete_extra_complete_files(current_run_root: Path, keep_file: Path) -> None:
+def _delete_extra_complete_files(current_run_root: Path, keep_files: set[Path]) -> None:
     complete = current_run_root / "complete"
     if not complete.is_dir():
         return
@@ -87,7 +102,7 @@ def _delete_extra_complete_files(current_run_root: Path, keep_file: Path) -> Non
         if not path.is_file():
             continue
         try:
-            if path.resolve() == keep_file:
+            if path.resolve() in keep_files:
                 continue
         except OSError:
             logging.warning("Cleanup: failed to resolve compose file: %s", path, exc_info=True)

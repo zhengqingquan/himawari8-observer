@@ -41,6 +41,28 @@ class CleanupAfterApplyTests(unittest.TestCase):
             self.assertFalse(old.exists())
             self.assertTrue(complete.is_dir())
 
+    def test_keeps_multiple_files_including_base(self):
+        with temporary_base_dir() as tmp:
+            img_root = tmp / "img"
+            current = img_root / "20210603052000"
+            complete = current / "complete"
+            complete.mkdir(parents=True)
+            keep = complete / "wall.png"
+            base = complete / "wall_base.png"
+            extra = complete / "other.png"
+            for path in (keep, base, extra):
+                path.write_bytes(b"x")
+
+            cleanup_after_wallpaper_apply(
+                img_root=img_root,
+                current_run_root=current,
+                keep_files=(keep, base),
+            )
+
+            self.assertTrue(keep.is_file())
+            self.assertTrue(base.is_file())
+            self.assertFalse(extra.exists())
+
     def test_pipeline_cleans_when_enabled(self):
         with temporary_base_dir() as base:
             img_root = base / "img"
@@ -84,7 +106,9 @@ class CleanupAfterApplyTests(unittest.TestCase):
             )
 
             keep = img_root / "20210603052000" / "complete" / keep_name
+            base = img_root / "20210603052000" / "complete" / "4d20210603052000_adjust_base.png"
             self.assertTrue(keep.is_file())
+            self.assertTrue(base.is_file())
             self.assertFalse((img_root / "20210603052000" / "4d").exists())
             self.assertFalse(
                 (img_root / "20210603052000" / "complete" / "4d20210603052000.png").exists()

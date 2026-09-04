@@ -125,7 +125,10 @@ class WallpaperJobRefTests(unittest.TestCase):
         self.assertEqual(ref.applied_observation_time, "2026-09-03 02:10:00")
 
         ref.set_resolution_grade("8d")
-        self.assertIsNone(ref._applied_run_state.get("last"))
+        self.assertEqual(
+            ref._applied_run_state.get("last"),
+            ("2026-09-03 02:10:00", "4d", False, 0.0, 5.0),
+        )
         self.assertEqual(ref.applied_observation_time, "2026-09-03 02:10:00")
 
     def test_init_hydrates_observation_time_from_applied_state(self):

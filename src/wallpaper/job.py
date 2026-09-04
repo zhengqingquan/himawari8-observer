@@ -371,10 +371,13 @@ class WallpaperJobRef:
         applied_grade = self._applied_run_state.get("applied_grade")
         if isinstance(applied_grade, str) and applied_grade:
             self._last_applied_grade = applied_grade
+        # 保留 last / 壁纸路径，供 pipeline 在「仅台风开关变化」时走复用快路径。
         wallpaper_path = self._applied_run_state.get("wallpaper_path")
+        wallpaper_base_path = self._applied_run_state.get("wallpaper_base_path")
         self._applied_run_state = {
-            "last": None,
+            "last": last,
             "wallpaper_path": wallpaper_path,
+            "wallpaper_base_path": wallpaper_base_path,
             "applied_grade": self._last_applied_grade,
         }
         self._job = self._build_job(

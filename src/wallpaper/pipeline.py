@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import logging
+import shutil
 from collections.abc import Callable, MutableMapping
 from pathlib import Path
-from time import strftime, struct_time
+from time import strftime, strptime, struct_time
 from typing import Any
 
 from PIL import Image
@@ -29,7 +30,7 @@ from src.metadata.app_config import (
     DEFAULT_MARGIN_TOP_PERCENT,
 )
 from src.pic import Pic
-from src.resolution_grade import default_grade
+from src.resolution_grade import default_grade, grade_to_pixel
 from src.wallpaper.cleanup import cleanup_after_wallpaper_apply
 from src.wallpaper.desktop import get_desktop_wallpaper as read_desktop_wallpaper
 from src.wallpaper.desktop import set_wallpaper as apply_desktop_wallpaper
@@ -66,6 +67,11 @@ def _adjusted_output_path(pic: Pic) -> Path:
     return src.with_name(f"{src.stem}_adjust{src.suffix}")
 
 
+def wallpaper_base_path(wallpaper_path: Path) -> Path:
+    """无台风标记底图路径：``{stem}_base{suffix}``。"""
+    return wallpaper_path.with_name(f"{wallpaper_path.stem}_base{wallpaper_path.suffix}")
+
+
 def build_applied_run_key(
     observation_time: struct_time,
     *,
@@ -93,6 +99,7 @@ def _remember_applied(
     *,
     run_key: AppliedRunKey,
     wallpaper_path: Path,
+    wallpaper_base: Path | None = None,
     record_run_key: bool,
 ) -> None:
     if applied_run_state is None:
@@ -105,12 +112,75 @@ def _remember_applied(
         applied_run_state["wallpaper_path"] = str(wallpaper_path.resolve())
     except OSError:
         applied_run_state["wallpaper_path"] = str(wallpaper_path)
+    base = wallpaper_base if wallpaper_base is not None else wallpaper_base_path(wallpaper_path)
+    try:
+        applied_run_state["wallpaper_base_path"] = str(base.resolve())
+    except OSError:
+        applied_run_state["wallpaper_base_path"] = str(base)
+
+
+def _ensure_unmarked_base(wallpaper_path: Path) -> Path:
+    """把当前无标记成品复制为 ``*_base``（已存在则不覆盖）。"""
+    base = wallpaper_base_path(wallpaper_path)
+    if base.is_file():
+        return base
+    if not wallpaper_path.is_file():
+        return base
+    base.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(wallpaper_path, base)
+    return base
+
+
+def _resolve_base_path(
+    applied_run_state: AppliedRunState | None,
+    wallpaper_path: Path,
+) -> Path:
+    if applied_run_state is not None:
+        raw = applied_run_state.get("wallpaper_base_path")
+        if isinstance(raw, str) and raw.strip():
+            candidate = Path(raw.strip())
+            if candidate.is_file():
+                return candidate
+    return wallpaper_base_path(wallpaper_path)
+
+
+def _typhoon_flag_only_differs(last: Any, run_key: AppliedRunKey) -> bool:
+    return (
+        isinstance(last, tuple)
+        and len(last) == 7
+        and last[:6] == run_key[:6]
+        and bool(last[6]) != bool(run_key[6])
+    )
+
+
+def _provisional_run_key_from_last(
+    last: Any,
+    *,
+    resolution_grade: str,
+    auto_adjust: bool,
+    margin_top_percent: float,
+    margin_bottom_percent: float,
+    reduce_banding: bool,
+    show_typhoon_marker: bool,
+) -> AppliedRunKey | None:
+    """用上次指纹的观测时间 + 当前成图参数拼临时指纹（不访问网络）。"""
+    if not isinstance(last, tuple) or len(last) < 1 or not isinstance(last[0], str):
+        return None
+    return (
+        last[0],
+        resolution_grade,
+        auto_adjust,
+        float(margin_top_percent),
+        float(margin_bottom_percent),
+        bool(reduce_banding),
+        bool(show_typhoon_marker),
+    )
 
 
 def _apply_typhoon_marker_if_needed(
     *,
     wallpaper_path: Path,
-    pic: Pic,
+    pic_side: int,
     observation_time: struct_time,
     auto_adjust: bool,
     margin_top_percent: float,
@@ -122,7 +192,7 @@ def _apply_typhoon_marker_if_needed(
     if center is None:
         return
     lat, lon = center
-    xy = latlon_to_himawari_fd_xy(lat, lon, pic.pic_side)
+    xy = latlon_to_himawari_fd_xy(lat, lon, pic_side)
     if xy is None:
         logging.info("Typhoon center projects outside full-disk frame; skipping marker")
         return
@@ -134,10 +204,10 @@ def _apply_typhoon_marker_if_needed(
         except OSError:
             logging.exception("Failed to open wallpaper for typhoon marker offset: %s", wallpaper_path)
             return
-        if canvas_w != pic.pic_side or canvas_h != pic.pic_side:
+        if canvas_w != pic_side or canvas_h != pic_side:
             screen_width, screen_height = get_primary_screen_size()
             _, _, image_x, image_y = compute_margin_layout(
-                pic.pic_side,
+                pic_side,
                 screen_width,
                 screen_height,
                 top_percent=margin_top_percent,
@@ -145,6 +215,89 @@ def _apply_typhoon_marker_if_needed(
             )
             draw_xy = (image_x + xy[0], image_y + xy[1])
     draw_typhoon_marker(wallpaper_path, draw_xy)
+
+
+def _try_typhoon_marker_fast_path(
+    *,
+    applied_run_state: AppliedRunState,
+    run_key: AppliedRunKey,
+    observation_time_struct: struct_time,
+    auto_adjust: bool,
+    margin_top_percent: float,
+    margin_bottom_percent: float,
+    show_typhoon_marker: bool,
+    set_desktop: SetWallpaper,
+    typhoon_fetch: FetchTyphoonCenter,
+    record_run_key: bool,
+) -> str | None:
+    """仅台风开关变化且成品仍在时：复用底图，不下载瓦片。
+
+    Returns:
+        成功时返回观测时间字符串；无法走快路径时 ``None``（调用方应继续全量）。
+    """
+    last = applied_run_state.get("last")
+    if not _typhoon_flag_only_differs(last, run_key):
+        return None
+
+    last_path_raw = applied_run_state.get("wallpaper_path")
+    if not isinstance(last_path_raw, str) or not last_path_raw.strip():
+        return None
+    wallpaper_path = Path(last_path_raw.strip())
+    base = _resolve_base_path(applied_run_state, wallpaper_path)
+
+    # 上一轮无标记且未写 base：当前成品即底图。
+    if not base.is_file() and wallpaper_path.is_file() and not bool(last[6]):
+        try:
+            base = _ensure_unmarked_base(wallpaper_path)
+        except OSError:
+            logging.exception("Failed to create unmarked base from %s", wallpaper_path)
+            return None
+
+    if not base.is_file():
+        logging.info("Typhoon fast path skipped: unmarked base missing (%s)", base)
+        return None
+
+    observation_time = run_key[0]
+    pic_side = grade_to_pixel(run_key[1])
+
+    try:
+        if show_typhoon_marker:
+            shutil.copy2(base, wallpaper_path)
+            _apply_typhoon_marker_if_needed(
+                wallpaper_path=wallpaper_path,
+                pic_side=pic_side,
+                observation_time=observation_time_struct,
+                auto_adjust=auto_adjust,
+                margin_top_percent=margin_top_percent,
+                margin_bottom_percent=margin_bottom_percent,
+                fetch_typhoon_center_fn=typhoon_fetch,
+            )
+            apply_path = wallpaper_path
+            logging.info("Typhoon marker fast path: overlaid on existing wallpaper")
+        else:
+            shutil.copy2(base, wallpaper_path)
+            apply_path = wallpaper_path
+            logging.info("Typhoon marker fast path: restored unmarked base")
+    except OSError:
+        logging.exception("Typhoon fast path failed while copying base/wallpaper")
+        return None
+
+    if not apply_path.is_file():
+        return None
+
+    applied = set_desktop(apply_path)
+    if applied is False:
+        logging.warning("Typhoon fast path: wallpaper apply failed: %s", apply_path)
+        return None
+
+    _remember_applied(
+        applied_run_state,
+        run_key=run_key,
+        wallpaper_path=apply_path,
+        wallpaper_base=base,
+        record_run_key=record_run_key,
+    )
+    return observation_time
 
 
 def run_wallpaper_pipeline(
@@ -173,6 +326,7 @@ def run_wallpaper_pipeline(
     托盘 / 定时器只应通过 WallpaperJobRef 触发，不要直接 import 本模块或 download/。
 
     跳过策略（需 ``applied_run_state``）：
+    - 仅台风开关变化且无标记底图仍在 → 用上次观测时间叠加/复原，不拉 latest、不下载；
     - 指纹相同且桌面仍是上次壁纸文件 → 整段跳过；
     - 指纹相同但桌面已换、成品仍在 → 仅重设壁纸；
     - 否则走完整流水线。
@@ -203,6 +357,39 @@ def run_wallpaper_pipeline(
         return out
 
     adjust = adjust_wallpaper or default_adjust
+
+    # 台风开关快路径：在拉 latest.json 之前用上次指纹观测时间复用成品，避免网络卡住。
+    if applied_run_state is not None:
+        last = applied_run_state.get("last")
+        provisional = _provisional_run_key_from_last(
+            last,
+            resolution_grade=grade,
+            auto_adjust=auto_adjust,
+            margin_top_percent=margin_top_percent,
+            margin_bottom_percent=margin_bottom_percent,
+            reduce_banding=reduce_banding,
+            show_typhoon_marker=show_typhoon_marker,
+        )
+        if provisional is not None and _typhoon_flag_only_differs(last, provisional):
+            try:
+                obs_struct = strptime(provisional[0], _OBS_TIME_FMT)
+            except ValueError:
+                obs_struct = None
+            if obs_struct is not None:
+                fast = _try_typhoon_marker_fast_path(
+                    applied_run_state=applied_run_state,
+                    run_key=provisional,
+                    observation_time_struct=obs_struct,
+                    auto_adjust=auto_adjust,
+                    margin_top_percent=margin_top_percent,
+                    margin_bottom_percent=margin_bottom_percent,
+                    show_typhoon_marker=show_typhoon_marker,
+                    set_desktop=set_desktop,
+                    typhoon_fetch=typhoon_fetch,
+                    record_run_key=record_run_key,
+                )
+                if fast is not None:
+                    return fast
 
     if use_yesterday_local_time:
         time_str = observation_time_yesterday_local()
@@ -247,6 +434,23 @@ def run_wallpaper_pipeline(
             )
             return observation_time
 
+    # 观测时间已刷新后再试一次（例如 last 观测与 latest 相同、仅台风位不同）。
+    if applied_run_state is not None:
+        fast = _try_typhoon_marker_fast_path(
+            applied_run_state=applied_run_state,
+            run_key=run_key,
+            observation_time_struct=time_str,
+            auto_adjust=auto_adjust,
+            margin_top_percent=margin_top_percent,
+            margin_bottom_percent=margin_bottom_percent,
+            show_typhoon_marker=show_typhoon_marker,
+            set_desktop=set_desktop,
+            typhoon_fetch=typhoon_fetch,
+            record_run_key=record_run_key,
+        )
+        if fast is not None:
+            return fast
+
     pic = Pic(time_str, grade, base_dir=base_dir)
     create_pic_folders(pic)
     download(pic)
@@ -267,10 +471,18 @@ def run_wallpaper_pipeline(
         else:
             compose_equal(pic)
         wallpaper_path = adjust(pic) if auto_adjust else Path(pic.final_path_equal)
+
+    wallpaper_path = Path(wallpaper_path)
+    try:
+        base_path = _ensure_unmarked_base(wallpaper_path)
+    except OSError:
+        logging.exception("Failed to save unmarked wallpaper base: %s", wallpaper_path)
+        base_path = wallpaper_base_path(wallpaper_path)
+
     if show_typhoon_marker:
         _apply_typhoon_marker_if_needed(
-            wallpaper_path=Path(wallpaper_path),
-            pic=pic,
+            wallpaper_path=wallpaper_path,
+            pic_side=pic.pic_side,
             observation_time=time_str,
             auto_adjust=auto_adjust,
             margin_top_percent=margin_top_percent,
@@ -287,15 +499,19 @@ def run_wallpaper_pipeline(
     _remember_applied(
         applied_run_state,
         run_key=run_key,
-        wallpaper_path=Path(wallpaper_path),
+        wallpaper_path=wallpaper_path,
+        wallpaper_base=base_path,
         record_run_key=record_run_key,
     )
     if cleanup_after_apply:
         current_run_root = Path(pic.folder_path).parent
+        keep = [wallpaper_path]
+        if base_path.is_file():
+            keep.append(base_path)
         cleanup_after_wallpaper_apply(
             img_root=pic.base_dir / pic.folder_top,
             current_run_root=current_run_root,
-            keep_file=Path(wallpaper_path),
+            keep_files=keep,
         )
     logging.info("Wallpaper pipeline finished: %s", wallpaper_path)
     return observation_time
