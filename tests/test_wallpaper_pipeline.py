@@ -519,6 +519,49 @@ class RunWallpaperPipelineTests(unittest.TestCase):
         )
         self.assertEqual(state["last"][0], "2026-09-02 09:20:00")
 
+    def test_skips_when_latest_observation_older_than_applied(self):
+        events = []
+
+        def fetch_observation_time():
+            events.append("fetch")
+            return time.strptime("2026-09-04 01:10:00", "%Y-%m-%d %H:%M:%S")
+
+        def download_tiles(pic):
+            events.append("download")
+
+        def compose_equal(pic):
+            events.append("compose")
+
+        def set_wallpaper(path: Path):
+            events.append("set")
+            return True
+
+        with temporary_base_dir() as base_dir:
+            wall = Path(base_dir) / "wall.png"
+            wall.write_bytes(b"img")
+            state = {
+                "last": ("2026-09-04 01:40:00", "4d", False, 0.0, 5.0, False, False),
+                "wallpaper_path": str(wall.resolve()),
+            }
+
+            result = run_wallpaper_pipeline(
+                resolution_grade="4d",
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                set_wallpaper=set_wallpaper,
+                auto_adjust=False,
+                margin_top_percent=0.0,
+                margin_bottom_percent=5.0,
+                cleanup_after_apply=False,
+                applied_run_state=state,
+                base_dir=base_dir,
+            )
+
+        self.assertIsNone(result)
+        self.assertEqual(events, ["fetch"])
+        self.assertEqual(state["last"][0], "2026-09-04 01:40:00")
+
 
 if __name__ == "__main__":
     unittest.main()

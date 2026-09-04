@@ -395,6 +395,7 @@ def run_wallpaper_pipeline(
 
     跳过策略（需 ``applied_run_state``）：
     - 仅台风开关变化且无标记底图仍在 → 用上次观测时间叠加/复原，不拉 latest、不下载；
+    - 自动跟 latest 时若观测时间早于已应用 → 跳过（防源站回退导致往回刷）；
     - 指纹相同且桌面仍是上次壁纸文件 → 整段跳过；
     - 指纹相同但桌面已换、成品仍在 → 仅重设壁纸；
     - 否则走完整流水线。
@@ -466,6 +467,20 @@ def run_wallpaper_pipeline(
         show_typhoon_marker=show_typhoon_marker,
     )
     observation_time = run_key[0]
+    if not use_yesterday_local_time and applied_run_state is not None:
+        last = applied_run_state.get("last")
+        if (
+            isinstance(last, tuple)
+            and len(last) >= 1
+            and isinstance(last[0], str)
+            and observation_time < last[0]
+        ):
+            logging.info(
+                "Latest observation %s is older than applied %s; skipping update",
+                observation_time,
+                last[0],
+            )
+            return None
     if applied_run_state is not None and applied_run_state.get("last") == run_key:
         last_path_raw = applied_run_state.get("wallpaper_path")
         last_path = Path(last_path_raw) if last_path_raw else None
