@@ -106,9 +106,11 @@ class CleanupAfterApplyTests(unittest.TestCase):
             )
 
             keep = img_root / "20210603052000" / "complete" / keep_name
-            base = img_root / "20210603052000" / "complete" / "4d20210603052000_adjust_base.png"
+            base_wall = img_root / "20210603052000" / "complete" / "4d20210603052000_adjust_base.png"
+            disk = img_root / "20210603052000" / "complete" / "4d20210603052000_disk.png"
             self.assertTrue(keep.is_file())
-            self.assertTrue(base.is_file())
+            self.assertTrue(base_wall.is_file())
+            self.assertTrue(disk.is_file())
             self.assertFalse((img_root / "20210603052000" / "4d").exists())
             self.assertFalse(
                 (img_root / "20210603052000" / "complete" / "4d20210603052000.png").exists()

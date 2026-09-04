@@ -15,7 +15,6 @@ from src.compose.equal import (
     apply_deband_to_file,
     apply_margins,
     compose_equal_image,
-    compose_equal_image_with_margins,
     compute_margin_layout,
     get_primary_screen_size,
 )
@@ -73,6 +72,31 @@ def wallpaper_base_path(wallpaper_path: Path) -> Path:
     return wallpaper_path.with_name(f"{wallpaper_path.stem}_base{wallpaper_path.suffix}")
 
 
+def wallpaper_disk_path(equal_or_wallpaper: Path) -> Path:
+    """等分圆盘（未修边）路径：由等分图或 ``*_adjust`` 成品推导 ``{stem}_disk``。"""
+    stem = equal_or_wallpaper.stem
+    if stem.endswith("_adjust"):
+        stem = stem[: -len("_adjust")]
+    elif stem.endswith("_disk"):
+        return equal_or_wallpaper
+    return equal_or_wallpaper.with_name(f"{stem}_disk{equal_or_wallpaper.suffix}")
+
+
+def equal_path_from_disk(disk_path: Path) -> Path:
+    """由 ``*_disk`` 还原等分图路径。"""
+    stem = disk_path.stem
+    if stem.endswith("_disk"):
+        stem = stem[: -len("_disk")]
+    return disk_path.with_name(f"{stem}{disk_path.suffix}")
+
+
+def wallpaper_output_path(equal_path: Path, *, auto_adjust: bool) -> Path:
+    """按是否修边决定成品路径（修边为 ``*_adjust``）。"""
+    if auto_adjust:
+        return equal_path.with_name(f"{equal_path.stem}_adjust{equal_path.suffix}")
+    return equal_path
+
+
 def build_applied_run_key(
     observation_time: struct_time,
     *,
@@ -101,6 +125,7 @@ def _remember_applied(
     run_key: AppliedRunKey,
     wallpaper_path: Path,
     wallpaper_base: Path | None = None,
+    wallpaper_disk: Path | None = None,
     record_run_key: bool,
 ) -> None:
     if applied_run_state is None:
@@ -118,6 +143,11 @@ def _remember_applied(
         applied_run_state["wallpaper_base_path"] = str(base.resolve())
     except OSError:
         applied_run_state["wallpaper_base_path"] = str(base)
+    disk = wallpaper_disk if wallpaper_disk is not None else wallpaper_disk_path(wallpaper_path)
+    try:
+        applied_run_state["wallpaper_disk_path"] = str(disk.resolve())
+    except OSError:
+        applied_run_state["wallpaper_disk_path"] = str(disk)
 
 
 def _ensure_unmarked_base(wallpaper_path: Path) -> Path:
@@ -142,6 +172,16 @@ def _save_unmarked_base(wallpaper_path: Path) -> Path:
     return base
 
 
+def _save_disk_copy(equal_path: Path) -> Path:
+    """将等分圆盘复制为 ``*_disk``（覆盖），供修边后处理复用。"""
+    disk = wallpaper_disk_path(equal_path)
+    if not equal_path.is_file():
+        return disk
+    disk.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(equal_path, disk)
+    return disk
+
+
 def _resolve_base_path(
     applied_run_state: AppliedRunState | None,
     wallpaper_path: Path,
@@ -155,14 +195,31 @@ def _resolve_base_path(
     return wallpaper_base_path(wallpaper_path)
 
 
-def _postprocess_flags_only_differ(last: Any, run_key: AppliedRunKey) -> bool:
-    """观测/档位/修边相同，仅减轻色带和/或台风开关不同。"""
+def _resolve_disk_path(
+    applied_run_state: AppliedRunState | None,
+    wallpaper_path: Path,
+) -> Path:
+    if applied_run_state is not None:
+        raw = applied_run_state.get("wallpaper_disk_path")
+        if isinstance(raw, str) and raw.strip():
+            candidate = Path(raw.strip())
+            if candidate.is_file():
+                return candidate
+    return wallpaper_disk_path(wallpaper_path)
+
+
+def _obs_grade_match(last: Any, run_key: AppliedRunKey) -> bool:
     return (
         isinstance(last, tuple)
         and len(last) == 7
-        and last[:5] == run_key[:5]
-        and (bool(last[5]), bool(last[6])) != (bool(run_key[5]), bool(run_key[6]))
+        and last[0] == run_key[0]
+        and last[1] == run_key[1]
     )
+
+
+def _layout_or_postprocess_differs(last: Any, run_key: AppliedRunKey) -> bool:
+    """同观测与档位，修边/色带/台风任一不同。"""
+    return _obs_grade_match(last, run_key) and last != run_key
 
 
 def _provisional_run_key_from_last(
@@ -301,46 +358,78 @@ def _try_postprocess_fast_path(
     set_desktop: SetWallpaper,
     record_run_key: bool,
 ) -> str | None:
-    """仅色带/台风开关变化且底图仍在时：从 ``*_base`` 重建成品（不拉网络、不下载）。
+    """同观测/档位下仅修边或色带/台风变化时：从 disk/base 重建成品（不拉网络、不下载）。
 
     Returns:
         成功时返回观测时间字符串；无法走快路径时 ``None``（调用方应继续全量）。
     """
     last = applied_run_state.get("last")
-    if not _postprocess_flags_only_differ(last, run_key):
+    if not _layout_or_postprocess_differs(last, run_key):
         return None
 
     last_path_raw = applied_run_state.get("wallpaper_path")
     if not isinstance(last_path_raw, str) or not last_path_raw.strip():
         return None
-    wallpaper_path = Path(last_path_raw.strip())
-    base = _resolve_base_path(applied_run_state, wallpaper_path)
-
-    # 上一轮无色带且无标记、未写 base：当前成品即底图。
-    if (
-        not base.is_file()
-        and wallpaper_path.is_file()
-        and not bool(last[5])
-        and not bool(last[6])
-    ):
-        try:
-            base = _ensure_unmarked_base(wallpaper_path)
-        except OSError:
-            logging.exception("Failed to create unmarked base from %s", wallpaper_path)
-            return None
-
-    if not base.is_file():
-        logging.info("Postprocess fast path skipped: unmarked base missing (%s)", base)
-        return None
-
+    last_wallpaper = Path(last_path_raw.strip())
+    layout_same = last[2:5] == run_key[2:5]
     observation_time = run_key[0]
     pic_side = grade_to_pixel(run_key[1])
+    disk = _resolve_disk_path(applied_run_state, last_wallpaper)
+    equal_path = equal_path_from_disk(disk)
+    wallpaper_path = (
+        last_wallpaper
+        if layout_same
+        else wallpaper_output_path(equal_path, auto_adjust=auto_adjust)
+    )
+    base: Path
 
     try:
-        if reduce_banding:
-            apply_deband_to_file(base, wallpaper_path)
+        if layout_same:
+            base = _resolve_base_path(applied_run_state, last_wallpaper)
+            if (
+                not base.is_file()
+                and last_wallpaper.is_file()
+                and not bool(last[5])
+                and not bool(last[6])
+            ):
+                try:
+                    base = _ensure_unmarked_base(last_wallpaper)
+                except OSError:
+                    logging.exception(
+                        "Failed to create unmarked base from %s", last_wallpaper
+                    )
+                    return None
+            if not base.is_file():
+                logging.info(
+                    "Postprocess fast path skipped: unmarked base missing (%s)", base
+                )
+                return None
+            if reduce_banding:
+                apply_deband_to_file(base, wallpaper_path)
+            else:
+                shutil.copy2(base, wallpaper_path)
         else:
-            shutil.copy2(base, wallpaper_path)
+            if not disk.is_file():
+                logging.info(
+                    "Postprocess fast path skipped: equal disk missing (%s)", disk
+                )
+                return None
+            wallpaper_path.parent.mkdir(parents=True, exist_ok=True)
+            if auto_adjust:
+                apply_margins(
+                    str(disk),
+                    pic_side,
+                    str(wallpaper_path),
+                    top_percent=margin_top_percent,
+                    bottom_percent=margin_bottom_percent,
+                    deband=False,
+                )
+            else:
+                shutil.copy2(disk, wallpaper_path)
+            base = _save_unmarked_base(wallpaper_path)
+            if reduce_banding:
+                apply_deband_to_file(base, wallpaper_path)
+
         if show_typhoon_marker:
             cached = _cached_typhoon_center(applied_run_state, observation_time)
             if cached is None:
@@ -363,7 +452,9 @@ def _try_postprocess_fast_path(
                     observation_time,
                 )
         logging.info(
-            "Postprocess fast path: rebuilt wallpaper (banding=%s typhoon=%s)",
+            "Postprocess fast path: rebuilt wallpaper "
+            "(layout_same=%s banding=%s typhoon=%s)",
+            layout_same,
             reduce_banding,
             show_typhoon_marker,
         )
@@ -376,7 +467,9 @@ def _try_postprocess_fast_path(
 
     applied = set_desktop(wallpaper_path)
     if applied is False:
-        logging.warning("Postprocess fast path: wallpaper apply failed: %s", wallpaper_path)
+        logging.warning(
+            "Postprocess fast path: wallpaper apply failed: %s", wallpaper_path
+        )
         return None
 
     _remember_applied(
@@ -384,6 +477,7 @@ def _try_postprocess_fast_path(
         run_key=run_key,
         wallpaper_path=wallpaper_path,
         wallpaper_base=base,
+        wallpaper_disk=disk if disk.is_file() else None,
         record_run_key=record_run_key,
     )
     return observation_time
@@ -415,7 +509,7 @@ def run_wallpaper_pipeline(
     托盘 / 定时器只应通过 WallpaperJobRef 触发，不要直接 import 本模块或 download/。
 
     跳过策略（需 ``applied_run_state``）：
-    - 仅色带/台风开关变化且未去色带底图仍在 → 从底图重建成品，不拉 latest、不下载；
+    - 同观测/档位下仅修边或色带/台风变化且 disk/base 仍在 → 从中间图重建，不拉 latest、不下载；
     - 自动跟 latest 时若观测时间早于已应用 → 跳过（防源站回退导致往回刷）；
     - 指纹相同且桌面仍是上次壁纸文件 → 整段跳过；
     - 指纹相同但桌面已换、成品仍在 → 仅重设壁纸；
@@ -432,7 +526,6 @@ def run_wallpaper_pipeline(
     read_desktop = get_desktop_wallpaper or read_desktop_wallpaper
     typhoon_fetch = fetch_typhoon_center_fn or fetch_typhoon_center
     grade = resolution_grade if resolution_grade is not None else default_grade()
-    use_direct_margin_compose = auto_adjust and compose_equal is None and adjust_wallpaper is None
 
     def default_adjust(pic: Pic) -> Path:
         out = _adjusted_output_path(pic)
@@ -448,7 +541,7 @@ def run_wallpaper_pipeline(
 
     adjust = adjust_wallpaper or default_adjust
 
-    # 后处理快路径：在拉 latest.json 之前用上次指纹观测时间从底图重建，避免网络卡住。
+    # 后处理快路径：在拉 latest.json 之前用上次指纹观测时间从中间图重建，避免网络卡住。
     if applied_run_state is not None:
         last = applied_run_state.get("last")
         provisional = _provisional_run_key_from_last(
@@ -460,7 +553,7 @@ def run_wallpaper_pipeline(
             reduce_banding=reduce_banding,
             show_typhoon_marker=show_typhoon_marker,
         )
-        if provisional is not None and _postprocess_flags_only_differ(last, provisional):
+        if provisional is not None and _layout_or_postprocess_differs(last, provisional):
             fast = _try_postprocess_fast_path(
                 applied_run_state=applied_run_state,
                 run_key=provisional,
@@ -554,21 +647,19 @@ def run_wallpaper_pipeline(
     if not pic.download_finish():
         logging.warning("Not all tiles downloaded; skipping compose and wallpaper apply")
         return None
-    if use_direct_margin_compose:
-        wallpaper_path = compose_equal_image_with_margins(
-            pic,
-            _adjusted_output_path(pic),
-            top_percent=margin_top_percent,
-            bottom_percent=margin_bottom_percent,
-            deband=False,
-        )
+    # 始终先落等分圆盘，再修边；保留 *_disk 供改边距时后处理。
+    if compose_equal is None:
+        compose_equal_image(pic, deband=False)
     else:
-        if compose_equal is None:
-            compose_equal_image(pic, deband=False)
-        else:
-            compose_equal(pic)
-        wallpaper_path = adjust(pic) if auto_adjust else Path(pic.final_path_equal)
+        compose_equal(pic)
+    equal_path = Path(pic.final_path_equal)
+    try:
+        disk_path = _save_disk_copy(equal_path)
+    except OSError:
+        logging.exception("Failed to save equal disk copy: %s", equal_path)
+        disk_path = wallpaper_disk_path(equal_path)
 
+    wallpaper_path = adjust(pic) if auto_adjust else equal_path
     wallpaper_path = Path(wallpaper_path)
     try:
         base_path = _save_unmarked_base(wallpaper_path)
@@ -606,6 +697,7 @@ def run_wallpaper_pipeline(
         run_key=run_key,
         wallpaper_path=wallpaper_path,
         wallpaper_base=base_path,
+        wallpaper_disk=disk_path,
         record_run_key=record_run_key,
     )
     if cleanup_after_apply:
@@ -613,6 +705,8 @@ def run_wallpaper_pipeline(
         keep = [wallpaper_path]
         if base_path.is_file():
             keep.append(base_path)
+        if disk_path.is_file():
+            keep.append(disk_path)
         cleanup_after_wallpaper_apply(
             img_root=pic.base_dir / pic.folder_top,
             current_run_root=current_run_root,

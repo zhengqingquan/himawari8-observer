@@ -120,7 +120,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
         self.assertEqual(events, ["compose", "adjust", ("set", "adjusted.png")])
 
-    def test_default_auto_adjust_uses_direct_margin_compose(self):
+    def test_default_auto_adjust_composes_equal_then_margins_and_keeps_disk(self):
         events = []
 
         def fetch_observation_time():
@@ -134,17 +134,25 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             events.append(("set", path.name))
             return True
 
-        def fake_direct(pic, output_path, **_kwargs):
-            events.append("direct")
-            out = Path(output_path)
-            out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_bytes(b"img")
-            return out
+        def fake_compose(pic, **_kwargs):
+            events.append("compose")
+            Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
+            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(
+                pic.final_path_equal
+            )
 
+        def fake_margins(file, margin, path, **_kwargs):
+            events.append("margins")
+            out = Path(path)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            shutil_copy = __import__("shutil").copy2
+            shutil_copy(file, out)
+
+        state = {"last": None, "wallpaper_path": None}
         with temporary_base_dir() as base_dir:
-            with patch(
-                "src.wallpaper.pipeline.compose_equal_image_with_margins",
-                side_effect=fake_direct,
+            with (
+                patch("src.wallpaper.pipeline.compose_equal_image", side_effect=fake_compose),
+                patch("src.wallpaper.pipeline.apply_margins", side_effect=fake_margins),
             ):
                 run_wallpaper_pipeline(
                     resolution_grade="4d",
@@ -153,10 +161,18 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                     set_wallpaper=set_wallpaper,
                     auto_adjust=True,
                     cleanup_after_apply=False,
+                    applied_run_state=state,
                     base_dir=base_dir,
                 )
 
-        self.assertEqual(events, ["direct", ("set", "4d20210603052000_adjust.png")])
+            disk = Path(state["wallpaper_disk_path"])
+            self.assertTrue(disk.is_file())
+            self.assertTrue(disk.name.endswith("_disk.png"))
+
+        self.assertEqual(
+            events,
+            ["compose", "margins", ("set", "4d20210603052000_adjust.png")],
+        )
 
     def test_skips_adjust_when_auto_adjust_false(self):
         events = []
@@ -639,6 +655,77 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             self.assertEqual(downloads, [1])
             self.assertEqual(fetches, [1])
             self.assertEqual(wall.read_bytes(), base_bytes)
+
+    def test_margin_toggle_skips_download_when_disk_present(self):
+        downloads = []
+        fetches = []
+        set_names = []
+
+        def fetch_observation_time():
+            fetches.append(1)
+            return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
+
+        def download_tiles(pic):
+            downloads.append(1)
+            for entry in pic.tiles.values():
+                entry[1] = 1
+
+        def compose_equal(pic):
+            Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
+            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(
+                pic.final_path_equal
+            )
+
+        def set_wallpaper(path: Path):
+            set_names.append(path.name)
+            return True
+
+        state = {"last": None, "wallpaper_path": None}
+        with temporary_base_dir() as base_dir:
+            with patch(
+                "src.compose.equal.get_primary_screen_size",
+                return_value=(200, 100),
+            ):
+                run_wallpaper_pipeline(
+                    resolution_grade="4d",
+                    fetch_observation_time=fetch_observation_time,
+                    download_tiles=download_tiles,
+                    compose_equal=compose_equal,
+                    set_wallpaper=set_wallpaper,
+                    auto_adjust=True,
+                    margin_top_percent=0.0,
+                    margin_bottom_percent=5.0,
+                    cleanup_after_apply=False,
+                    applied_run_state=state,
+                    base_dir=base_dir,
+                )
+                self.assertEqual(downloads, [1])
+                self.assertEqual(fetches, [1])
+                self.assertTrue(state["last"][2])
+                disk = Path(state["wallpaper_disk_path"])
+                self.assertTrue(disk.is_file())
+                first_wall = Path(state["wallpaper_path"])
+                self.assertTrue(first_wall.name.endswith("_adjust.png"))
+
+                run_wallpaper_pipeline(
+                    resolution_grade="4d",
+                    fetch_observation_time=fetch_observation_time,
+                    download_tiles=download_tiles,
+                    compose_equal=compose_equal,
+                    set_wallpaper=set_wallpaper,
+                    auto_adjust=True,
+                    margin_top_percent=0.0,
+                    margin_bottom_percent=10.0,
+                    cleanup_after_apply=False,
+                    applied_run_state=state,
+                    base_dir=base_dir,
+                )
+
+                self.assertEqual(downloads, [1])
+                self.assertEqual(fetches, [1], "margin toggle must not fetch latest.json")
+                self.assertEqual(state["last"][4], 10.0)
+                self.assertTrue(Path(state["wallpaper_path"]).is_file())
+                self.assertGreaterEqual(len(set_names), 2)
 
 
 if __name__ == "__main__":
