@@ -149,6 +149,11 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         set_value=job_ref.set_show_typhoon_marker,
         log_label="Show typhoon marker",
     )
+    on_toggle_show_my_location = make_bool_toggle(
+        get_value=lambda: job_ref.show_my_location,
+        set_value=job_ref.set_show_my_location,
+        log_label="Show my location",
+    )
 
     global icon
     icon = pystray.Icon(f"{PROGRAM_NAME}_tray_icon")
@@ -256,6 +261,11 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             "显示台风位置",
             on_toggle_show_typhoon_marker,
             checked=lambda item: job_ref.show_typhoon_marker,
+        ),
+        pystray.MenuItem(
+            "显示我的位置",
+            on_toggle_show_my_location,
+            checked=lambda item: job_ref.show_my_location,
         ),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem(

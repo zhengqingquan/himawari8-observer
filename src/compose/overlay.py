@@ -13,13 +13,15 @@ def draw_typhoon_marker(
     xy: tuple[int, int],
     *,
     label: str = "TY",
+    color: tuple[int, int, int] = (241, 166, 39),
 ) -> bool:
-    """在已保存的 RGB 图上画台风中心标记（圆 + 十字 + 短字）并写回。
+    """在已保存的 RGB 图上画点标记（圆 + 十字 + 短字）并写回。
 
     Args:
         image_path: 壁纸文件路径。
         xy: 像素坐标 ``(x, y)``。
         label: 中心旁短标签。
+        color: 标记主色（RGB）；默认台风橙黄。
 
     Returns:
         成功写回为 True；失败为 False。
@@ -32,7 +34,6 @@ def draw_typhoon_marker(
             side = min(canvas.size)
             radius = max(6, side // 180)
             arm = max(10, side // 90)
-            color = (241, 166, 39)
             outline = (20, 20, 20)
             draw.ellipse(
                 (x - radius, y - radius, x + radius, y + radius),
@@ -53,8 +54,8 @@ def draw_typhoon_marker(
             draw.text((text_xy[0] + 1, text_xy[1] + 1), label, fill=outline, font=font)
             draw.text(text_xy, label, fill=color, font=font)
             canvas.save(image_path)
-        logging.info("Typhoon marker drawn at %s on %s", xy, image_path)
+        logging.info("Marker %s drawn at %s on %s", label, xy, image_path)
         return True
     except OSError:
-        logging.exception("Failed to draw typhoon marker on %s", image_path)
+        logging.exception("Failed to draw marker on %s", image_path)
         return False

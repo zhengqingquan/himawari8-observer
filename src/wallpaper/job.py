@@ -45,6 +45,8 @@ class WallpaperJobConfig(Protocol):
 
     def is_show_typhoon_marker(self) -> bool: ...
 
+    def is_show_my_location(self) -> bool: ...
+
 
 def job_kwargs_from_config(config: WallpaperJobConfig) -> dict[str, Any]:
     """将 Config getter 映射为 ``build_wallpaper_job`` / ``WallpaperJobRef`` 的 kwargs。"""
@@ -57,6 +59,7 @@ def job_kwargs_from_config(config: WallpaperJobConfig) -> dict[str, Any]:
         "use_yesterday_local_time": config.is_use_yesterday_local_time(),
         "reduce_banding": config.is_reduce_banding(),
         "show_typhoon_marker": config.is_show_typhoon_marker(),
+        "show_my_location": config.is_show_my_location(),
     }
 
 
@@ -70,6 +73,7 @@ def build_wallpaper_job(
     use_yesterday_local_time: bool = False,
     reduce_banding: bool = False,
     show_typhoon_marker: bool = False,
+    show_my_location: bool = False,
     base_dir: Path | None = None,
     run_pipeline: RunPipeline | None = None,
     applied_run_state: dict[str, Any] | None = None,
@@ -96,6 +100,7 @@ def build_wallpaper_job(
             use_yesterday_local_time=use_yesterday_local_time,
             reduce_banding=reduce_banding,
             show_typhoon_marker=show_typhoon_marker,
+            show_my_location=show_my_location,
             base_dir=base_dir,
             applied_run_state=state,
         )
@@ -120,6 +125,7 @@ class WallpaperJobRef:
         use_yesterday_local_time: bool = False,
         reduce_banding: bool = False,
         show_typhoon_marker: bool = False,
+        show_my_location: bool = False,
         base_dir: Path | None = None,
         build_job: BuildJob | None = None,
         run_pipeline: RunPipeline | None = None,
@@ -134,6 +140,7 @@ class WallpaperJobRef:
         self._use_yesterday_local_time = use_yesterday_local_time
         self._reduce_banding = reduce_banding
         self._show_typhoon_marker = show_typhoon_marker
+        self._show_my_location = show_my_location
         self._base_dir = base_dir
         self._build_job = build_job or build_wallpaper_job
         self._run_pipeline = run_pipeline or run_wallpaper_pipeline
@@ -173,6 +180,7 @@ class WallpaperJobRef:
             use_yesterday_local_time=self._use_yesterday_local_time,
             reduce_banding=self._reduce_banding,
             show_typhoon_marker=self._show_typhoon_marker,
+            show_my_location=self._show_my_location,
             base_dir=self._base_dir,
             run_pipeline=self._run_pipeline,
             applied_run_state=self._applied_run_state,
@@ -229,6 +237,7 @@ class WallpaperJobRef:
             use_yesterday_local_time = self._use_yesterday_local_time
             reduce_banding = self._reduce_banding
             show_typhoon_marker = self._show_typhoon_marker
+            show_my_location = self._show_my_location
             base_dir = self._base_dir
             state = self._applied_run_state
             pipeline = self._run_pipeline
@@ -240,6 +249,7 @@ class WallpaperJobRef:
             "use_yesterday_local_time": use_yesterday_local_time,
             "reduce_banding": reduce_banding,
             "show_typhoon_marker": show_typhoon_marker,
+            "show_my_location": show_my_location,
             "base_dir": base_dir,
             "applied_run_state": state,
         }
@@ -330,6 +340,10 @@ class WallpaperJobRef:
         return self._show_typhoon_marker
 
     @property
+    def show_my_location(self) -> bool:
+        return self._show_my_location
+
+    @property
     def base_dir(self) -> Path | None:
         return self._base_dir
 
@@ -381,6 +395,9 @@ class WallpaperJobRef:
 
     def set_show_typhoon_marker(self, show_typhoon_marker: bool) -> None:
         self._set_and_rebuild("_show_typhoon_marker", show_typhoon_marker)
+
+    def set_show_my_location(self, show_my_location: bool) -> None:
+        self._set_and_rebuild("_show_my_location", show_my_location)
 
     def _rebuild_job_locked(self) -> None:
         self._sync_applied_display_unlocked()

@@ -106,6 +106,7 @@ class SettingsFileIoTests(unittest.TestCase):
             self.assertFalse(raw["use_yesterday_local_time"])
             self.assertFalse(raw["reduce_banding"])
             self.assertFalse(raw["show_typhoon_marker"])
+            self.assertFalse(raw["show_my_location"])
             self.assertFalse(raw["startup_enabled"])
 
     def test_partial_save_preserves_logging_flag(self):
@@ -138,13 +139,13 @@ class SettingsFileIoTests(unittest.TestCase):
             loaded = load_settings(path)
             self.assertEqual(
                 loaded["last_run_key"],
-                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, False],
+                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, False, False],
             )
             self.assertEqual(loaded["last_wallpaper_path"], r"E:\app\img\wall.png")
             state = applied_run_state_from_settings(loaded)
             self.assertEqual(
                 state["last"],
-                ("2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, False),
+                ("2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, False, False),
             )
             self.assertEqual(state["wallpaper_path"], r"E:\app\img\wall.png")
 
@@ -183,8 +184,9 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
         self.assertTrue(resolved["use_yesterday_local_time"])
         self.assertFalse(resolved["reduce_banding"])
         self.assertFalse(resolved["show_typhoon_marker"])
+        self.assertFalse(resolved["show_my_location"])
 
-    def test_six_item_fingerprint_pads_typhoon_false(self):
+    def test_six_item_fingerprint_pads_typhoon_and_my_location_false(self):
         cleaned = sanitize_settings(
             {
                 "last_run_key": [
@@ -199,10 +201,10 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
         )
         self.assertEqual(
             cleaned["last_run_key"],
-            ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, True, False],
+            ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, True, False, False],
         )
 
-    def test_seven_item_fingerprint_round_trip(self):
+    def test_seven_item_fingerprint_pads_my_location_false(self):
         cleaned = sanitize_settings(
             {
                 "last_run_key": [
@@ -218,12 +220,37 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
         )
         self.assertEqual(
             cleaned["last_run_key"],
-            ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True],
+            ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True, False],
         )
         state = applied_run_state_from_settings(cleaned)
         self.assertEqual(
             state["last"],
-            ("2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True),
+            ("2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True, False),
+        )
+
+    def test_eight_item_fingerprint_round_trip(self):
+        cleaned = sanitize_settings(
+            {
+                "last_run_key": [
+                    "2026-09-03 02:10:00",
+                    "20d",
+                    True,
+                    0.0,
+                    5.0,
+                    False,
+                    True,
+                    True,
+                ]
+            }
+        )
+        self.assertEqual(
+            cleaned["last_run_key"],
+            ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True, True],
+        )
+        state = applied_run_state_from_settings(cleaned)
+        self.assertEqual(
+            state["last"],
+            ("2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True, True),
         )
 
     def test_cli_overrides_file(self):

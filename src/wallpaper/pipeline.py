@@ -1,4 +1,4 @@
-"""壁纸更新流水线：编排观测时间→瓦片→等分合成图→可选修边→可选台风标注→设桌面→可选清理。"""
+"""壁纸更新流水线：编排观测时间→瓦片→等分合成图→可选修边→可选台风/定位标注→设桌面→可选清理。"""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from pathlib import Path
 from time import struct_time
 
 from src.compose.equal import apply_deband_to_file, apply_margins, compose_equal_image
+from src.download.geoip import fetch_ip_latlon
 from src.download.observation import create_session
 from src.download.observation import fetch_observation_time as fetch_latest_observation_time
 from src.download.observation import observation_time_yesterday_local
@@ -27,6 +28,7 @@ from src.wallpaper.folders import create_pic_folders
 from src.wallpaper.postprocess import (
     AppliedRunKey,
     AppliedRunState,
+    apply_my_location_marker_if_needed,
     apply_typhoon_marker_if_needed,
     build_applied_run_key,
     equal_path_from_disk,
@@ -59,6 +61,7 @@ AdjustWallpaper = Callable[[Pic], Path]
 SetWallpaper = Callable[[Path], bool | None]
 GetDesktopWallpaper = Callable[[], str | None]
 FetchTyphoonCenter = Callable[[struct_time], tuple[float, float] | None]
+FetchIpLatlon = Callable[[], tuple[float, float] | None]
 
 
 def _default_fetch_observation_time() -> struct_time:
@@ -87,6 +90,7 @@ def run_wallpaper_pipeline(
     set_wallpaper: SetWallpaper | None = None,
     get_desktop_wallpaper: GetDesktopWallpaper | None = None,
     fetch_typhoon_center_fn: FetchTyphoonCenter | None = None,
+    fetch_ip_latlon_fn: FetchIpLatlon | None = None,
     resolution_grade: str | None = None,
     auto_adjust: bool = False,
     margin_top_percent: float = DEFAULT_MARGIN_TOP_PERCENT,
@@ -95,6 +99,7 @@ def run_wallpaper_pipeline(
     use_yesterday_local_time: bool = False,
     reduce_banding: bool = False,
     show_typhoon_marker: bool = False,
+    show_my_location: bool = False,
     base_dir: Path | None = None,
     applied_run_state: AppliedRunState | None = None,
     record_run_key: bool = True,
@@ -104,7 +109,7 @@ def run_wallpaper_pipeline(
     托盘 / 定时器只应通过 WallpaperJobRef 触发，不要直接 import 本模块或 download/。
 
     跳过策略（需 ``applied_run_state``）：
-    - 同观测/档位下仅修边或色带/台风变化且 disk/base 仍在 → 从中间图重建，不拉 latest、不下载；
+    - 同观测/档位下仅修边或色带/台风/定位变化且 disk/base 仍在 → 从中间图重建，不拉 latest、不下载；
     - 自动跟 latest 时若观测时间早于已应用 → 跳过（防源站回退导致往回刷）；
     - 指纹相同且桌面仍是上次壁纸文件 → 整段跳过；
     - 指纹相同但桌面已换、成品仍在 → 仅重设壁纸；
@@ -120,6 +125,7 @@ def run_wallpaper_pipeline(
     set_desktop = set_wallpaper or _default_set_wallpaper
     read_desktop = get_desktop_wallpaper or read_desktop_wallpaper
     typhoon_fetch = fetch_typhoon_center_fn or fetch_typhoon_center
+    ip_fetch = fetch_ip_latlon_fn or fetch_ip_latlon
     grade = resolution_grade if resolution_grade is not None else default_grade()
 
     def default_adjust(pic: Pic) -> Path:
@@ -147,6 +153,7 @@ def run_wallpaper_pipeline(
             margin_bottom_percent=margin_bottom_percent,
             reduce_banding=reduce_banding,
             show_typhoon_marker=show_typhoon_marker,
+            show_my_location=show_my_location,
         )
         if provisional is not None and layout_or_postprocess_differs(last, provisional):
             fast = try_postprocess_fast_path(
@@ -157,8 +164,10 @@ def run_wallpaper_pipeline(
                 margin_bottom_percent=margin_bottom_percent,
                 reduce_banding=reduce_banding,
                 show_typhoon_marker=show_typhoon_marker,
+                show_my_location=show_my_location,
                 set_desktop=set_desktop,
                 record_run_key=record_run_key,
+                fetch_ip_latlon_fn=ip_fetch,
             )
             if fast is not None:
                 return fast
@@ -175,6 +184,7 @@ def run_wallpaper_pipeline(
         margin_bottom_percent=margin_bottom_percent,
         reduce_banding=reduce_banding,
         show_typhoon_marker=show_typhoon_marker,
+        show_my_location=show_my_location,
     )
     observation_time = run_key.observation_time
     if not use_yesterday_local_time and applied_run_state is not None:
@@ -186,34 +196,36 @@ def run_wallpaper_pipeline(
                 last.observation_time,
             )
             return None
-    if applied_run_state is not None and applied_run_state.get("last") == run_key:
-        last_path_raw = applied_run_state.get("wallpaper_path")
-        last_path = Path(last_path_raw) if last_path_raw else None
-        if last_path is not None and last_path.is_file():
-            current_desktop = read_desktop()
-            if wallpaper_paths_match(current_desktop, last_path):
+    if applied_run_state is not None:
+        last_key = AppliedRunKey.from_raw(applied_run_state.get("last"))
+        if last_key is not None and last_key == run_key:
+            last_path_raw = applied_run_state.get("wallpaper_path")
+            last_path = Path(last_path_raw) if last_path_raw else None
+            if last_path is not None and last_path.is_file():
+                current_desktop = read_desktop()
+                if wallpaper_paths_match(current_desktop, last_path):
+                    logging.info(
+                        "Observation params unchanged and desktop wallpaper still ours; skipping update"
+                    )
+                    return None
                 logging.info(
-                    "Observation params unchanged and desktop wallpaper still ours; skipping update"
-                )
-                return None
-            logging.info(
-                "Observation params unchanged but desktop wallpaper differs; re-applying %s",
-                last_path,
-            )
-            applied = set_desktop(last_path)
-            if applied is False:
-                logging.warning(
-                    "Wallpaper re-apply failed; leaving run state unchanged: %s",
+                    "Observation params unchanged but desktop wallpaper differs; re-applying %s",
                     last_path,
                 )
-                return None
-            remember_applied(
-                applied_run_state,
-                run_key=run_key,
-                wallpaper_path=last_path,
-                record_run_key=True,
-            )
-            return observation_time
+                applied = set_desktop(last_path)
+                if applied is False:
+                    logging.warning(
+                        "Wallpaper re-apply failed; leaving run state unchanged: %s",
+                        last_path,
+                    )
+                    return None
+                remember_applied(
+                    applied_run_state,
+                    run_key=run_key,
+                    wallpaper_path=last_path,
+                    record_run_key=True,
+                )
+                return observation_time
 
     # 观测时间已刷新后再试一次（例如 last 观测与 latest 相同、仅后处理开关不同）。
     if applied_run_state is not None:
@@ -225,8 +237,10 @@ def run_wallpaper_pipeline(
             margin_bottom_percent=margin_bottom_percent,
             reduce_banding=reduce_banding,
             show_typhoon_marker=show_typhoon_marker,
+            show_my_location=show_my_location,
             set_desktop=set_desktop,
             record_run_key=record_run_key,
+            fetch_ip_latlon_fn=ip_fetch,
         )
         if fast is not None:
             return fast
@@ -274,6 +288,17 @@ def run_wallpaper_pipeline(
             margin_bottom_percent=margin_bottom_percent,
             fetch_typhoon_center_fn=typhoon_fetch,
             applied_run_state=applied_run_state,
+        )
+    if show_my_location:
+        apply_my_location_marker_if_needed(
+            wallpaper_path=wallpaper_path,
+            pic_side=pic.pic_side,
+            auto_adjust=auto_adjust,
+            margin_top_percent=margin_top_percent,
+            margin_bottom_percent=margin_bottom_percent,
+            fetch_ip_latlon_fn=ip_fetch,
+            applied_run_state=applied_run_state,
+            allow_network=True,
         )
     applied = set_desktop(wallpaper_path)
     if applied is False:

@@ -37,6 +37,7 @@ def default_settings() -> dict[str, Any]:
         "use_yesterday_local_time": False,
         "reduce_banding": False,
         "show_typhoon_marker": False,
+        "show_my_location": False,
         "startup_enabled": False,
         "logging_enabled": False,
     }
@@ -71,14 +72,15 @@ def _coerce_bool(value: Any) -> bool | None:
 def _coerce_last_run_key(value: Any) -> list[Any] | None:
     """校验指纹列表。
 
-    完整 7 项：``[obs_time, grade, auto_adjust, top%, bottom%, reduce_banding,
-    show_typhoon_marker]``。兼容旧版 5/6 项（缺省布尔为 ``False``）。
+    完整 8 项：``[obs_time, grade, auto_adjust, top%, bottom%, reduce_banding,
+    show_typhoon_marker, show_my_location]``。兼容旧版 5/6/7 项（缺省布尔为 ``False``）。
     """
-    if not isinstance(value, (list, tuple)) or len(value) not in (5, 6, 7):
+    if not isinstance(value, (list, tuple)) or len(value) not in (5, 6, 7, 8):
         return None
     obs_time, grade, auto_adjust, top, bottom = value[:5]
     reduce_banding = value[5] if len(value) >= 6 else False
-    show_typhoon_marker = value[6] if len(value) == 7 else False
+    show_typhoon_marker = value[6] if len(value) >= 7 else False
+    show_my_location = value[7] if len(value) == 8 else False
     if not isinstance(obs_time, str) or not obs_time.strip():
         return None
     if not isinstance(grade, str) or not grade.strip():
@@ -88,6 +90,8 @@ def _coerce_last_run_key(value: Any) -> list[Any] | None:
     if not isinstance(reduce_banding, bool):
         return None
     if not isinstance(show_typhoon_marker, bool):
+        return None
+    if not isinstance(show_my_location, bool):
         return None
     top_f = _coerce_percent(top)
     bottom_f = _coerce_percent(bottom)
@@ -101,6 +105,7 @@ def _coerce_last_run_key(value: Any) -> list[Any] | None:
         bottom_f,
         reduce_banding,
         show_typhoon_marker,
+        show_my_location,
     ]
 
 
@@ -129,6 +134,27 @@ def _coerce_typhoon_center_cache(value: Any) -> dict[str, Any] | None:
     }
 
 
+def _coerce_my_location_cache(value: Any) -> dict[str, Any] | None:
+    """校验 ``{lat, lon, fetched_at}``（Unix 秒）。"""
+    if not isinstance(value, dict):
+        return None
+    lat = value.get("lat")
+    lon = value.get("lon")
+    fetched_at = value.get("fetched_at")
+    if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+        return None
+    if not isinstance(fetched_at, (int, float)):
+        return None
+    lat_f, lon_f = float(lat), float(lon)
+    if not (-90.0 <= lat_f <= 90.0 and -180.0 <= lon_f <= 180.0):
+        return None
+    return {
+        "lat": lat_f,
+        "lon": lon_f,
+        "fetched_at": float(fetched_at),
+    }
+
+
 # 字段表：增删 settings 键只改此处；sanitize 循环共用同一套 coerce。
 _SETTINGS_FIELD_COERCERS: tuple[tuple[str, Callable[[Any], Any | None]], ...] = (
     ("resolution", _coerce_resolution),
@@ -139,11 +165,13 @@ _SETTINGS_FIELD_COERCERS: tuple[tuple[str, Callable[[Any], Any | None]], ...] = 
     ("use_yesterday_local_time", _coerce_bool),
     ("reduce_banding", _coerce_bool),
     ("show_typhoon_marker", _coerce_bool),
+    ("show_my_location", _coerce_bool),
     ("startup_enabled", _coerce_bool),
     ("logging_enabled", _coerce_bool),
     ("last_run_key", _coerce_last_run_key),
     ("last_wallpaper_path", _coerce_wallpaper_path),
     ("typhoon_center_cache", _coerce_typhoon_center_cache),
+    ("my_location_cache", _coerce_my_location_cache),
 )
 
 _SETTINGS_KEYS = frozenset(key for key, _ in _SETTINGS_FIELD_COERCERS)
@@ -235,6 +263,7 @@ def settings_dict_from_job(
     use_yesterday_local_time: bool = False,
     reduce_banding: bool = False,
     show_typhoon_marker: bool = False,
+    show_my_location: bool = False,
 ) -> dict[str, Any]:
     """从壁纸任务字段组装可写入的 settings dict（不含 logging / 应用指纹）。"""
     return {
@@ -246,6 +275,7 @@ def settings_dict_from_job(
         "use_yesterday_local_time": use_yesterday_local_time,
         "reduce_banding": reduce_banding,
         "show_typhoon_marker": show_typhoon_marker,
+        "show_my_location": show_my_location,
     }
 
 
@@ -268,6 +298,11 @@ def applied_run_state_from_settings(settings: dict[str, Any] | None) -> dict[str
         coerced = _coerce_typhoon_center_cache(cache)
         if coerced is not None:
             state["typhoon_center_cache"] = coerced
+    my_loc = settings.get("my_location_cache")
+    if isinstance(my_loc, dict):
+        coerced_loc = _coerce_my_location_cache(my_loc)
+        if coerced_loc is not None:
+            state["my_location_cache"] = coerced_loc
     return state
 
 
@@ -290,6 +325,10 @@ def persist_applied_run_state(
     coerced = _coerce_typhoon_center_cache(cache) if cache is not None else None
     if coerced is not None:
         payload["typhoon_center_cache"] = coerced
+    my_loc = state.get("my_location_cache")
+    coerced_loc = _coerce_my_location_cache(my_loc) if my_loc is not None else None
+    if coerced_loc is not None:
+        payload["my_location_cache"] = coerced_loc
     if not payload:
         return False
     return save_settings(payload, path=path)

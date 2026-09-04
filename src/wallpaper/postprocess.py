@@ -1,9 +1,10 @@
-"""成图指纹、中间路径命名、后处理快路径与台风标注辅助。"""
+"""成图指纹、中间路径命名、后处理快路径与台风/定位标注辅助。"""
 
 from __future__ import annotations
 
 import logging
 import shutil
+import time
 from collections.abc import Callable
 from pathlib import Path
 from time import strftime, struct_time
@@ -24,12 +25,16 @@ from src.resolution_grade import grade_to_pixel
 AppliedRunState = MutableMapping[str, Any]
 SetWallpaper = Callable[[Path], bool | None]
 FetchTyphoonCenter = Callable[[struct_time], tuple[float, float] | None]
+FetchIpLatlon = Callable[[], tuple[float, float] | None]
 
 _OBS_TIME_FMT = "%Y-%m-%d %H:%M:%S"
+_MY_LOCATION_CACHE_TTL_SEC = 24 * 60 * 60
+_MY_LOCATION_MARKER_COLOR = (64, 156, 255)
+_MY_LOCATION_MARKER_LABEL = "ME"
 
 
 class AppliedRunKey(NamedTuple):
-    """成图指纹：观测时间 + 影响成品的参数（落盘仍为 7 项 list）。"""
+    """成图指纹：观测时间 + 影响成品的参数（落盘仍为 8 项 list）。"""
 
     observation_time: str
     resolution_grade: str
@@ -38,10 +43,11 @@ class AppliedRunKey(NamedTuple):
     margin_bottom_percent: float
     reduce_banding: bool
     show_typhoon_marker: bool
+    show_my_location: bool
 
     @property
     def layout(self) -> tuple[bool, float, float]:
-        """修边开关与上下边距（与色带/台风无关）。"""
+        """修边开关与上下边距（与色带/台风/定位无关）。"""
         return (
             self.auto_adjust,
             self.margin_top_percent,
@@ -50,10 +56,10 @@ class AppliedRunKey(NamedTuple):
 
     @classmethod
     def from_raw(cls, value: Any) -> AppliedRunKey | None:
-        """接受本类型或 5/6/7 项序列（缺省布尔为 ``False``）；非法则 ``None``。"""
+        """接受本类型或 5/6/7/8 项序列（缺省布尔为 ``False``）；非法则 ``None``。"""
         if isinstance(value, cls):
             return value
-        if not isinstance(value, (tuple, list)) or len(value) not in (5, 6, 7):
+        if not isinstance(value, (tuple, list)) or len(value) not in (5, 6, 7, 8):
             return None
         try:
             obs_time = str(value[0])
@@ -62,7 +68,8 @@ class AppliedRunKey(NamedTuple):
             top = float(value[3])
             bottom = float(value[4])
             reduce_banding = bool(value[5]) if len(value) >= 6 else False
-            show_typhoon = bool(value[6]) if len(value) == 7 else False
+            show_typhoon = bool(value[6]) if len(value) >= 7 else False
+            show_my_location = bool(value[7]) if len(value) == 8 else False
         except (TypeError, ValueError):
             return None
         if not obs_time or not grade:
@@ -75,11 +82,12 @@ class AppliedRunKey(NamedTuple):
             bottom,
             reduce_banding,
             show_typhoon,
+            show_my_location,
         )
 
 
 def wallpaper_base_path(wallpaper_path: Path) -> Path:
-    """未去色带、无台风标记的底图路径：``{stem}_base{suffix}``。"""
+    """未去色带、无台风/定位标记的底图路径：``{stem}_base{suffix}``。"""
     return wallpaper_path.with_name(f"{wallpaper_path.stem}_base{wallpaper_path.suffix}")
 
 
@@ -117,6 +125,7 @@ def build_applied_run_key(
     margin_bottom_percent: float,
     reduce_banding: bool = False,
     show_typhoon_marker: bool = False,
+    show_my_location: bool = False,
 ) -> AppliedRunKey:
     """用于判断是否可跳过重复下载的指纹（观测时间 + 影响成图的参数）。"""
     return AppliedRunKey(
@@ -127,6 +136,7 @@ def build_applied_run_key(
         float(margin_bottom_percent),
         bool(reduce_banding),
         bool(show_typhoon_marker),
+        bool(show_my_location),
     )
 
 
@@ -240,7 +250,7 @@ def obs_grade_match(last: AppliedRunKey, run_key: AppliedRunKey) -> bool:
 
 
 def layout_or_postprocess_differs(last: Any, run_key: AppliedRunKey) -> bool:
-    """同观测与档位，修边/色带/台风任一不同。"""
+    """同观测与档位，修边/色带/台风/定位任一不同。"""
     last_key = AppliedRunKey.from_raw(last)
     if last_key is None:
         return False
@@ -256,6 +266,7 @@ def provisional_run_key_from_last(
     margin_bottom_percent: float,
     reduce_banding: bool,
     show_typhoon_marker: bool,
+    show_my_location: bool = False,
 ) -> AppliedRunKey | None:
     """用上次指纹的观测时间 + 当前成图参数拼临时指纹（不访问网络）。"""
     last_key = AppliedRunKey.from_raw(last)
@@ -269,6 +280,7 @@ def provisional_run_key_from_last(
         float(margin_bottom_percent),
         bool(reduce_banding),
         bool(show_typhoon_marker),
+        bool(show_my_location),
     )
 
 
@@ -316,11 +328,13 @@ def draw_typhoon_marker_at(
     auto_adjust: bool,
     margin_top_percent: float,
     margin_bottom_percent: float,
+    label: str = "TY",
+    color: tuple[int, int, int] = (241, 166, 39),
 ) -> bool:
     """按经纬度在壁纸上画标记；成功返回 True。"""
     xy = latlon_to_himawari_fd_xy(lat, lon, pic_side)
     if xy is None:
-        logging.info("Typhoon center projects outside full-disk frame; skipping marker")
+        logging.info("Marker projects outside full-disk frame; skipping")
         return False
     draw_xy = xy
     if auto_adjust:
@@ -328,9 +342,7 @@ def draw_typhoon_marker_at(
             with Image.open(wallpaper_path) as img:
                 canvas_w, canvas_h = img.size
         except OSError:
-            logging.exception(
-                "Failed to open wallpaper for typhoon marker offset: %s", wallpaper_path
-            )
+            logging.exception("Failed to open wallpaper for marker offset: %s", wallpaper_path)
             return False
         if canvas_w != pic_side or canvas_h != pic_side:
             screen_width, screen_height = get_primary_screen_size()
@@ -342,7 +354,7 @@ def draw_typhoon_marker_at(
                 bottom_percent=margin_bottom_percent,
             )
             draw_xy = (image_x + xy[0], image_y + xy[1])
-    return draw_typhoon_marker(wallpaper_path, draw_xy)
+    return draw_typhoon_marker(wallpaper_path, draw_xy, label=label, color=color)
 
 
 def apply_typhoon_marker_if_needed(
@@ -371,6 +383,86 @@ def apply_typhoon_marker_if_needed(
         auto_adjust=auto_adjust,
         margin_top_percent=margin_top_percent,
         margin_bottom_percent=margin_bottom_percent,
+    )
+
+
+def store_my_location_cache(
+    applied_run_state: AppliedRunState | None,
+    lat: float,
+    lon: float,
+    *,
+    fetched_at: float | None = None,
+) -> None:
+    if applied_run_state is None:
+        return
+    applied_run_state["my_location_cache"] = {
+        "lat": float(lat),
+        "lon": float(lon),
+        "fetched_at": float(time.time() if fetched_at is None else fetched_at),
+    }
+
+
+def cached_my_location(
+    applied_run_state: AppliedRunState | None,
+    *,
+    now: float | None = None,
+    ttl_sec: float = _MY_LOCATION_CACHE_TTL_SEC,
+) -> tuple[float, float] | None:
+    """缓存未过期时返回 ``(lat, lon)``。"""
+    if applied_run_state is None:
+        return None
+    raw = applied_run_state.get("my_location_cache")
+    if not isinstance(raw, dict):
+        return None
+    lat = raw.get("lat")
+    lon = raw.get("lon")
+    fetched_at = raw.get("fetched_at")
+    if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+        return None
+    if not isinstance(fetched_at, (int, float)):
+        return None
+    clock = time.time() if now is None else now
+    if clock - float(fetched_at) > ttl_sec:
+        return None
+    return float(lat), float(lon)
+
+
+def apply_my_location_marker_if_needed(
+    *,
+    wallpaper_path: Path,
+    pic_side: int,
+    auto_adjust: bool,
+    margin_top_percent: float,
+    margin_bottom_percent: float,
+    fetch_ip_latlon_fn: FetchIpLatlon,
+    applied_run_state: AppliedRunState | None = None,
+    allow_network: bool = True,
+) -> None:
+    """用缓存或 IP 粗定位在壁纸上画「我」标记；失败只记日志。
+
+    Args:
+        allow_network: 为 False 时仅使用未过期缓存；为 True 时缓存缺失/过期可联网。
+    """
+    center = cached_my_location(applied_run_state)
+    if center is None and allow_network:
+        center = fetch_ip_latlon_fn()
+        if center is not None:
+            store_my_location_cache(applied_run_state, center[0], center[1])
+    if center is None:
+        if not allow_network:
+            logging.info("Postprocess fast path: no my-location cache; marker not drawn")
+        return
+    lat, lon = center
+    draw_typhoon_marker_at(
+        wallpaper_path=wallpaper_path,
+        pic_side=pic_side,
+        lat=lat,
+        lon=lon,
+        auto_adjust=auto_adjust,
+        margin_top_percent=margin_top_percent,
+        margin_bottom_percent=margin_bottom_percent,
+        label=_MY_LOCATION_MARKER_LABEL,
+        color=_MY_LOCATION_MARKER_COLOR,
     )
 
 
@@ -421,6 +513,7 @@ def _rebuild_from_base(
         and last_wallpaper.is_file()
         and not last.reduce_banding
         and not last.show_typhoon_marker
+        and not last.show_my_location
     ):
         try:
             base = ensure_unmarked_base(last_wallpaper)
@@ -478,10 +571,12 @@ def try_postprocess_fast_path(
     margin_bottom_percent: float,
     reduce_banding: bool,
     show_typhoon_marker: bool,
+    show_my_location: bool = False,
     set_desktop: SetWallpaper,
     record_run_key: bool,
+    fetch_ip_latlon_fn: FetchIpLatlon | None = None,
 ) -> str | None:
-    """同观测/档位下仅修边或色带/台风变化时：从 disk/base 重建成品（不拉网络、不下载）。
+    """同观测/档位下仅修边或色带/台风/定位变化时：从 disk/base 重建成品（不拉 latest、不下载）。
 
     Returns:
         成功时返回观测时间字符串；无法走快路径时 ``None``（调用方应继续全量）。
@@ -507,7 +602,7 @@ def try_postprocess_fast_path(
 
     try:
         if layout_same:
-            # 同布局：复用 *_base（色带/台风开关变化）。
+            # 同布局：复用 *_base（色带/台风/定位开关变化）。
             base = _rebuild_from_base(
                 applied_run_state=applied_run_state,
                 last=last,
@@ -539,11 +634,25 @@ def try_postprocess_fast_path(
                 margin_top_percent=margin_top_percent,
                 margin_bottom_percent=margin_bottom_percent,
             )
+        if show_my_location:
+            # IP 定位与观测时间无关：快路径无缓存时允许联网，避免首次开启永远不画。
+            apply_my_location_marker_if_needed(
+                wallpaper_path=wallpaper_path,
+                pic_side=pic_side,
+                auto_adjust=auto_adjust,
+                margin_top_percent=margin_top_percent,
+                margin_bottom_percent=margin_bottom_percent,
+                fetch_ip_latlon_fn=fetch_ip_latlon_fn or (lambda: None),
+                applied_run_state=applied_run_state,
+                allow_network=True,
+            )
         logging.info(
-            "Postprocess fast path: rebuilt wallpaper (layout_same=%s banding=%s typhoon=%s)",
+            "Postprocess fast path: rebuilt wallpaper "
+            "(layout_same=%s banding=%s typhoon=%s my_location=%s)",
             layout_same,
             reduce_banding,
             show_typhoon_marker,
+            show_my_location,
         )
     except OSError:
         logging.exception("Postprocess fast path failed while rebuilding wallpaper")

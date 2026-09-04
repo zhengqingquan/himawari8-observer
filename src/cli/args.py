@@ -124,6 +124,15 @@ class Config:
         )
 
         self._parser.add_argument(
+            "--show-my-location",
+            dest="show_my_location",
+            default=None,
+            action=argparse.BooleanOptionalAction,
+            help="Mark approximate location from IP geolocation on wallpaper "
+            "(default: off; use --show-my-location to enable).",
+        )
+
+        self._parser.add_argument(
             "--logging",
             dest="logging_enabled",
             default=None,
@@ -146,6 +155,7 @@ class Config:
             "use_yesterday_local_time": self._args.use_yesterday_local_time,
             "reduce_banding": self._args.reduce_banding,
             "show_typhoon_marker": self._args.show_typhoon_marker,
+            "show_my_location": self._args.show_my_location,
             "logging_enabled": self._args.logging_enabled,
         }
         self._resolved = resolve_runtime_settings(cli_values)
@@ -166,6 +176,7 @@ class Config:
         )
         logging.info("Reduce banding: %s", self._resolved["reduce_banding"])
         logging.info("Show typhoon marker: %s", self._resolved["show_typhoon_marker"])
+        logging.info("Show my location: %s", self._resolved["show_my_location"])
         logging.info("Logging enabled: %s", self._resolved["logging_enabled"])
 
     def get_download_resolution(self):
@@ -191,6 +202,9 @@ class Config:
 
     def is_show_typhoon_marker(self):
         return self._resolved["show_typhoon_marker"]
+
+    def is_show_my_location(self):
+        return self._resolved["show_my_location"]
 
     def is_logging_enabled(self):
         return self._resolved["logging_enabled"]
