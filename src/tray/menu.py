@@ -30,7 +30,7 @@ from src.metadata.soft_info import (
     WEBSITE,
 )
 from src.settings import save_settings, settings_dict_from_job
-from src.startup import add_to_startup_exe, is_startup_set, remove_from_startup_exe
+from src.startup import apply_startup_enabled, is_startup_set
 from src.update_check import UpdateStatus, check_for_update
 from src.wallpaper.job import WallpaperJobRef
 from src.wallpaper.update import (
@@ -185,11 +185,11 @@ def on_open_program_dir(icon, item):
 
 
 def on_startup(icon, item):
-    """切换开机启动注册表项。"""
-    if is_startup_set():
-        remove_from_startup_exe()
-    else:
-        add_to_startup_exe()
+    """切换开机启动，并写入 settings.json（默认关闭）。"""
+    enabled = not is_startup_set()
+    apply_startup_enabled(enabled)
+    save_settings({"startup_enabled": enabled})
+    logging.info("Startup on boot %s", "enabled" if enabled else "disabled")
 
 
 def on_open_log(icon, item):

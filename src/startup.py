@@ -63,3 +63,11 @@ def remove_from_startup_exe() -> None:
         logging.info("Startup entry already absent")
     except OSError:
         logging.exception("Failed to remove startup entry")
+
+
+def apply_startup_enabled(enabled: bool, *, exe_path=None) -> None:
+    """按开关同步注册表开机启动项（默认关闭时确保项不存在）。"""
+    if enabled:
+        add_to_startup_exe(exe_path=exe_path)
+    else:
+        remove_from_startup_exe()

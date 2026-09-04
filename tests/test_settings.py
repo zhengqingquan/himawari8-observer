@@ -105,6 +105,7 @@ class SettingsFileIoTests(unittest.TestCase):
             self.assertFalse(raw["logging_enabled"])
             self.assertFalse(raw["use_yesterday_local_time"])
             self.assertFalse(raw["reduce_banding"])
+            self.assertFalse(raw["startup_enabled"])
 
     def test_partial_save_preserves_logging_flag(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -10,7 +10,8 @@ from src.event.event import wait_for_shutdown
 from src.log.log import init_logging
 from src.resolution_grade import pixel_to_grade
 from src.scheduler import start_scheduler
-from src.settings import applied_run_state_from_settings, load_settings
+from src.settings import applied_run_state_from_settings, default_settings, load_settings
+from src.startup import apply_startup_enabled
 from src.tray.menu import setup_tray_icon
 from src.wallpaper.job import WallpaperJobRef
 
@@ -21,8 +22,15 @@ def main() -> None:
         init_logging(enabled=config.is_logging_enabled())
         config.log_resolved()
 
+        file_settings = load_settings()
+        startup_enabled = bool(
+            {**default_settings(), **file_settings}.get("startup_enabled", False)
+        )
+        apply_startup_enabled(startup_enabled)
+        logging.info("Startup on boot: %s", "enabled" if startup_enabled else "disabled")
+
         grade = pixel_to_grade(config.get_download_resolution())
-        applied_state = applied_run_state_from_settings(load_settings())
+        applied_state = applied_run_state_from_settings(file_settings)
         job_ref = WallpaperJobRef(
             grade,
             auto_adjust=config.is_auto_adjust_picture(),

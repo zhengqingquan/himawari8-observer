@@ -28,6 +28,7 @@ _SETTINGS_KEYS = frozenset(
         "cleanup_after_apply",
         "use_yesterday_local_time",
         "reduce_banding",
+        "startup_enabled",
         "logging_enabled",
         "last_run_key",
         "last_wallpaper_path",
@@ -50,6 +51,7 @@ def default_settings() -> dict[str, Any]:
         "cleanup_after_apply": True,
         "use_yesterday_local_time": False,
         "reduce_banding": False,
+        "startup_enabled": False,
         "logging_enabled": False,
     }
 
@@ -188,6 +190,16 @@ def sanitize_settings(raw: Any) -> dict[str, Any]:
             )
         else:
             cleaned["reduce_banding"] = reduce_banding
+
+    if "startup_enabled" in raw:
+        startup_enabled = _coerce_bool(raw["startup_enabled"])
+        if startup_enabled is None:
+            logging.warning(
+                "Ignoring invalid settings.startup_enabled: %r",
+                raw["startup_enabled"],
+            )
+        else:
+            cleaned["startup_enabled"] = startup_enabled
 
     if "logging_enabled" in raw:
         logging_enabled = _coerce_bool(raw["logging_enabled"])
