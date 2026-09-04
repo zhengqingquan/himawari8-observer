@@ -727,6 +727,114 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 self.assertTrue(Path(state["wallpaper_path"]).is_file())
                 self.assertGreaterEqual(len(set_names), 2)
 
+    def test_refresh_postprocess_after_download_drops_typhoon(self):
+        """下载中途关掉台风：上墙前 refresh 后新图不应再画台风。"""
+        draws = []
+        set_paths = []
+
+        def fetch_observation_time():
+            return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
+
+        def download_tiles(pic):
+            for entry in pic.tiles.values():
+                entry.done = True
+
+        def compose_equal(pic):
+            Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
+            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(
+                pic.final_path_equal
+            )
+
+        def set_wallpaper(path: Path):
+            set_paths.append(Path(path).name)
+            return True
+
+        def fetch_center(_obs):
+            return (29.024, 128.437)
+
+        def fake_draw(image_path, xy, **kwargs):
+            draws.append(kwargs.get("label"))
+            return True
+
+        live = {"show_typhoon_marker": True, "show_my_location": False}
+
+        def refresh():
+            live["show_typhoon_marker"] = False
+            return {
+                "auto_adjust": False,
+                "margin_top_percent": 0.0,
+                "margin_bottom_percent": 5.0,
+                "cleanup_after_apply": False,
+                "reduce_banding": False,
+                "show_typhoon_marker": live["show_typhoon_marker"],
+                "show_my_location": False,
+            }
+
+        with temporary_base_dir() as base_dir:
+            with patch("src.wallpaper.postprocess.draw_typhoon_marker", side_effect=fake_draw):
+                result = run_wallpaper_pipeline(
+                    resolution_grade="4d",
+                    fetch_observation_time=fetch_observation_time,
+                    download_tiles=download_tiles,
+                    compose_equal=compose_equal,
+                    set_wallpaper=set_wallpaper,
+                    fetch_typhoon_center_fn=fetch_center,
+                    show_typhoon_marker=True,
+                    refresh_postprocess=refresh,
+                    cleanup_after_apply=False,
+                    applied_run_state={"last": None, "wallpaper_path": None},
+                    base_dir=base_dir,
+                )
+
+        self.assertEqual(result, "2021-06-03 05:20:00")
+        self.assertEqual(draws, [], "typhoon must not be drawn after refresh turns it off")
+        self.assertEqual(len(set_paths), 1)
+
+
+class WallpaperWritablePathTests(unittest.TestCase):
+    def test_alternate_and_pick_writable(self):
+        from src.wallpaper.postprocess import (
+            alternate_wallpaper_path,
+            pick_writable_wallpaper_path,
+        )
+
+        path = Path(r"E:\app\img\wall_adjust.png")
+        alt = alternate_wallpaper_path(path)
+        self.assertEqual(alt.name, "wall_adjust_b.png")
+        self.assertEqual(alternate_wallpaper_path(alt), path)
+
+        same = pick_writable_wallpaper_path(path, current_desktop=str(path))
+        self.assertEqual(same, alt)
+        free = pick_writable_wallpaper_path(path, current_desktop=r"E:\other\desk.png")
+        self.assertEqual(free, path)
+
+    def test_copy2_wallpaper_falls_back_on_winerror_1224(self):
+        import shutil
+        from unittest.mock import patch
+
+        from src.wallpaper.postprocess import copy2_wallpaper
+
+        real_copy2 = shutil.copy2
+        with temporary_base_dir() as base_dir:
+            src = base_dir / "src.png"
+            dest = base_dir / "dest.png"
+            Image.new("RGB", (8, 8), (1, 2, 3)).save(src)
+            calls = {"n": 0}
+
+            def fake_copy2(a, b):
+                calls["n"] += 1
+                if calls["n"] == 1:
+                    err = OSError(22, "mapped")
+                    err.winerror = 1224
+                    raise err
+                return real_copy2(a, b)
+
+            with patch("src.wallpaper.postprocess.shutil.copy2", side_effect=fake_copy2):
+                written = copy2_wallpaper(src, dest)
+
+            self.assertEqual(written.name, "dest_b.png")
+            self.assertTrue(written.is_file())
+
 
 if __name__ == "__main__":
     unittest.main()

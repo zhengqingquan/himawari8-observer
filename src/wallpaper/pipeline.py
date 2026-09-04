@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from time import struct_time
+from typing import Any
 
 from src.compose.equal import apply_deband_to_file, apply_margins, compose_equal_image
 from src.download.geoip import fetch_ip_latlon
@@ -31,8 +32,10 @@ from src.wallpaper.postprocess import (
     apply_my_location_marker_if_needed,
     apply_typhoon_marker_if_needed,
     build_applied_run_key,
+    copy2_wallpaper,
     equal_path_from_disk,
     layout_or_postprocess_differs,
+    pick_writable_wallpaper_path,
     provisional_run_key_from_last,
     remember_applied,
     save_disk_copy,
@@ -62,6 +65,7 @@ SetWallpaper = Callable[[Path], bool | None]
 GetDesktopWallpaper = Callable[[], str | None]
 FetchTyphoonCenter = Callable[[struct_time], tuple[float, float] | None]
 FetchIpLatlon = Callable[[], tuple[float, float] | None]
+RefreshPostprocess = Callable[[], Mapping[str, Any]]
 
 
 def _default_fetch_observation_time() -> struct_time:
@@ -91,6 +95,7 @@ def run_wallpaper_pipeline(
     get_desktop_wallpaper: GetDesktopWallpaper | None = None,
     fetch_typhoon_center_fn: FetchTyphoonCenter | None = None,
     fetch_ip_latlon_fn: FetchIpLatlon | None = None,
+    refresh_postprocess: RefreshPostprocess | None = None,
     resolution_grade: str | None = None,
     auto_adjust: bool = False,
     margin_top_percent: float = DEFAULT_MARGIN_TOP_PERCENT,
@@ -114,6 +119,9 @@ def run_wallpaper_pipeline(
     - 指纹相同且桌面仍是上次壁纸文件 → 整段跳过；
     - 指纹相同但桌面已换、成品仍在 → 仅重设壁纸；
     - 否则走完整流水线。
+
+    ``refresh_postprocess``：下载完成后、合成上墙前再取一次成图开关（修边/色带/台风/定位等），
+    避免长下载期间托盘改参仍按启动时冻结值上墙造成闪回。
 
     Returns:
         成功上墙（含仅重设）时返回观测时间 ``YYYY-MM-DD HH:MM:SS``（UTC）；
@@ -168,6 +176,7 @@ def run_wallpaper_pipeline(
                 set_desktop=set_desktop,
                 record_run_key=record_run_key,
                 fetch_ip_latlon_fn=ip_fetch,
+                get_desktop=read_desktop,
             )
             if fast is not None:
                 return fast
@@ -241,6 +250,7 @@ def run_wallpaper_pipeline(
             set_desktop=set_desktop,
             record_run_key=record_run_key,
             fetch_ip_latlon_fn=ip_fetch,
+            get_desktop=read_desktop,
         )
         if fast is not None:
             return fast
@@ -251,6 +261,35 @@ def run_wallpaper_pipeline(
     if not pic.download_finish():
         logging.warning("Not all tiles downloaded; skipping compose and wallpaper apply")
         return None
+
+    # 下载可能很长：上墙前再读托盘最新成图开关，避免闪回已关闭的台风/定位等。
+    if refresh_postprocess is not None:
+        live = refresh_postprocess()
+        auto_adjust = bool(live.get("auto_adjust", auto_adjust))
+        margin_top_percent = float(live.get("margin_top_percent", margin_top_percent))
+        margin_bottom_percent = float(live.get("margin_bottom_percent", margin_bottom_percent))
+        reduce_banding = bool(live.get("reduce_banding", reduce_banding))
+        show_typhoon_marker = bool(live.get("show_typhoon_marker", show_typhoon_marker))
+        show_my_location = bool(live.get("show_my_location", show_my_location))
+        cleanup_after_apply = bool(live.get("cleanup_after_apply", cleanup_after_apply))
+        run_key = AppliedRunKey(
+            observation_time,
+            grade,
+            auto_adjust,
+            margin_top_percent,
+            margin_bottom_percent,
+            reduce_banding,
+            show_typhoon_marker,
+            show_my_location,
+        )
+        logging.info(
+            "Post-download postprocess refresh: adjust=%s banding=%s typhoon=%s my_location=%s",
+            auto_adjust,
+            reduce_banding,
+            show_typhoon_marker,
+            show_my_location,
+        )
+
     # 始终先落等分圆盘，再修边；保留 *_disk 供改边距时后处理。
     if compose_equal is None:
         compose_equal_image(pic, deband=False)
@@ -263,8 +302,21 @@ def run_wallpaper_pipeline(
         logging.exception("Failed to save equal disk copy: %s", equal_path)
         disk_path = wallpaper_disk_path(equal_path)
 
-    wallpaper_path = adjust(pic) if auto_adjust else equal_path
-    wallpaper_path = Path(wallpaper_path)
+    preferred = Path(adjust(pic) if auto_adjust else equal_path)
+    wallpaper_path = pick_writable_wallpaper_path(
+        preferred,
+        current_desktop=read_desktop(),
+    )
+    if wallpaper_path != preferred:
+        try:
+            wallpaper_path = copy2_wallpaper(preferred, wallpaper_path)
+        except OSError:
+            logging.exception(
+                "Failed to copy wallpaper to unlocked path %s; using %s",
+                wallpaper_path,
+                preferred,
+            )
+            wallpaper_path = preferred
     try:
         base_path = save_unmarked_base(wallpaper_path)
     except OSError:

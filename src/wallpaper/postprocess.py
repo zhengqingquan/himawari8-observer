@@ -21,9 +21,11 @@ from src.compose.equal import (
 from src.compose.geo import latlon_to_himawari_fd_xy
 from src.compose.overlay import draw_typhoon_marker
 from src.resolution_grade import grade_to_pixel
+from src.wallpaper.desktop import wallpaper_paths_match
 
 AppliedRunState = MutableMapping[str, Any]
 SetWallpaper = Callable[[Path], bool | None]
+GetDesktopWallpaper = Callable[[], str | None]
 FetchTyphoonCenter = Callable[[struct_time], tuple[float, float] | None]
 FetchIpLatlon = Callable[[], tuple[float, float] | None]
 
@@ -107,6 +109,45 @@ def equal_path_from_disk(disk_path: Path) -> Path:
     if stem.endswith("_disk"):
         stem = stem[: -len("_disk")]
     return disk_path.with_name(f"{stem}{disk_path.suffix}")
+
+
+def alternate_wallpaper_path(path: Path) -> Path:
+    """在 ``name`` 与 ``name_b`` 之间切换，避免覆盖正被桌面占用的文件。"""
+    stem = path.stem
+    if stem.endswith("_b"):
+        return path.with_name(f"{stem[:-2]}{path.suffix}")
+    return path.with_name(f"{stem}_b{path.suffix}")
+
+
+def pick_writable_wallpaper_path(
+    preferred: Path,
+    *,
+    current_desktop: str | Path | None = None,
+) -> Path:
+    """若 ``preferred`` 正是当前桌面壁纸，改写到交替路径。"""
+    if current_desktop and wallpaper_paths_match(current_desktop, preferred):
+        alt = alternate_wallpaper_path(preferred)
+        logging.info(
+            "Desktop wallpaper locks %s; writing to %s instead",
+            preferred,
+            alt,
+        )
+        return alt
+    return preferred
+
+
+def copy2_wallpaper(src: Path, dest: Path) -> Path:
+    """``shutil.copy2``；遇 WinError 1224（桌面映射占用）则写入交替路径。"""
+    try:
+        shutil.copy2(src, dest)
+        return dest
+    except OSError as exc:
+        if getattr(exc, "winerror", None) != 1224:
+            raise
+        alt = alternate_wallpaper_path(dest)
+        logging.info("copy2 hit WinError 1224 on %s; writing to %s", dest, alt)
+        shutil.copy2(src, alt)
+        return alt
 
 
 def wallpaper_output_path(equal_path: Path, *, auto_adjust: bool) -> Path:
@@ -505,8 +546,12 @@ def _rebuild_from_base(
     last_wallpaper: Path,
     wallpaper_path: Path,
     reduce_banding: bool,
-) -> Path | None:
-    """布局未变：从 ``*_base`` 重建成品（可从无标记成品回填 base）。"""
+) -> tuple[Path, Path] | None:
+    """布局未变：从 ``*_base`` 重建成品（可从无标记成品回填 base）。
+
+    Returns:
+        ``(base, written_wallpaper_path)``；无法重建时 ``None``。
+    """
     base = resolve_base_path(applied_run_state, last_wallpaper)
     if (
         not base.is_file()
@@ -524,10 +569,22 @@ def _rebuild_from_base(
         logging.info("Postprocess fast path skipped: unmarked base missing (%s)", base)
         return None
     if reduce_banding:
-        apply_deband_to_file(base, wallpaper_path)
+        try:
+            apply_deband_to_file(base, wallpaper_path)
+            written = wallpaper_path
+        except OSError as exc:
+            if getattr(exc, "winerror", None) != 1224:
+                raise
+            written = alternate_wallpaper_path(wallpaper_path)
+            logging.info(
+                "deband hit WinError 1224 on %s; writing to %s",
+                wallpaper_path,
+                written,
+            )
+            apply_deband_to_file(base, written)
     else:
-        shutil.copy2(base, wallpaper_path)
-    return base
+        written = copy2_wallpaper(base, wallpaper_path)
+    return base, written
 
 
 def _rebuild_from_disk(
@@ -539,27 +596,53 @@ def _rebuild_from_disk(
     margin_top_percent: float,
     margin_bottom_percent: float,
     reduce_banding: bool,
-) -> Path | None:
-    """边距/修边变了：从 ``*_disk`` 再修边，写入新 base，可选去色带。"""
+) -> tuple[Path, Path] | None:
+    """边距/修边变了：从 ``*_disk`` 再修边，写入新 base，可选去色带。
+
+    Returns:
+        ``(base, written_wallpaper_path)``；无法重建时 ``None``。
+    """
     if not disk.is_file():
         logging.info("Postprocess fast path skipped: equal disk missing (%s)", disk)
         return None
     wallpaper_path.parent.mkdir(parents=True, exist_ok=True)
-    if auto_adjust:
-        apply_margins(
-            str(disk),
-            pic_side,
-            str(wallpaper_path),
-            top_percent=margin_top_percent,
-            bottom_percent=margin_bottom_percent,
-            deband=False,
+    written = wallpaper_path
+    try:
+        if auto_adjust:
+            apply_margins(
+                str(disk),
+                pic_side,
+                str(written),
+                top_percent=margin_top_percent,
+                bottom_percent=margin_bottom_percent,
+                deband=False,
+            )
+        else:
+            written = copy2_wallpaper(disk, written)
+    except OSError as exc:
+        if getattr(exc, "winerror", None) != 1224:
+            raise
+        written = alternate_wallpaper_path(wallpaper_path)
+        logging.info(
+            "rebuild-from-disk hit WinError 1224 on %s; writing to %s",
+            wallpaper_path,
+            written,
         )
-    else:
-        shutil.copy2(disk, wallpaper_path)
-    base = save_unmarked_base(wallpaper_path)
+        if auto_adjust:
+            apply_margins(
+                str(disk),
+                pic_side,
+                str(written),
+                top_percent=margin_top_percent,
+                bottom_percent=margin_bottom_percent,
+                deband=False,
+            )
+        else:
+            written = copy2_wallpaper(disk, written)
+    base = save_unmarked_base(written)
     if reduce_banding:
-        apply_deband_to_file(base, wallpaper_path)
-    return base
+        apply_deband_to_file(base, written)
+    return base, written
 
 
 def try_postprocess_fast_path(
@@ -575,6 +658,7 @@ def try_postprocess_fast_path(
     set_desktop: SetWallpaper,
     record_run_key: bool,
     fetch_ip_latlon_fn: FetchIpLatlon | None = None,
+    get_desktop: GetDesktopWallpaper | None = None,
 ) -> str | None:
     """同观测/档位下仅修边或色带/台风/定位变化时：从 disk/base 重建成品（不拉 latest、不下载）。
 
@@ -594,16 +678,21 @@ def try_postprocess_fast_path(
     pic_side = grade_to_pixel(run_key.resolution_grade)
     disk = resolve_disk_path(applied_run_state, last_wallpaper)
     equal_path = equal_path_from_disk(disk)
-    wallpaper_path = (
+    preferred = (
         last_wallpaper
         if layout_same
         else wallpaper_output_path(equal_path, auto_adjust=auto_adjust)
+    )
+    current_desktop = get_desktop() if get_desktop is not None else None
+    wallpaper_path = pick_writable_wallpaper_path(
+        preferred,
+        current_desktop=current_desktop,
     )
 
     try:
         if layout_same:
             # 同布局：复用 *_base（色带/台风/定位开关变化）。
-            base = _rebuild_from_base(
+            rebuilt = _rebuild_from_base(
                 applied_run_state=applied_run_state,
                 last=last,
                 last_wallpaper=last_wallpaper,
@@ -612,7 +701,7 @@ def try_postprocess_fast_path(
             )
         else:
             # 修边/边距变了：从 *_disk 重建。
-            base = _rebuild_from_disk(
+            rebuilt = _rebuild_from_disk(
                 disk=disk,
                 wallpaper_path=wallpaper_path,
                 pic_side=pic_side,
@@ -621,8 +710,9 @@ def try_postprocess_fast_path(
                 margin_bottom_percent=margin_bottom_percent,
                 reduce_banding=reduce_banding,
             )
-        if base is None:
+        if rebuilt is None:
             return None
+        base, wallpaper_path = rebuilt
 
         if show_typhoon_marker:
             _overlay_typhoon_from_cache(

@@ -19,6 +19,7 @@ from src.resolution_grade import (
     progressive_preview_grade,
 )
 from src.settings import persist_applied_run_state
+from src.wallpaper.desktop import get_desktop_wallpaper as read_desktop_wallpaper
 from src.wallpaper.desktop import set_wallpaper as apply_desktop_wallpaper
 from src.wallpaper.pipeline import run_wallpaper_pipeline
 from src.wallpaper.postprocess import (
@@ -83,11 +84,13 @@ def build_wallpaper_job(
     base_dir: Path | None = None,
     run_pipeline: RunPipeline | None = None,
     applied_run_state: dict[str, Any] | None = None,
+    refresh_postprocess: Callable[[], dict[str, Any]] | None = None,
 ) -> Callable[[], None]:
     """返回零参 callable；每次调用使用构造时冻结的参数。
 
     同一 job 闭包内记住上次成功应用的指纹；观测时间与成图参数未变则跳过下载。
     换档 / 改修边等会重建 job，从而清空指纹并强制再跑一轮。
+    ``refresh_postprocess`` 在下载完成后上墙前再读最新成图开关（由 WallpaperJobRef 注入）。
     """
     pipeline = run_pipeline or run_wallpaper_pipeline
     state = (
@@ -109,6 +112,7 @@ def build_wallpaper_job(
             show_my_location=show_my_location,
             base_dir=base_dir,
             applied_run_state=state,
+            refresh_postprocess=refresh_postprocess,
         )
 
     return job
@@ -191,6 +195,7 @@ class WallpaperJobRef:
             base_dir=self._base_dir,
             run_pipeline=self._run_pipeline,
             applied_run_state=self._applied_run_state,
+            refresh_postprocess=self._refresh_postprocess,
         )
 
     def _persist_applied_state_unlocked(self) -> None:
@@ -225,6 +230,47 @@ class WallpaperJobRef:
         with self._lock:
             self._persist_applied_state_unlocked()
         self._notify_applied()
+
+    def _postprocess_snapshot_unlocked(self) -> dict[str, Any]:
+        return {
+            "auto_adjust": self._auto_adjust,
+            "margin_top_percent": self._margin_top_percent,
+            "margin_bottom_percent": self._margin_bottom_percent,
+            "cleanup_after_apply": self._cleanup_after_apply,
+            "reduce_banding": self._reduce_banding,
+            "show_typhoon_marker": self._show_typhoon_marker,
+            "show_my_location": self._show_my_location,
+        }
+
+    def _refresh_postprocess(self) -> dict[str, Any]:
+        with self._lock:
+            return self._postprocess_snapshot_unlocked()
+
+    def _run_with_live_postprocess(
+        self,
+        *,
+        resolution_grade: str | None = None,
+        cleanup_after_apply: bool | None = None,
+        record_run_key: bool = True,
+    ) -> str | None:
+        with self._lock:
+            grade = resolution_grade if resolution_grade is not None else self._grade
+            use_yesterday = self._use_yesterday_local_time
+            base_dir = self._base_dir
+            state = self._applied_run_state
+            pipeline = self._run_pipeline
+            pp = self._postprocess_snapshot_unlocked()
+        if cleanup_after_apply is not None:
+            pp = {**pp, "cleanup_after_apply": cleanup_after_apply}
+        return pipeline(
+            resolution_grade=grade,
+            use_yesterday_local_time=use_yesterday,
+            base_dir=base_dir,
+            applied_run_state=state,
+            record_run_key=record_run_key,
+            refresh_postprocess=self._refresh_postprocess,
+            **pp,
+        )
 
     def try_live_postprocess(self) -> bool:
         """Busy 时立刻对已上墙成品做后处理快路径（不占 update 互斥锁）。
@@ -270,6 +316,7 @@ class WallpaperJobRef:
                 show_my_location=show_my_location,
                 set_desktop=apply_desktop_wallpaper,
                 record_run_key=True,
+                get_desktop=read_desktop_wallpaper,
             )
             if obs is None:
                 return False
@@ -288,38 +335,17 @@ class WallpaperJobRef:
 
         两轮共用同一 ``applied_run_state``。预览轮不写指纹、不清理；目标轮再落盘。
         预览成功上墙后会刷新展示用观测时间并通知 ``on_applied``（仍不写跳过指纹）。
+        每轮上墙前经 ``refresh_postprocess`` 读最新成图开关。
         """
         with self._lock:
             target_grade = self._grade
-            auto_adjust = self._auto_adjust
-            margin_top_percent = self._margin_top_percent
-            margin_bottom_percent = self._margin_bottom_percent
             cleanup_after_apply = self._cleanup_after_apply
-            use_yesterday_local_time = self._use_yesterday_local_time
-            reduce_banding = self._reduce_banding
-            show_typhoon_marker = self._show_typhoon_marker
-            show_my_location = self._show_my_location
-            base_dir = self._base_dir
-            state = self._applied_run_state
-            pipeline = self._run_pipeline
 
-        common = {
-            "auto_adjust": auto_adjust,
-            "margin_top_percent": margin_top_percent,
-            "margin_bottom_percent": margin_bottom_percent,
-            "use_yesterday_local_time": use_yesterday_local_time,
-            "reduce_banding": reduce_banding,
-            "show_typhoon_marker": show_typhoon_marker,
-            "show_my_location": show_my_location,
-            "base_dir": base_dir,
-            "applied_run_state": state,
-        }
         if grade_to_pixel(target_grade) <= preview_pixel:
-            pipeline(
+            self._run_with_live_postprocess(
                 resolution_grade=target_grade,
                 cleanup_after_apply=cleanup_after_apply,
                 record_run_key=True,
-                **common,
             )
             with self._lock:
                 self._persist_applied_state_unlocked()
@@ -338,11 +364,10 @@ class WallpaperJobRef:
         )
         preview_obs: str | None = None
         try:
-            preview_obs = pipeline(
+            preview_obs = self._run_with_live_postprocess(
                 resolution_grade=preview_grade,
                 cleanup_after_apply=False,
                 record_run_key=False,
-                **common,
             )
         except Exception:
             logging.exception(
@@ -353,11 +378,10 @@ class WallpaperJobRef:
             with self._lock:
                 self._last_observation_time = preview_obs
             self._notify_applied()
-        pipeline(
+        self._run_with_live_postprocess(
             resolution_grade=target_grade,
             cleanup_after_apply=cleanup_after_apply,
             record_run_key=True,
-            **common,
         )
         with self._lock:
             self._persist_applied_state_unlocked()
