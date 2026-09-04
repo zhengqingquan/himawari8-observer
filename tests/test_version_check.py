@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
-from src.update_check import (
+from src.version_check import (
     UpdateStatus,
     check_for_update,
     compare_versions,
@@ -78,25 +78,25 @@ class FetchLatestReleaseTagTests(unittest.TestCase):
 
 
 class CheckForUpdateTests(unittest.TestCase):
-    @patch("src.update_check.fetch_latest_release_tag", return_value="v1.3.1")
+    @patch("src.version_check.fetch_latest_release_tag", return_value="v1.3.1")
     def test_up_to_date(self, _mock_fetch):
         result = check_for_update(current_version="v1.3.1")
         self.assertIs(result.status, UpdateStatus.UP_TO_DATE)
         self.assertEqual(result.latest_version, "v1.3.1")
 
-    @patch("src.update_check.fetch_latest_release_tag", return_value="v1.4.0")
+    @patch("src.version_check.fetch_latest_release_tag", return_value="v1.4.0")
     def test_update_available(self, _mock_fetch):
         result = check_for_update(current_version="v1.3.1")
         self.assertIs(result.status, UpdateStatus.UPDATE_AVAILABLE)
         self.assertEqual(result.latest_version, "v1.4.0")
 
-    @patch("src.update_check.fetch_latest_release_tag", return_value="v1.2.0")
+    @patch("src.version_check.fetch_latest_release_tag", return_value="v1.2.0")
     def test_local_ahead_counts_as_up_to_date(self, _mock_fetch):
         result = check_for_update(current_version="v1.3.1")
         self.assertIs(result.status, UpdateStatus.UP_TO_DATE)
 
     @patch(
-        "src.update_check.fetch_latest_release_tag",
+        "src.version_check.fetch_latest_release_tag",
         side_effect=requests.Timeout("timed out"),
     )
     def test_timeout_failed(self, _mock_fetch):

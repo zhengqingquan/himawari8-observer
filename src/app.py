@@ -6,8 +6,8 @@ import logging
 import threading
 
 from src.cli.args import Config
-from src.event.event import wait_for_shutdown
-from src.log.log import init_logging
+from src.event import wait_for_shutdown
+from src.log import init_logging
 from src.resolution_grade import pixel_to_grade
 from src.scheduler import start_scheduler
 from src.settings import applied_run_state_from_settings, default_settings, load_settings

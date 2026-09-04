@@ -2,7 +2,7 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-软件版本以 `src/metadata/soft_info.py` 的 `SOFTWARE_VERSION` 为准（CLI `-v`、托盘关于）。
+软件版本以 `src/metadata/app_info.py` 的 `SOFTWARE_VERSION` 为准（CLI `-v`、托盘关于）。
 
 ## [Unreleased]
 
@@ -26,6 +26,7 @@
 
 - 默认分辨率改为 `2200`（4d）。
 - 补充调度首跑渐进、观测时间解析、桌面壁纸 API、修边几何与指纹灌回/成品缺失等单测。
+- 模块整理：`soft_*` → `app_config` / `app_info`；`update_check` → `version_check`；`cleanup` / `folders` / `desktop` 收进 `wallpaper/`；压平 `pic` / `event` / `log`；一次性入口 `main` → `oneshot`；托盘拆为 `menu` + `actions`。
 
 ## [1.4.0] - 2026-09-03
 

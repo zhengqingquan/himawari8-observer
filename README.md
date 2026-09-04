@@ -70,7 +70,7 @@ python run.py -v
 只跑一轮（不挂托盘 / 调度）：
 
 ```bash
-python -m src.main
+python -m src.oneshot
 ```
 
 常用选项：

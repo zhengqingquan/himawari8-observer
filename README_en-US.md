@@ -70,7 +70,7 @@ python run.py -v
 One-shot run (no tray / scheduler):
 
 ```bash
-python -m src.main
+python -m src.oneshot
 ```
 
 Common options:

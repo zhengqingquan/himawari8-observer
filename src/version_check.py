@@ -8,7 +8,7 @@ from enum import Enum, auto
 
 import requests
 
-from src.metadata.soft_info import (
+from src.metadata.app_info import (
     GITHUB_API_LATEST,
     PROGRAM_NAME,
     SOFTWARE_VERSION,

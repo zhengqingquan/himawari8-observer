@@ -3,8 +3,8 @@
 import unittest
 from datetime import timedelta, timezone
 
-from src.metadata.soft_info import PROGRAM_NAME
-from src.tray.menu import format_observation_local_time, format_tray_icon_title
+from src.metadata.app_info import PROGRAM_NAME
+from src.tray.actions import format_observation_local_time, format_tray_icon_title
 
 
 class FormatObservationLocalTimeTests(unittest.TestCase):

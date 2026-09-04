@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from src.cli.args import Config
-from src.log.log import init_logging
+from src.log import init_logging
 from src.resolution_grade import pixel_to_grade
 from src.wallpaper.job import build_wallpaper_job
 

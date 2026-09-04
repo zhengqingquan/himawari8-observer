@@ -14,6 +14,7 @@ _FORBIDDEN_IMPORT_PREFIXES = (
 
 _GUARDED_FILES = (
     Path("src/tray/menu.py"),
+    Path("src/tray/actions.py"),
     Path("src/scheduler.py"),
 )
 

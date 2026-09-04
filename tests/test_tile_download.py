@@ -4,7 +4,7 @@ import time
 import unittest
 
 from src.download.tiles import download_tiles
-from src.pic.pic import Pic
+from src.pic import Pic
 from tests.workdir_paths import temporary_base_dir
 
 

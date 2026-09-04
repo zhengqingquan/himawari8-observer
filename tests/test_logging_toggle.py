@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from src.log.log import init_logging, is_logging_enabled, set_logging_enabled
+from src.log import init_logging, is_logging_enabled, set_logging_enabled
 
 
 class LoggingToggleTests(unittest.TestCase):
@@ -22,7 +22,7 @@ class LoggingToggleTests(unittest.TestCase):
     def test_enable_and_disable(self):
         with tempfile.TemporaryDirectory() as tmp:
             log_path = Path(tmp) / "debug_log.txt"
-            with patch("src.log.log.LOG_PATH", log_path):
+            with patch("src.log.LOG_PATH", log_path):
                 set_logging_enabled(True)
                 self.assertTrue(is_logging_enabled())
                 logging.info("hello-log-toggle")

@@ -18,7 +18,7 @@ python run.py -v
 python run.py --version
 ```
 
-当前版本字符串来自 `src/metadata/soft_info.py`（例如 `himawari8-observer v1.4.0`）。
+当前版本字符串来自 `src/metadata/app_info.py`（例如 `himawari8-observer v1.4.0`）。
 
 ---
 
@@ -35,7 +35,7 @@ python run.py --version
 | `-v` | `--version` | — | — | 打印版本后退出 |
 | `-h` | `--help` | — | — | 打印帮助后退出 |
 
-分辨率可选值与默认值由 `src/resolution_grade.py` 定义，经 `src/metadata/soft_config.py` 再导出。
+分辨率可选值与默认值由 `src/resolution_grade.py` 定义，经 `src/metadata/app_config.py` 再导出。
 
 程序固定使用瓦片下载（equal）：从 himawari8 按 550×550 分块下载再合成；已移除不可用的 sc-nc-web「完整图」下载选项。
 
@@ -170,10 +170,11 @@ himawari8-observer.exe -h
 |------|------|
 | `run.py` | 薄入口，委托 `src.app.main` |
 | `src/app.py` | 常驻启动：日志、`Config`、托盘、调度 |
+| `src/oneshot.py` | 一次性跑一轮壁纸（`python -m src.oneshot`） |
 | `src/cli/args.py` | 参数定义与读取接口 |
 | `src/resolution_grade.py` | 分辨率档位映射与默认 |
-| `src/metadata/soft_config.py` | 再导出分辨率列表与默认值 |
-| `src/metadata/soft_info.py` | 程序名、版本、描述与帮助 epilog |
+| `src/metadata/app_config.py` | 再导出分辨率列表与默认值 |
+| `src/metadata/app_info.py` | 程序名、版本、描述与帮助 epilog |
 
 读取解析结果可使用：
 

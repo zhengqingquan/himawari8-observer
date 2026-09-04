@@ -5,8 +5,8 @@ from __future__ import annotations
 import argparse
 import logging
 
-from src.metadata.soft_config import IMAGE_RESOLUTION
-from src.metadata.soft_info import DESCRIPTION, EPILOG, PROGRAM_NAME, SOFTWARE_VERSION
+from src.metadata.app_config import IMAGE_RESOLUTION
+from src.metadata.app_info import DESCRIPTION, EPILOG, PROGRAM_NAME, SOFTWARE_VERSION
 from src.settings import resolve_runtime_settings
 
 

@@ -8,22 +8,22 @@ from pathlib import Path
 from time import strftime, struct_time
 from typing import Any
 
-from src.cleanup import cleanup_after_wallpaper_apply
+from src.wallpaper.cleanup import cleanup_after_wallpaper_apply
 from src.compose.equal import apply_margins, compose_equal_image, compose_equal_image_with_margins
 from src.download.observation import create_session
 from src.download.observation import fetch_observation_time as fetch_latest_observation_time
 from src.download.observation import observation_time_yesterday_local
 from src.download.tiles import download_tiles
-from src.folder import create_pic_folders
-from src.metadata.soft_config import (
+from src.wallpaper.folders import create_pic_folders
+from src.metadata.app_config import (
     DEFAULT_MARGIN_BOTTOM_PERCENT,
     DEFAULT_MARGIN_TOP_PERCENT,
 )
-from src.pic.pic import Pic
+from src.pic import Pic
 from src.resolution_grade import default_grade
-from src.set_wallpaper import get_desktop_wallpaper as read_desktop_wallpaper
-from src.set_wallpaper import set_wallpaper as apply_desktop_wallpaper
-from src.set_wallpaper import wallpaper_paths_match
+from src.wallpaper.desktop import get_desktop_wallpaper as read_desktop_wallpaper
+from src.wallpaper.desktop import set_wallpaper as apply_desktop_wallpaper
+from src.wallpaper.desktop import wallpaper_paths_match
 
 FetchObservationTime = Callable[[], struct_time]
 DownloadTiles = Callable[[Pic], None]

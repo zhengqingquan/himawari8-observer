@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from src.set_wallpaper import get_desktop_wallpaper, set_wallpaper, wallpaper_paths_match
+from src.wallpaper.desktop import get_desktop_wallpaper, set_wallpaper, wallpaper_paths_match
 
 
 class WallpaperPathsMatchTests(unittest.TestCase):
@@ -29,14 +29,14 @@ class GetDesktopWallpaperTests(unittest.TestCase):
             return 1
 
         with patch(
-            "src.set_wallpaper.ctypes.windll.user32.SystemParametersInfoW",
+            "src.wallpaper.desktop.ctypes.windll.user32.SystemParametersInfoW",
             side_effect=fake_spi,
         ):
             self.assertEqual(get_desktop_wallpaper(), r"C:\Wallpapers\earth.png")
 
     def test_returns_none_when_api_fails(self):
         with patch(
-            "src.set_wallpaper.ctypes.windll.user32.SystemParametersInfoW",
+            "src.wallpaper.desktop.ctypes.windll.user32.SystemParametersInfoW",
             return_value=0,
         ):
             self.assertIsNone(get_desktop_wallpaper())
@@ -53,7 +53,7 @@ class SetWallpaperTests(unittest.TestCase):
             path = Path(tmp) / "wall.png"
             path.write_bytes(b"png")
             with patch(
-                "src.set_wallpaper.ctypes.windll.user32.SystemParametersInfoW",
+                "src.wallpaper.desktop.ctypes.windll.user32.SystemParametersInfoW",
                 return_value=1,
             ) as spi:
                 self.assertTrue(set_wallpaper(path))
@@ -67,7 +67,7 @@ class SetWallpaperTests(unittest.TestCase):
             path = Path(tmp) / "wall.png"
             path.write_bytes(b"png")
             with patch(
-                "src.set_wallpaper.ctypes.windll.user32.SystemParametersInfoW",
+                "src.wallpaper.desktop.ctypes.windll.user32.SystemParametersInfoW",
                 return_value=0,
             ):
                 self.assertFalse(set_wallpaper(path))

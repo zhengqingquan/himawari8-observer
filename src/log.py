@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from src.metadata.soft_config import LOG_PATH
+from src.metadata.app_config import LOG_PATH
 
 _CONSOLE_HANDLER_NAME = "himawari8_console"
 _FILE_HANDLER_NAME = "himawari8_file"

@@ -9,7 +9,7 @@ from collections.abc import Callable
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 
-from src.metadata.soft_config import DOWNLOAD_INTERVAL_TIME
+from src.metadata.app_config import DOWNLOAD_INTERVAL_TIME
 from src.wallpaper.update import run_wallpaper_update
 
 

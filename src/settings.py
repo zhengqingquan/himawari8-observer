@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from src.metadata.soft_config import (
+from src.metadata.app_config import (
     DEFAULT_MARGIN_BOTTOM_PERCENT,
     DEFAULT_MARGIN_TOP_PERCENT,
     DEFAULT_RESOLUTION,

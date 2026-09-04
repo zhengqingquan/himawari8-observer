@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from time import strftime
 
-from src.metadata.soft_config import PROGRAM_DIR_ABS_PATH
+from src.metadata.app_config import PROGRAM_DIR_ABS_PATH
 from src.resolution_grade import grade_to_grid, tile_pixel
 
 

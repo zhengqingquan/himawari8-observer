@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 
-from src.pic.pic import Pic
+from src.pic import Pic
 
 
 def create_folders(paths) -> None:

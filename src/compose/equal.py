@@ -10,7 +10,7 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageFilter
 
-from src.metadata.soft_config import (
+from src.metadata.app_config import (
     DEFAULT_MARGIN_BOTTOM_PERCENT,
     DEFAULT_MARGIN_TOP_PERCENT,
 )

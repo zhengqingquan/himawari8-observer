@@ -7,7 +7,7 @@ import os
 import sys
 import winreg as reg
 
-from src.metadata.soft_info import PROGRAM_NAME
+from src.metadata.app_info import PROGRAM_NAME
 
 key_value = r"Software\Microsoft\Windows\CurrentVersion\Run"
 app_name = PROGRAM_NAME
