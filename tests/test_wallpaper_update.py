@@ -1,8 +1,9 @@
-"""Seam: pause gates scheduled wallpaper updates; manual can bypass."""
+"""Seam: pause gates scheduled wallpaper updates; manual can bypass; busy queues follow-up."""
 
 import threading
 import unittest
 
+import src.wallpaper.update as update_mod
 from src.wallpaper.update import (
     is_paused,
     pause,
@@ -11,12 +12,20 @@ from src.wallpaper.update import (
 )
 
 
+def _reset_update_gates() -> None:
+    resume()
+    with update_mod._pending_lock:
+        update_mod._pending_run = False
+        update_mod._pending_progressive = False
+        update_mod._pending_bypass_pause = False
+
+
 class WallpaperPauseTests(unittest.TestCase):
     def setUp(self):
-        resume()
+        _reset_update_gates()
 
     def tearDown(self):
-        resume()
+        _reset_update_gates()
 
     def test_pause_and_resume_toggle(self):
         self.assertFalse(is_paused())
@@ -50,10 +59,10 @@ class WallpaperPauseTests(unittest.TestCase):
 
 class RunWallpaperUpdateTests(unittest.TestCase):
     def setUp(self):
-        resume()
+        _reset_update_gates()
 
     def tearDown(self):
-        resume()
+        _reset_update_gates()
 
     def test_requires_pipeline(self):
         with self.assertRaises(TypeError):
@@ -68,11 +77,13 @@ class RunWallpaperUpdateTests(unittest.TestCase):
         self.assertTrue(run_wallpaper_update(pipeline=pipeline))
         self.assertEqual(calls, [1])
 
-    def test_skips_when_busy(self):
+    def test_queues_follow_up_when_busy(self):
         started = threading.Event()
         release = threading.Event()
+        calls = []
 
         def blocking_pipeline():
+            calls.append(1)
             started.set()
             release.wait(timeout=5)
 
@@ -83,12 +94,85 @@ class RunWallpaperUpdateTests(unittest.TestCase):
         worker.start()
         self.assertTrue(started.wait(timeout=2))
 
-        skipped_calls = []
-        self.assertFalse(run_wallpaper_update(pipeline=lambda: skipped_calls.append(1)))
-        self.assertEqual(skipped_calls, [])
+        self.assertFalse(run_wallpaper_update(pipeline=blocking_pipeline))
+        self.assertEqual(len(calls), 1)
 
         release.set()
         worker.join(timeout=2)
+        self.assertEqual(len(calls), 2)
+
+    def test_coalesces_multiple_busy_triggers_into_one_follow_up(self):
+        started = threading.Event()
+        release = threading.Event()
+        calls = []
+
+        def blocking_pipeline():
+            calls.append(1)
+            if len(calls) == 1:
+                started.set()
+                release.wait(timeout=5)
+
+        worker = threading.Thread(
+            target=lambda: run_wallpaper_update(pipeline=blocking_pipeline),
+            daemon=True,
+        )
+        worker.start()
+        self.assertTrue(started.wait(timeout=2))
+
+        self.assertFalse(run_wallpaper_update(pipeline=blocking_pipeline))
+        self.assertFalse(run_wallpaper_update(pipeline=blocking_pipeline))
+        self.assertFalse(run_wallpaper_update(pipeline=blocking_pipeline))
+        self.assertEqual(len(calls), 1)
+
+        release.set()
+        worker.join(timeout=2)
+        self.assertEqual(len(calls), 2)
+
+    def test_queued_respect_pause_dropped_when_paused(self):
+        started = threading.Event()
+        release = threading.Event()
+        calls = []
+
+        def blocking_pipeline():
+            calls.append(1)
+            started.set()
+            release.wait(timeout=5)
+
+        worker = threading.Thread(
+            target=lambda: run_wallpaper_update(pipeline=blocking_pipeline),
+            daemon=True,
+        )
+        worker.start()
+        self.assertTrue(started.wait(timeout=2))
+
+        self.assertFalse(run_wallpaper_update(pipeline=blocking_pipeline, respect_pause=True))
+        pause()
+        release.set()
+        worker.join(timeout=2)
+        self.assertEqual(len(calls), 1)
+
+    def test_queued_manual_runs_even_when_paused(self):
+        started = threading.Event()
+        release = threading.Event()
+        calls = []
+
+        def blocking_pipeline():
+            calls.append(1)
+            started.set()
+            release.wait(timeout=5)
+
+        worker = threading.Thread(
+            target=lambda: run_wallpaper_update(pipeline=blocking_pipeline),
+            daemon=True,
+        )
+        worker.start()
+        self.assertTrue(started.wait(timeout=2))
+
+        self.assertFalse(run_wallpaper_update(pipeline=blocking_pipeline, respect_pause=False))
+        pause()
+        release.set()
+        worker.join(timeout=2)
+        self.assertEqual(len(calls), 2)
 
     def test_progressive_uses_run_progressive_when_available(self):
         calls = []
