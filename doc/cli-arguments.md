@@ -33,10 +33,10 @@ python run.py --version
 | — | `--cleanup-after-apply` / `--no-cleanup-after-apply` | 布尔开关 | **开启** | 设壁纸后清理瓦片与旧目录，保留当前壁纸文件 |
 | — | `--use-yesterday-local-time` / `--no-use-yesterday-local-time` | 布尔开关 | **关闭** | 按本机当前钟点取昨日同时刻影像（UTC 向下取整到 10 分钟） |
 | — | `--reduce-banding` / `--no-reduce-banding` | 布尔开关 | **关闭** | 减轻合成壁纸色带 |
-| — | `--show-typhoon-marker` / `--no-show-typhoon-marker` | 布尔开关 | **关闭** | 在壁纸上标注 NICT 台风中心（有 TY 时） |
-| — | `--show-my-location` / `--no-show-my-location` | 布尔开关 | **关闭** | 在壁纸上标注我的位置（IP 粗定位） |
-| — | `--show-subsolar-point` / `--no-show-subsolar-point` | 布尔开关 | **关闭** | 在壁纸上标注太阳直射点（按观测时间） |
-| — | `--show-sunglint-point` / `--no-show-sunglint-point` | 布尔开关 | **关闭** | 在壁纸上标注海面耀斑（葵花视角镜面点） |
+| — | `--show-typhoon-marker` / `--no-show-typhoon-marker` | 布尔开关 | **关闭** | 标注台风中心与 JTWC INVEST |
+| — | `--show-my-location` / `--no-show-my-location` | 布尔开关 | **关闭** | 标注我的位置（IP 粗定位） |
+| — | `--show-subsolar-point` / `--no-show-subsolar-point` | 布尔开关 | **关闭** | 标注太阳直射点（按观测时间） |
+| — | `--show-sunglint-point` / `--no-show-sunglint-point` | 布尔开关 | **关闭** | 标注海面耀斑（葵花视角镜面点） |
 | — | `--download-interval-minutes` | `5` / `10` / `15` / `20` / `30` | `10` | 定时检查壁纸的间隔（分钟） |
 | — | `--logging` / `--no-logging` | 布尔开关 | **关闭** | 启用控制台与文件日志 |
 | `-v` | `--version` | — | — | 打印版本后退出 |
@@ -150,9 +150,9 @@ python run.py --no-reduce-banding
 
 ### `--show-typhoon-marker` / `--no-show-typhoon-marker`
 
-开启后，若 NICT `D531108` JSON 在该观测时刻报告 `type == "TY"`，则将台风中心经纬度投影到全圆盘并在最终壁纸上画中心标记。无台风、404 或网络失败时静默跳过，不阻断流水线。写入成图指纹。
+开启后，若 NICT `D531108` JSON 在该观测时刻报告 `type == "TY"`，则将台风中心经纬度投影到全圆盘并在最终壁纸上画中心标记；同时解析 JTWC 西太 ABPW 的 INVEST 扰动并画青绿标签点。无台风、404 或网络失败时静默跳过，不阻断流水线。几何夜侧或超出全盘视角时不画。写入成图指纹。
 
-> **实现说明**：`BooleanOptionalAction`，**默认关闭**；`--show-typhoon-marker` 开启。托盘菜单「显示台风位置」可运行时切换。
+> **实现说明**：`BooleanOptionalAction`，**默认关闭**；`--show-typhoon-marker` 开启。托盘「显示位置」→「台风位置」可运行时切换。
 
 示例：
 
@@ -165,9 +165,9 @@ python run.py --no-show-typhoon-marker
 
 ### `--show-my-location` / `--no-show-my-location`
 
-开启后经 IP 粗定位（`ipwho.is`）取近似经纬度，投影到全圆盘并画蓝点标记 `ME`。定位失败或网络失败时静默跳过，不阻断流水线。结果缓存约 24 小时（`my_location_cache`）。写入成图指纹。
+开启后经 IP 粗定位（`ipwho.is`）取近似经纬度，投影到全圆盘并画蓝点标记 `ME`。定位失败或网络失败时静默跳过，不阻断流水线。结果缓存约 24 小时（`my_location_cache`）。几何夜侧或超出全盘视角时不画。写入成图指纹。
 
-> **实现说明**：`BooleanOptionalAction`，**默认关闭**；`--show-my-location` 开启。托盘菜单「显示我的位置」可运行时切换。与站点页面的浏览器 GPS 无关，见 `doc/himawari-asia-api.md` 中 GPS 说明。
+> **实现说明**：`BooleanOptionalAction`，**默认关闭**；`--show-my-location` 开启。托盘「显示位置」→「我的位置」可运行时切换。与站点页面的浏览器 GPS 无关，见 `doc/himawari-asia-api.md` 中 GPS 说明。
 
 示例：
 
@@ -180,9 +180,9 @@ python run.py --no-show-my-location
 
 ### `--show-subsolar-point` / `--no-show-subsolar-point`
 
-开启后按壁纸观测时间（UTC）本地计算太阳直射点经纬度，投影到全圆盘并画金色 `SUN` 标记（小圆 + 四向短射线）。无需联网；投影到盘外时静默跳过。写入成图指纹。
+开启后按壁纸观测时间（UTC）本地计算太阳直射点经纬度，投影到全圆盘并画金色 `SUN` 标记（小圆 + 四向短射线）。无需联网；超出全盘视角时静默跳过。写入成图指纹。
 
-> **实现说明**：`BooleanOptionalAction`，**默认关闭**；`--show-subsolar-point` 开启。托盘菜单「显示太阳直射点」可运行时切换。
+> **实现说明**：`BooleanOptionalAction`，**默认关闭**；`--show-subsolar-point` 开启。托盘「显示位置」→「太阳直射点」可运行时切换。
 
 示例：
 
@@ -195,9 +195,9 @@ python run.py --no-show-subsolar-point
 
 ### `--show-sunglint-point` / `--no-show-sunglint-point`
 
-开启后按壁纸观测时间（UTC）计算葵花（星下点约 `140.7°E`）视角下的球面镜面耀斑点，投影到全圆盘并画青色 `SG` 标记。与太阳直射点不同：耀斑是「阳光经海面反射进卫星镜头」的几何点，通常落在直射点与星下点之间。无需联网；投影到盘外时静默跳过。写入成图指纹。
+开启后按壁纸观测时间（UTC）计算葵花（星下点约 `140.7°E`）视角下的球面镜面耀斑点，投影到全圆盘并画青色 `SG` 标记。与太阳直射点不同：耀斑是「阳光经海面反射进卫星镜头」的几何点，通常落在直射点与星下点之间。无需联网；超出全盘视角时静默跳过。写入成图指纹。
 
-> **实现说明**：`BooleanOptionalAction`，**默认关闭**；`--show-sunglint-point` 开启。托盘菜单「显示海面耀斑」可运行时切换。
+> **实现说明**：`BooleanOptionalAction`，**默认关闭**；`--show-sunglint-point` 开启。托盘「显示位置」→「海面耀斑」可运行时切换。
 
 示例：
 

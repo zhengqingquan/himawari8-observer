@@ -37,7 +37,7 @@
 - 預設約每 10 分鐘自動更新，啟動時立即更新一次
 - 影像與參數未變時可跳過重複下載
 - 可選黑邊修邊，減輕工作列遮擋
-- 可選減輕色帶、颱風／位置標註、昨日影像等
+- 可選減輕色帶、昨日影像、位置標註（颱風／我的位置／太陽直射點／海面耀斑）等
 - 系統匣可手動更新、暫停定時、切換解析度、開機啟動等
 - 系統匣修改的設定會寫入程式目錄 `settings.json`，重啟後自動還原
 - 日誌預設關閉，可在系統匣或以 `--logging` 開啟
@@ -88,8 +88,10 @@ python -m src.oneshot
 | `--cleanup-after-apply` | 設成桌布後清理快取（預設開啟；`--no-cleanup-after-apply` 關閉） |
 | `--use-yesterday-local-time` | 按本機鐘點取昨日影像（預設關閉） |
 | `--reduce-banding` | 減輕色帶（預設關閉） |
-| `--show-typhoon-marker` | 標註颱風中心（預設關閉） |
+| `--show-typhoon-marker` | 標註颱風中心與 JTWC INVEST（預設關閉） |
 | `--show-my-location` | 標註我的位置（IP 粗定位，預設關閉） |
+| `--show-subsolar-point` | 標註太陽直射點（按觀測時間，預設關閉） |
+| `--show-sunglint-point` | 標註海面耀斑（葵花視角鏡面點，預設關閉） |
 | `--download-interval-minutes` | 定時間隔：`5` / `10`（預設） / `15` / `20` / `30` |
 | `--logging` | 啟用日誌（預設關閉；`--no-logging` 關閉） |
 | `-v` / `--version` | 印出版本後結束 |

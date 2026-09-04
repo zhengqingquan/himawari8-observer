@@ -37,7 +37,7 @@
 - 默认约每 10 分钟自动更新，启动时立刻更新一次
 - 影像与参数未变时可跳过重复下载
 - 可选黑边修边，减轻任务栏遮挡
-- 可选减轻色带、台风/位置/太阳直射点/海面耀斑标注、昨日影像等
+- 可选减轻色带、昨日影像、位置标注（台风 / 我的位置 / 太阳直射点 / 海面耀斑）等
 - 托盘可手动更新、暂停定时、换分辨率、开机启动等
 - 托盘修改的设置保存在程序目录 `settings.json`，重启后自动恢复
 - 日志默认关闭，可在托盘或用 `--logging` 开启
@@ -88,7 +88,7 @@ python -m src.oneshot
 | `--cleanup-after-apply` | 设壁纸后清理缓存（默认开启；`--no-cleanup-after-apply` 关闭） |
 | `--use-yesterday-local-time` | 按本机钟点取昨日影像（默认关闭） |
 | `--reduce-banding` | 减轻色带（默认关闭） |
-| `--show-typhoon-marker` | 标注台风中心（默认关闭） |
+| `--show-typhoon-marker` | 标注台风中心与 JTWC INVEST（默认关闭） |
 | `--show-my-location` | 标注我的位置（IP 粗定位，默认关闭） |
 | `--show-subsolar-point` | 标注太阳直射点（按观测时间，默认关闭） |
 | `--show-sunglint-point` | 标注海面耀斑（葵花视角镜面点，默认关闭） |
