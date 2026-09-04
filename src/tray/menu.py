@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import threading
+from collections.abc import Callable
 
 import pystray
 
@@ -34,6 +35,22 @@ from src.wallpaper.update import (
 )
 
 
+def _run_wallpaper_update_async(
+    job_ref: WallpaperJobRef,
+    *,
+    progressive: bool = False,
+) -> None:
+    """在守护线程中触发壁纸更新（不尊重暂停）。"""
+    threading.Thread(
+        target=lambda: run_wallpaper_update(
+            pipeline=job_ref,
+            respect_pause=False,
+            progressive=progressive,
+        ),
+        daemon=True,
+    ).start()
+
+
 def setup_tray_icon(job_ref: WallpaperJobRef):
     """创建并阻塞运行系统托盘图标。
 
@@ -42,20 +59,30 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
     """
 
     def on_update_wallpaper(icon, item):
-        threading.Thread(
-            target=lambda: run_wallpaper_update(
-                pipeline=job_ref,
-                respect_pause=False,
-                progressive=True,
-            ),
-            daemon=True,
-        ).start()
+        _run_wallpaper_update_async(job_ref, progressive=True)
 
     def on_toggle_pause(icon, item):
         if is_paused():
             resume()
         else:
             pause()
+
+    def make_bool_toggle(
+        *,
+        get_value: Callable[[], bool],
+        set_value: Callable[[bool], None],
+        log_label: str,
+        trigger_update: bool = True,
+    ):
+        def on_toggle(icon, item):
+            enabled = not get_value()
+            set_value(enabled)
+            persist_job_settings(job_ref)
+            logging.info("%s %s", log_label, "enabled" if enabled else "disabled")
+            if trigger_update:
+                _run_wallpaper_update_async(job_ref)
+
+        return on_toggle
 
     def make_resolution_item(pixel_side: int):
         def on_select(icon, item):
@@ -66,10 +93,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
                 pixel_side,
                 job_ref.resolution_grade,
             )
-            threading.Thread(
-                target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
-                daemon=True,
-            ).start()
+            _run_wallpaper_update_async(job_ref)
 
         return pystray.MenuItem(
             f"分辨率 {pixel_side}",
@@ -78,88 +102,53 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             radio=True,
         )
 
-    def on_toggle_adjust(icon, item):
-        enabled = not job_ref.auto_adjust
-        job_ref.set_auto_adjust(enabled)
-        persist_job_settings(job_ref)
-        logging.info("Margin adjust %s", "enabled" if enabled else "disabled")
-        threading.Thread(
-            target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
-            daemon=True,
-        ).start()
-
-    def on_toggle_cleanup(icon, item):
-        enabled = not job_ref.cleanup_after_apply
-        job_ref.set_cleanup_after_apply(enabled)
-        persist_job_settings(job_ref)
-        logging.info("Cleanup after apply %s", "enabled" if enabled else "disabled")
-
-    def on_toggle_use_yesterday_local_time(icon, item):
-        enabled = not job_ref.use_yesterday_local_time
-        job_ref.set_use_yesterday_local_time(enabled)
-        persist_job_settings(job_ref)
-        logging.info(
-            "Use yesterday local time %s",
-            "enabled" if enabled else "disabled",
-        )
-        threading.Thread(
-            target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
-            daemon=True,
-        ).start()
-
-    def on_toggle_reduce_banding(icon, item):
-        enabled = not job_ref.reduce_banding
-        job_ref.set_reduce_banding(enabled)
-        persist_job_settings(job_ref)
-        logging.info("Reduce banding %s", "enabled" if enabled else "disabled")
-        threading.Thread(
-            target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
-            daemon=True,
-        ).start()
-
-    def on_toggle_show_typhoon_marker(icon, item):
-        enabled = not job_ref.show_typhoon_marker
-        job_ref.set_show_typhoon_marker(enabled)
-        persist_job_settings(job_ref)
-        logging.info("Show typhoon marker %s", "enabled" if enabled else "disabled")
-        threading.Thread(
-            target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
-            daemon=True,
-        ).start()
-
-    def make_margin_top_item(percent: float):
+    def make_margin_item(
+        *,
+        label: str,
+        percent: float,
+        get_value: Callable[[], float],
+        set_value: Callable[[float], None],
+        log_label: str,
+    ):
         def on_select(icon, item):
-            job_ref.set_margin_top_percent(percent)
+            set_value(percent)
             persist_job_settings(job_ref)
-            logging.info("Top margin set to %s%%", percent)
-            threading.Thread(
-                target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
-                daemon=True,
-            ).start()
+            logging.info("%s set to %s%%", log_label, percent)
+            _run_wallpaper_update_async(job_ref)
 
         return pystray.MenuItem(
-            f"顶边 {percent:g}%",
+            f"{label} {percent:g}%",
             on_select,
-            checked=lambda item: job_ref.margin_top_percent == percent,
+            checked=lambda item: get_value() == percent,
             radio=True,
         )
 
-    def make_margin_bottom_item(percent: float):
-        def on_select(icon, item):
-            job_ref.set_margin_bottom_percent(percent)
-            persist_job_settings(job_ref)
-            logging.info("Bottom margin set to %s%%", percent)
-            threading.Thread(
-                target=lambda: run_wallpaper_update(pipeline=job_ref, respect_pause=False),
-                daemon=True,
-            ).start()
-
-        return pystray.MenuItem(
-            f"底边 {percent:g}%",
-            on_select,
-            checked=lambda item: job_ref.margin_bottom_percent == percent,
-            radio=True,
-        )
+    on_toggle_adjust = make_bool_toggle(
+        get_value=lambda: job_ref.auto_adjust,
+        set_value=job_ref.set_auto_adjust,
+        log_label="Margin adjust",
+    )
+    on_toggle_cleanup = make_bool_toggle(
+        get_value=lambda: job_ref.cleanup_after_apply,
+        set_value=job_ref.set_cleanup_after_apply,
+        log_label="Cleanup after apply",
+        trigger_update=False,
+    )
+    on_toggle_use_yesterday_local_time = make_bool_toggle(
+        get_value=lambda: job_ref.use_yesterday_local_time,
+        set_value=job_ref.set_use_yesterday_local_time,
+        log_label="Use yesterday local time",
+    )
+    on_toggle_reduce_banding = make_bool_toggle(
+        get_value=lambda: job_ref.reduce_banding,
+        set_value=job_ref.set_reduce_banding,
+        log_label="Reduce banding",
+    )
+    on_toggle_show_typhoon_marker = make_bool_toggle(
+        get_value=lambda: job_ref.show_typhoon_marker,
+        set_value=job_ref.set_show_typhoon_marker,
+        log_label="Show typhoon marker",
+    )
 
     global icon
     icon = pystray.Icon(f"{PROGRAM_NAME}_tray_icon")
@@ -181,9 +170,27 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             checked=lambda item: job_ref.auto_adjust,
         ),
         pystray.Menu.SEPARATOR,
-        *[make_margin_top_item(p) for p in MARGIN_PERCENT_CHOICES],
+        *[
+            make_margin_item(
+                label="顶边",
+                percent=p,
+                get_value=lambda: job_ref.margin_top_percent,
+                set_value=job_ref.set_margin_top_percent,
+                log_label="Top margin",
+            )
+            for p in MARGIN_PERCENT_CHOICES
+        ],
         pystray.Menu.SEPARATOR,
-        *[make_margin_bottom_item(p) for p in MARGIN_PERCENT_CHOICES],
+        *[
+            make_margin_item(
+                label="底边",
+                percent=p,
+                get_value=lambda: job_ref.margin_bottom_percent,
+                set_value=job_ref.set_margin_bottom_percent,
+                log_label="Bottom margin",
+            )
+            for p in MARGIN_PERCENT_CHOICES
+        ],
     )
     log_menu = pystray.Menu(
         pystray.MenuItem(
