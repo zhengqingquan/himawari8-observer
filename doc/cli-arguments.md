@@ -32,7 +32,7 @@ python run.py --version
 | — | `--margin-bottom` | `0`–`100` | `5` | 底边黑边占原图边长的百分比 |
 | — | `--cleanup-after-apply` / `--no-cleanup-after-apply` | 布尔开关 | **开启** | 设壁纸后清理瓦片与旧目录，保留当前壁纸文件 |
 | — | `--use-yesterday-local-time` / `--no-use-yesterday-local-time` | 布尔开关 | **关闭** | 按本机当前钟点取昨日同时刻影像（UTC 向下取整到 10 分钟） |
-| — | `--reduce-banding` / `--no-reduce-banding` | 布尔开关 | **关闭** | 减轻合成壁纸色带 |
+| — | `--reduce-banding` / `--no-reduce-banding` | 布尔开关 | **关闭** | 减轻晨昏带色带 |
 | — | `--show-typhoon-marker` / `--no-show-typhoon-marker` | 布尔开关 | **关闭** | 标注台风中心与 JTWC INVEST |
 | — | `--show-my-location` / `--no-show-my-location` | 布尔开关 | **关闭** | 标注我的位置（IP 粗定位） |
 | — | `--show-subsolar-point` / `--no-show-subsolar-point` | 布尔开关 | **关闭** | 标注太阳直射点（按观测时间） |
@@ -135,7 +135,7 @@ python run.py --no-use-yesterday-local-time
 
 ### `--reduce-banding` / `--no-reduce-banding`
 
-开启后对合成图做色带减轻处理。写入成图指纹；与修边等参数一并参与跳过判断。
+开启后对合成图**晨昏带**做色带减轻（昼心/夜心保留）。写入成图指纹；与修边等参数一并参与跳过判断。
 
 > **实现说明**：`BooleanOptionalAction`，**默认关闭**；`--reduce-banding` 开启。托盘菜单「减轻色带」可运行时切换。
 

@@ -287,7 +287,15 @@ def run_wallpaper_pipeline(
 
     if opts.reduce_banding:
         try:
-            apply_deband_to_file(base_path, wallpaper_path)
+            apply_deband_to_file(
+                base_path,
+                wallpaper_path,
+                observation_time=time_str,
+                disk_side=pic.pic_side,
+                auto_adjust=opts.auto_adjust,
+                margin_top_percent=opts.margin_top_percent,
+                margin_bottom_percent=opts.margin_bottom_percent,
+            )
         except OSError:
             logging.exception("Failed to apply deband to wallpaper: %s", wallpaper_path)
             return None

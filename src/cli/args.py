@@ -110,7 +110,7 @@ class Config:
             dest="reduce_banding",
             default=None,
             action=argparse.BooleanOptionalAction,
-            help="Reduce color banding in composed wallpaper "
+            help="Reduce color banding near the terminator "
             "(default: off; use --reduce-banding to enable).",
         )
 

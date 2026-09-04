@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import math
 import unittest
 from time import strptime
 
-from src.compose.solar import is_sunlit, subsolar_latlon, sunglint_latlon
+from src.compose.solar import is_sunlit, points_on_solar_mu_circle, subsolar_latlon, sunglint_latlon
 
 
 class SubsolarLatlonTests(unittest.TestCase):
@@ -66,6 +67,28 @@ class IsSunlitTests(unittest.TestCase):
         self.assertTrue(is_sunlit(0.0, sun_lon - 45.0, obs))
         self.assertFalse(is_sunlit(0.0, sun_lon + 135.0, obs))
         self.assertFalse(is_sunlit(0.0, sun_lon - 135.0, obs))
+
+
+class PointsOnSolarMuCircleTests(unittest.TestCase):
+    def test_mu_zero_points_have_near_zero_dot(self):
+        obs = strptime("2026-03-20 12:00:00", "%Y-%m-%d %H:%M:%S")
+        points = points_on_solar_mu_circle(obs, 0.0, sample_count=36)
+        self.assertEqual(len(points), 36)
+        sun_lat, sun_lon = subsolar_latlon(obs)
+        sx = math.cos(math.radians(sun_lat)) * math.cos(math.radians(sun_lon))
+        sy = math.cos(math.radians(sun_lat)) * math.sin(math.radians(sun_lon))
+        sz = math.sin(math.radians(sun_lat))
+        for lat, lon in points:
+            lat_r = math.radians(lat)
+            lon_r = math.radians(lon)
+            px = math.cos(lat_r) * math.cos(lon_r)
+            py = math.cos(lat_r) * math.sin(lon_r)
+            pz = math.sin(lat_r)
+            self.assertAlmostEqual(sx * px + sy * py + sz * pz, 0.0, delta=1e-6)
+
+    def test_abs_mu_over_one_empty(self):
+        obs = strptime("2026-03-20 12:00:00", "%Y-%m-%d %H:%M:%S")
+        self.assertEqual(points_on_solar_mu_circle(obs, 1.5), [])
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from time import strptime
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -12,12 +13,15 @@ from PIL import Image
 
 from src.compose.equal import (
     apply_margins,
+    build_terminator_belt_mask,
     compose_equal_image,
     compose_equal_image_with_margins,
     compute_margin_layout,
     get_primary_screen_size,
     reduce_color_banding,
 )
+from src.compose.geo import latlon_to_himawari_fd_xy
+from src.compose.solar import points_on_solar_mu_circle, subsolar_latlon
 from src.pic import TileSlot
 
 
@@ -104,6 +108,62 @@ class ReduceColorBandingTests(unittest.TestCase):
                 out.close()
         finally:
             src.close()
+
+    def test_terminator_limit_spares_day_center(self):
+        # 春分 ~04:00 UTC：直射点仍在盘内，晨昏线也穿过可见盘。
+        obs = strptime("2026-03-20 04:00:00", "%Y-%m-%d %H:%M:%S")
+        side = 256
+        sun_lat, sun_lon = subsolar_latlon(obs)
+        sun_xy = latlon_to_himawari_fd_xy(sun_lat, sun_lon, side)
+        self.assertIsNotNone(sun_xy)
+        term_xy = None
+        best_dist = None
+        for lat, lon in points_on_solar_mu_circle(obs, 0.0, sample_count=360):
+            xy = latlon_to_himawari_fd_xy(lat, lon, side)
+            if xy is None:
+                continue
+            # 取较靠盘内的点，避免贴缘采样被模糊冲淡。
+            dist = abs(xy[0] - side // 2) + abs(xy[1] - side // 2)
+            if best_dist is None or dist < best_dist:
+                best_dist = dist
+                term_xy = xy
+        self.assertIsNotNone(term_xy)
+
+        src = Image.new("RGB", (side, side), color=(40, 40, 48))
+        try:
+            out = reduce_color_banding(
+                src,
+                observation_time=obs,
+                disk_side=side,
+            )
+            try:
+                self.assertEqual(out.getpixel(sun_xy), src.getpixel(sun_xy))
+                self.assertNotEqual(out.getpixel(term_xy), src.getpixel(term_xy))
+            finally:
+                out.close()
+        finally:
+            src.close()
+
+
+class TerminatorBeltMaskTests(unittest.TestCase):
+    def test_peak_near_terminator_not_subsolar(self):
+        obs = strptime("2026-03-20 04:00:00", "%Y-%m-%d %H:%M:%S")
+        side = 256
+        sun_lat, sun_lon = subsolar_latlon(obs)
+        sun_xy = latlon_to_himawari_fd_xy(sun_lat, sun_lon, side)
+        self.assertIsNotNone(sun_xy)
+        mask = build_terminator_belt_mask(side, obs)
+        try:
+            self.assertLess(mask.getpixel(sun_xy), 40)
+            term_vals = []
+            for lat, lon in points_on_solar_mu_circle(obs, 0.0, sample_count=360):
+                xy = latlon_to_himawari_fd_xy(lat, lon, side)
+                if xy is not None:
+                    term_vals.append(mask.getpixel(xy))
+            self.assertTrue(term_vals)
+            self.assertGreater(max(term_vals), 120)
+        finally:
+            mask.close()
 
 
 class ComposeEqualImageTests(unittest.TestCase):

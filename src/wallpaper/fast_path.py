@@ -49,6 +49,11 @@ def _rebuild_from_base(
     last_wallpaper: Path,
     wallpaper_path: Path,
     reduce_banding: bool,
+    observation_time: str,
+    pic_side: int,
+    auto_adjust: bool,
+    margin_top_percent: float,
+    margin_bottom_percent: float,
 ) -> tuple[Path, Path] | None:
     """布局未变：从 ``*_base`` 重建成品（可从无标记成品回填 base）。
 
@@ -75,7 +80,27 @@ def _rebuild_from_base(
         return None
     if reduce_banding:
         try:
-            apply_deband_to_file(base, wallpaper_path)
+            obs = strptime(observation_time, OBS_TIME_FMT)
+        except ValueError:
+            logging.warning(
+                "Postprocess fast path: invalid observation_time %r; deband skipped",
+                observation_time,
+            )
+            return None
+
+        def _deband_to(dest: Path) -> None:
+            apply_deband_to_file(
+                base,
+                dest,
+                observation_time=obs,
+                disk_side=pic_side,
+                auto_adjust=auto_adjust,
+                margin_top_percent=margin_top_percent,
+                margin_bottom_percent=margin_bottom_percent,
+            )
+
+        try:
+            _deband_to(wallpaper_path)
             written = wallpaper_path
         except OSError as exc:
             if getattr(exc, "winerror", None) != 1224:
@@ -86,7 +111,7 @@ def _rebuild_from_base(
                 wallpaper_path,
                 written,
             )
-            apply_deband_to_file(base, written)
+            _deband_to(written)
     else:
         written = copy2_wallpaper(base, wallpaper_path)
     return base, written
@@ -101,6 +126,7 @@ def _rebuild_from_disk(
     margin_top_percent: float,
     margin_bottom_percent: float,
     reduce_banding: bool,
+    observation_time: str,
 ) -> tuple[Path, Path] | None:
     """边距/修边变了：从 ``*_disk`` 再修边，写入新 base，可选去色带。
 
@@ -146,7 +172,23 @@ def _rebuild_from_disk(
             written = copy2_wallpaper(disk, written)
     base = save_unmarked_base(written)
     if reduce_banding:
-        apply_deband_to_file(base, written)
+        try:
+            obs = strptime(observation_time, OBS_TIME_FMT)
+        except ValueError:
+            logging.warning(
+                "Postprocess fast path: invalid observation_time %r; deband skipped",
+                observation_time,
+            )
+            return None
+        apply_deband_to_file(
+            base,
+            written,
+            observation_time=obs,
+            disk_side=pic_side,
+            auto_adjust=auto_adjust,
+            margin_top_percent=margin_top_percent,
+            margin_bottom_percent=margin_bottom_percent,
+        )
     return base, written
 
 
@@ -202,6 +244,11 @@ def try_postprocess_fast_path(
                 last_wallpaper=last_wallpaper,
                 wallpaper_path=wallpaper_path,
                 reduce_banding=options.reduce_banding,
+                observation_time=observation_time,
+                pic_side=pic_side,
+                auto_adjust=options.auto_adjust,
+                margin_top_percent=options.margin_top_percent,
+                margin_bottom_percent=options.margin_bottom_percent,
             )
         else:
             # 修边/边距变了：从 *_disk 重建。
@@ -213,6 +260,7 @@ def try_postprocess_fast_path(
                 margin_top_percent=options.margin_top_percent,
                 margin_bottom_percent=options.margin_bottom_percent,
                 reduce_banding=options.reduce_banding,
+                observation_time=observation_time,
             )
         if rebuilt is None:
             return None

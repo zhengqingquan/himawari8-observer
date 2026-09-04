@@ -113,6 +113,55 @@ def is_sunlit(
     return (sx * px + sy * py + sz * pz) > 0.0
 
 
+def _basis_perpendicular_to(
+    nx: float, ny: float, nz: float
+) -> tuple[float, float, float, float, float, float]:
+    """单位矢量 ``n`` 的右手正交基底 ``(u, v)``，满足 ``u×v`` 平行 ``n``。"""
+    if abs(nx) < 0.9:
+        ax, ay, az = 1.0, 0.0, 0.0
+    else:
+        ax, ay, az = 0.0, 1.0, 0.0
+    ux = ay * nz - az * ny
+    uy = az * nx - ax * nz
+    uz = ax * ny - ay * nx
+    un = math.sqrt(ux * ux + uy * uy + uz * uz)
+    if un <= 0.0:
+        return 1.0, 0.0, 0.0, 0.0, 1.0, 0.0
+    ux, uy, uz = ux / un, uy / un, uz / un
+    vx = ny * uz - nz * uy
+    vy = nz * ux - nx * uz
+    vz = nx * uy - ny * ux
+    return ux, uy, uz, vx, vy, vz
+
+
+def points_on_solar_mu_circle(
+    observation_time: struct_time,
+    mu: float,
+    *,
+    sample_count: int = 720,
+) -> list[tuple[float, float]]:
+    """太阳方向点积为 ``mu`` 的大圆采样点 ``(lat, lon)``（度）。
+
+    ``mu = 0`` 为几何晨昏线；``|mu| > 1`` 无解返回空列表。
+    """
+    if sample_count < 3 or abs(mu) > 1.0:
+        return []
+    sun_lat, sun_lon = subsolar_latlon(observation_time)
+    sx, sy, sz = _latlon_to_unit(sun_lat, sun_lon)
+    ux, uy, uz, vx, vy, vz = _basis_perpendicular_to(sx, sy, sz)
+    ring = math.sqrt(max(0.0, 1.0 - mu * mu))
+    points: list[tuple[float, float]] = []
+    for index in range(sample_count):
+        angle = 2.0 * math.pi * index / sample_count
+        cos_a = math.cos(angle)
+        sin_a = math.sin(angle)
+        px = mu * sx + ring * (cos_a * ux + sin_a * vx)
+        py = mu * sy + ring * (cos_a * uy + sin_a * vy)
+        pz = mu * sz + ring * (cos_a * uz + sin_a * vz)
+        points.append(_unit_to_latlon(px, py, pz))
+    return points
+
+
 def sunglint_latlon(
     observation_time: struct_time,
     *,
