@@ -228,21 +228,21 @@ def compose_equal_image_with_margins(
 
 
 def apply_margins(
-    file,
-    margin,
-    path,
+    src: Path | str,
+    image_side: int,
+    dest: Path | str,
     *,
-    top_percent=DEFAULT_MARGIN_TOP_PERCENT,
-    bottom_percent=DEFAULT_MARGIN_BOTTOM_PERCENT,
+    top_percent: float = DEFAULT_MARGIN_TOP_PERCENT,
+    bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
     screen_size: tuple[int, int] | None = None,
     deband: bool = False,
 ) -> None:
     """将正方形等分合成图嵌入与屏幕同比例的黑边画布。
 
     Args:
-        file: 原文件路径。
-        margin: 原图边长（像素）。
-        path: 输出保存路径。
+        src: 原文件路径。
+        image_side: 原图边长（像素）。
+        dest: 输出保存路径。
         top_percent: 顶边黑边占原图边长的百分比。
         bottom_percent: 底边黑边占原图边长的百分比。
         screen_size: 可选 ``(width, height)``；默认主屏尺寸。
@@ -256,7 +256,7 @@ def apply_margins(
             screen_width, screen_height = screen_size
 
         canvas_width, canvas_height, image_x, image_y = compute_margin_layout(
-            margin,
+            image_side,
             screen_width,
             screen_height,
             top_percent=top_percent,
@@ -266,7 +266,7 @@ def apply_margins(
             "Margin layout: screen=%sx%s source=%spx margins=%s/%s canvas=%sx%s paste=(%s,%s)",
             screen_width,
             screen_height,
-            margin,
+            image_side,
             top_percent,
             bottom_percent,
             canvas_width,
@@ -276,13 +276,13 @@ def apply_margins(
         )
 
         joint = Image.new("RGB", (canvas_width, canvas_height), color=(0, 0, 0))
-        with Image.open(file) as img:
+        with Image.open(src) as img:
             joint.paste(img, (image_x, image_y))
-        _save_rgb(joint, path, deband=deband)
+        _save_rgb(joint, dest, deband=deband)
     except Exception:
-        logging.exception("Failed to apply margins: src=%s out=%s", file, path)
+        logging.exception("Failed to apply margins: src=%s out=%s", src, dest)
         raise
     finally:
         if joint is not None:
             joint.close()
-    logging.info("Margin-adjusted wallpaper saved: %s", path)
+    logging.info("Margin-adjusted wallpaper saved: %s", dest)

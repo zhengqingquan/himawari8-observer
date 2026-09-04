@@ -31,6 +31,20 @@ from src.wallpaper.job import WallpaperJobRef
 _TRAY_ICON_NAME = "tray_icon.png"
 _OBS_TIME_FMT = "%Y-%m-%d %H:%M:%S"
 
+# Win32 MessageBox：类型 / 图标 / 置顶与前台。
+_MB_OK = 0x00000000
+_MB_YESNO = 0x00000004
+_MB_ICONWARNING = 0x00000030
+_MB_ICONQUESTION = 0x00000020
+_MB_ICONINFORMATION = 0x00000040
+_MB_TOPMOST = 0x00040000
+_MB_SETFOREGROUND = 0x00010000
+_MB_TOPMOST_FOREGROUND = _MB_TOPMOST | _MB_SETFOREGROUND
+_MB_OK_INFO = _MB_OK | _MB_ICONINFORMATION | _MB_TOPMOST_FOREGROUND
+_MB_OK_WARN = _MB_OK | _MB_ICONWARNING | _MB_TOPMOST_FOREGROUND
+_MB_YESNO_QUESTION = _MB_YESNO | _MB_ICONQUESTION | _MB_TOPMOST_FOREGROUND
+_IDYES = 6
+
 
 def format_observation_local_time(
     utc_time_str: str,
@@ -109,12 +123,11 @@ def on_clicked(icon, item):
 """
 
     def show_about():
-        # MB_OK | MB_ICONINFORMATION | MB_TOPMOST | MB_SETFOREGROUND
         ctypes.windll.user32.MessageBoxW(
             None,
             message_text,
             f"关于 {PROGRAM_NAME}",
-            0x00050040,
+            _MB_OK_INFO,
         )
 
     threading.Thread(target=show_about, daemon=True).start()
@@ -141,7 +154,7 @@ def on_check_update(icon, item):
                 None,
                 "检查更新失败，请稍后重试或手动打开 GitHub Releases。",
                 "检查更新",
-                0x00050030,  # MB_OK | MB_ICONWARNING | MB_TOPMOST | MB_SETFOREGROUND
+                _MB_OK_WARN,
             )
             return
         if result.status is UpdateStatus.UP_TO_DATE:
@@ -149,7 +162,7 @@ def on_check_update(icon, item):
                 None,
                 f"当前已是最新版本（{result.current_version}）。",
                 "检查更新",
-                0x00050040,  # MB_OK | MB_ICONINFORMATION | ...
+                _MB_OK_INFO,
             )
             return
         latest = result.latest_version or ""
@@ -157,9 +170,9 @@ def on_check_update(icon, item):
             None,
             f"发现新版本 {latest}（当前 {result.current_version}）。是否打开 Releases 下载？",
             "检查更新",
-            0x00050024,  # MB_YESNO | MB_ICONQUESTION | MB_TOPMOST | MB_SETFOREGROUND
+            _MB_YESNO_QUESTION,
         )
-        if answer == 6:  # IDYES
+        if answer == _IDYES:
             webbrowser.open_new(RELEASES_URL)
 
     threading.Thread(target=run_check, daemon=True).start()

@@ -130,6 +130,14 @@ def build_applied_run_key(
     )
 
 
+def _path_str(path: Path) -> str:
+    """优先 ``resolve()`` 的绝对路径字符串；失败则退回 ``str(path)``。"""
+    try:
+        return str(path.resolve())
+    except OSError:
+        return str(path)
+
+
 def remember_applied(
     applied_run_state: AppliedRunState | None,
     *,
@@ -145,20 +153,11 @@ def remember_applied(
     applied_run_state["applied_grade"] = run_key.resolution_grade
     if record_run_key:
         applied_run_state["last"] = run_key
-    try:
-        applied_run_state["wallpaper_path"] = str(wallpaper_path.resolve())
-    except OSError:
-        applied_run_state["wallpaper_path"] = str(wallpaper_path)
+    applied_run_state["wallpaper_path"] = _path_str(wallpaper_path)
     base = wallpaper_base if wallpaper_base is not None else wallpaper_base_path(wallpaper_path)
-    try:
-        applied_run_state["wallpaper_base_path"] = str(base.resolve())
-    except OSError:
-        applied_run_state["wallpaper_base_path"] = str(base)
+    applied_run_state["wallpaper_base_path"] = _path_str(base)
     disk = wallpaper_disk if wallpaper_disk is not None else wallpaper_disk_path(wallpaper_path)
-    try:
-        applied_run_state["wallpaper_disk_path"] = str(disk.resolve())
-    except OSError:
-        applied_run_state["wallpaper_disk_path"] = str(disk)
+    applied_run_state["wallpaper_disk_path"] = _path_str(disk)
 
 
 def ensure_unmarked_base(wallpaper_path: Path) -> Path:
@@ -193,30 +192,44 @@ def save_disk_copy(equal_path: Path) -> Path:
     return disk
 
 
-def resolve_base_path(
+def _resolve_state_path(
     applied_run_state: AppliedRunState | None,
+    key: str,
     wallpaper_path: Path,
+    fallback: Callable[[Path], Path],
 ) -> Path:
+    """若 state 中 ``key`` 指向现存文件则用之，否则 ``fallback(wallpaper_path)``。"""
     if applied_run_state is not None:
-        raw = applied_run_state.get("wallpaper_base_path")
+        raw = applied_run_state.get(key)
         if isinstance(raw, str) and raw.strip():
             candidate = Path(raw.strip())
             if candidate.is_file():
                 return candidate
-    return wallpaper_base_path(wallpaper_path)
+    return fallback(wallpaper_path)
+
+
+def resolve_base_path(
+    applied_run_state: AppliedRunState | None,
+    wallpaper_path: Path,
+) -> Path:
+    return _resolve_state_path(
+        applied_run_state,
+        "wallpaper_base_path",
+        wallpaper_path,
+        wallpaper_base_path,
+    )
 
 
 def resolve_disk_path(
     applied_run_state: AppliedRunState | None,
     wallpaper_path: Path,
 ) -> Path:
-    if applied_run_state is not None:
-        raw = applied_run_state.get("wallpaper_disk_path")
-        if isinstance(raw, str) and raw.strip():
-            candidate = Path(raw.strip())
-            if candidate.is_file():
-                return candidate
-    return wallpaper_disk_path(wallpaper_path)
+    return _resolve_state_path(
+        applied_run_state,
+        "wallpaper_disk_path",
+        wallpaper_path,
+        wallpaper_disk_path,
+    )
 
 
 def obs_grade_match(last: AppliedRunKey, run_key: AppliedRunKey) -> bool:
