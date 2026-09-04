@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -18,24 +19,6 @@ from src.metadata.app_config import (
 )
 
 SETTINGS_FILENAME = "settings.json"
-
-_SETTINGS_KEYS = frozenset(
-    {
-        "resolution",
-        "auto_adjust",
-        "margin_top_percent",
-        "margin_bottom_percent",
-        "cleanup_after_apply",
-        "use_yesterday_local_time",
-        "reduce_banding",
-        "show_typhoon_marker",
-        "startup_enabled",
-        "logging_enabled",
-        "last_run_key",
-        "last_wallpaper_path",
-        "typhoon_center_cache",
-    }
-)
 
 
 def default_settings_path() -> Path:
@@ -146,133 +129,40 @@ def _coerce_typhoon_center_cache(value: Any) -> dict[str, Any] | None:
     }
 
 
+# 字段表：增删 settings 键只改此处；sanitize 循环共用同一套 coerce。
+_SETTINGS_FIELD_COERCERS: tuple[tuple[str, Callable[[Any], Any | None]], ...] = (
+    ("resolution", _coerce_resolution),
+    ("auto_adjust", _coerce_bool),
+    ("margin_top_percent", _coerce_percent),
+    ("margin_bottom_percent", _coerce_percent),
+    ("cleanup_after_apply", _coerce_bool),
+    ("use_yesterday_local_time", _coerce_bool),
+    ("reduce_banding", _coerce_bool),
+    ("show_typhoon_marker", _coerce_bool),
+    ("startup_enabled", _coerce_bool),
+    ("logging_enabled", _coerce_bool),
+    ("last_run_key", _coerce_last_run_key),
+    ("last_wallpaper_path", _coerce_wallpaper_path),
+    ("typhoon_center_cache", _coerce_typhoon_center_cache),
+)
+
+_SETTINGS_KEYS = frozenset(key for key, _ in _SETTINGS_FIELD_COERCERS)
+
+
 def sanitize_settings(raw: Any) -> dict[str, Any]:
     """校验并只保留合法字段；非法项跳过。"""
     if not isinstance(raw, dict):
         return {}
 
     cleaned: dict[str, Any] = {}
-
-    if "resolution" in raw:
-        resolution = _coerce_resolution(raw["resolution"])
-        if resolution is None:
-            logging.warning("Ignoring invalid settings.resolution: %r", raw["resolution"])
+    for key, coerce in _SETTINGS_FIELD_COERCERS:
+        if key not in raw:
+            continue
+        value = coerce(raw[key])
+        if value is None:
+            logging.warning("Ignoring invalid settings.%s: %r", key, raw[key])
         else:
-            cleaned["resolution"] = resolution
-
-    if "auto_adjust" in raw:
-        auto_adjust = _coerce_bool(raw["auto_adjust"])
-        if auto_adjust is None:
-            logging.warning("Ignoring invalid settings.auto_adjust: %r", raw["auto_adjust"])
-        else:
-            cleaned["auto_adjust"] = auto_adjust
-
-    if "margin_top_percent" in raw:
-        top = _coerce_percent(raw["margin_top_percent"])
-        if top is None:
-            logging.warning(
-                "Ignoring invalid settings.margin_top_percent: %r",
-                raw["margin_top_percent"],
-            )
-        else:
-            cleaned["margin_top_percent"] = top
-
-    if "margin_bottom_percent" in raw:
-        bottom = _coerce_percent(raw["margin_bottom_percent"])
-        if bottom is None:
-            logging.warning(
-                "Ignoring invalid settings.margin_bottom_percent: %r",
-                raw["margin_bottom_percent"],
-            )
-        else:
-            cleaned["margin_bottom_percent"] = bottom
-
-    if "cleanup_after_apply" in raw:
-        cleanup = _coerce_bool(raw["cleanup_after_apply"])
-        if cleanup is None:
-            logging.warning(
-                "Ignoring invalid settings.cleanup_after_apply: %r",
-                raw["cleanup_after_apply"],
-            )
-        else:
-            cleaned["cleanup_after_apply"] = cleanup
-
-    if "use_yesterday_local_time" in raw:
-        yesterday = _coerce_bool(raw["use_yesterday_local_time"])
-        if yesterday is None:
-            logging.warning(
-                "Ignoring invalid settings.use_yesterday_local_time: %r",
-                raw["use_yesterday_local_time"],
-            )
-        else:
-            cleaned["use_yesterday_local_time"] = yesterday
-
-    if "reduce_banding" in raw:
-        reduce_banding = _coerce_bool(raw["reduce_banding"])
-        if reduce_banding is None:
-            logging.warning(
-                "Ignoring invalid settings.reduce_banding: %r",
-                raw["reduce_banding"],
-            )
-        else:
-            cleaned["reduce_banding"] = reduce_banding
-
-    if "show_typhoon_marker" in raw:
-        show_typhoon_marker = _coerce_bool(raw["show_typhoon_marker"])
-        if show_typhoon_marker is None:
-            logging.warning(
-                "Ignoring invalid settings.show_typhoon_marker: %r",
-                raw["show_typhoon_marker"],
-            )
-        else:
-            cleaned["show_typhoon_marker"] = show_typhoon_marker
-
-    if "startup_enabled" in raw:
-        startup_enabled = _coerce_bool(raw["startup_enabled"])
-        if startup_enabled is None:
-            logging.warning(
-                "Ignoring invalid settings.startup_enabled: %r",
-                raw["startup_enabled"],
-            )
-        else:
-            cleaned["startup_enabled"] = startup_enabled
-
-    if "logging_enabled" in raw:
-        logging_enabled = _coerce_bool(raw["logging_enabled"])
-        if logging_enabled is None:
-            logging.warning(
-                "Ignoring invalid settings.logging_enabled: %r",
-                raw["logging_enabled"],
-            )
-        else:
-            cleaned["logging_enabled"] = logging_enabled
-
-    if "last_run_key" in raw:
-        run_key = _coerce_last_run_key(raw["last_run_key"])
-        if run_key is None:
-            logging.warning("Ignoring invalid settings.last_run_key: %r", raw["last_run_key"])
-        else:
-            cleaned["last_run_key"] = run_key
-
-    if "last_wallpaper_path" in raw:
-        wallpaper_path = _coerce_wallpaper_path(raw["last_wallpaper_path"])
-        if wallpaper_path is None:
-            logging.warning(
-                "Ignoring invalid settings.last_wallpaper_path: %r",
-                raw["last_wallpaper_path"],
-            )
-        else:
-            cleaned["last_wallpaper_path"] = wallpaper_path
-
-    if "typhoon_center_cache" in raw:
-        cache = _coerce_typhoon_center_cache(raw["typhoon_center_cache"])
-        if cache is None:
-            logging.warning(
-                "Ignoring invalid settings.typhoon_center_cache: %r",
-                raw["typhoon_center_cache"],
-            )
-        else:
-            cleaned["typhoon_center_cache"] = cache
+            cleaned[key] = value
 
     unknown = set(raw) - _SETTINGS_KEYS
     if unknown:
