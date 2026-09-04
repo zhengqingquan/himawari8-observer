@@ -209,7 +209,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
             Image.new("RGB", (64, 64), (1, 2, 3)).save(wall)
             Image.new("RGB", (64, 64), (1, 2, 3)).save(base)
             state = {
-                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False),
+                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False, False),
                 "wallpaper_path": str(wall),
                 "wallpaper_base_path": str(base),
                 # 缓存是别的观测时间 → 不得画
@@ -323,7 +323,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
             Image.new("RGB", (64, 64), (1, 2, 3)).save(wall)
             Image.new("RGB", (64, 64), (1, 2, 3)).save(base)
             state = {
-                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False),
+                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False, False),
                 "wallpaper_path": str(wall),
                 "wallpaper_base_path": str(base),
                 "typhoon_center_cache": {

@@ -143,6 +143,9 @@ class SettingsFileIoTests(unittest.TestCase):
                             True,
                             0.0,
                             5.0,
+                            False,
+                            False,
+                            False,
                         ],
                         "last_wallpaper_path": r"E:\app\img\wall.png",
                     },
@@ -199,47 +202,55 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
         self.assertFalse(resolved["show_typhoon_marker"])
         self.assertFalse(resolved["show_my_location"])
 
-    def test_six_item_fingerprint_pads_typhoon_and_my_location_false(self):
-        cleaned = sanitize_settings(
-            {
-                "last_run_key": [
-                    "2026-09-03 02:10:00",
-                    "20d",
-                    True,
-                    0.0,
-                    5.0,
-                    True,
-                ]
-            }
+    def test_short_fingerprint_pads_missing_bools(self):
+        cases = (
+            (
+                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0],
+                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, False, False],
+            ),
+            (
+                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, True],
+                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, True, False, False],
+            ),
+            (
+                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True],
+                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True, False],
+            ),
         )
-        self.assertEqual(
-            cleaned["last_run_key"],
-            ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, True, False, False],
-        )
+        for short, expected in cases:
+            cleaned = sanitize_settings({"last_run_key": short})
+            self.assertEqual(cleaned["last_run_key"], expected)
 
-    def test_seven_item_fingerprint_pads_my_location_false(self):
-        cleaned = sanitize_settings(
-            {
-                "last_run_key": [
-                    "2026-09-03 02:10:00",
-                    "20d",
-                    True,
-                    0.0,
-                    5.0,
-                    False,
-                    True,
-                ]
-            }
-        )
-        self.assertEqual(
-            cleaned["last_run_key"],
-            ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True, False],
-        )
-        state = applied_run_state_from_settings(cleaned)
-        self.assertEqual(
-            state["last"],
-            ("2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True, False),
-        )
+    def test_load_upgrades_short_fingerprint_on_disk(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "settings.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "resolution": 4400,
+                        "last_run_key": [
+                            "2026-09-03 02:10:00",
+                            "20d",
+                            True,
+                            0.0,
+                            5.0,
+                            True,
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            loaded = load_settings(path)
+            self.assertEqual(
+                loaded["last_run_key"],
+                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, True, False, False],
+            )
+            on_disk = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                on_disk["last_run_key"],
+                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, True, False, False],
+            )
+            self.assertEqual(on_disk["resolution"], 4400)
 
     def test_eight_item_fingerprint_round_trip(self):
         cleaned = sanitize_settings(

@@ -132,13 +132,16 @@ class WallpaperJobRefTests(unittest.TestCase):
             False,
             0.0,
             5.0,
+            False,
+            False,
+            False,
         )
         self.assertEqual(ref.applied_observation_time, "2026-09-03 02:10:00")
 
         ref.set_resolution_grade("8d")
         self.assertEqual(
             ref._applied_run_state.get("last"),
-            ("2026-09-03 02:10:00", "4d", False, 0.0, 5.0),
+            ("2026-09-03 02:10:00", "4d", False, 0.0, 5.0, False, False, False),
         )
         self.assertEqual(ref.applied_observation_time, "2026-09-03 02:10:00")
 
@@ -159,6 +162,7 @@ class WallpaperJobRefTests(unittest.TestCase):
                     5.0,
                     False,
                     True,
+                    False,
                 )
                 applied_run_state["wallpaper_path"] = r"E:\app\img\20260904014000\wall.png"
 
@@ -180,7 +184,7 @@ class WallpaperJobRefTests(unittest.TestCase):
 
     def test_init_hydrates_observation_time_from_applied_state(self):
         state = {
-            "last": ("2026-09-03 02:10:00", "4d", True, 0.0, 5.0, False),
+            "last": ("2026-09-03 02:10:00", "4d", True, 0.0, 5.0, False, False, False),
             "wallpaper_path": r"E:\app\img\wall.png",
         }
         ref = WallpaperJobRef(
@@ -369,7 +373,16 @@ class WallpaperJobRefProgressiveTests(unittest.TestCase):
             if applied_run_state is not None:
                 applied_run_state["applied_grade"] = resolution_grade
                 if record_run_key:
-                    applied_run_state["last"] = (obs, resolution_grade, False, 0.0, 5.0)
+                    applied_run_state["last"] = (
+                        obs,
+                        resolution_grade,
+                        False,
+                        0.0,
+                        5.0,
+                        False,
+                        False,
+                        False,
+                    )
             return obs
 
         ref = WallpaperJobRef(
@@ -412,7 +425,16 @@ class WallpaperJobRefProgressiveTests(unittest.TestCase):
             if applied_run_state is not None:
                 applied_run_state["applied_grade"] = resolution_grade
                 if record_run_key:
-                    applied_run_state["last"] = (obs, resolution_grade, False, 0.0, 5.0)
+                    applied_run_state["last"] = (
+                        obs,
+                        resolution_grade,
+                        False,
+                        0.0,
+                        5.0,
+                        False,
+                        False,
+                        False,
+                    )
             return obs
 
         ref = WallpaperJobRef(

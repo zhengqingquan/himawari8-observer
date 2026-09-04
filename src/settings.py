@@ -83,17 +83,23 @@ def _coerce_download_interval_minutes(value: Any) -> int | None:
 
 
 def _coerce_last_run_key(value: Any) -> list[Any] | None:
-    """校验指纹列表。
+    """校验指纹列表，统一为完整 8 项。
 
-    完整 8 项：``[obs_time, grade, auto_adjust, top%, bottom%, reduce_banding,
-    show_typhoon_marker, show_my_location]``。兼容旧版 5/6/7 项（缺省布尔为 ``False``）。
+    ``[obs_time, grade, auto_adjust, top%, bottom%, reduce_banding,
+    show_typhoon_marker, show_my_location]``。旧版 5/6/7 项缺省布尔补 ``False``。
     """
     if not isinstance(value, (list, tuple)) or len(value) not in (5, 6, 7, 8):
         return None
-    obs_time, grade, auto_adjust, top, bottom = value[:5]
-    reduce_banding = value[5] if len(value) >= 6 else False
-    show_typhoon_marker = value[6] if len(value) >= 7 else False
-    show_my_location = value[7] if len(value) == 8 else False
+    (
+        obs_time,
+        grade,
+        auto_adjust,
+        top,
+        bottom,
+        reduce_banding,
+        show_typhoon_marker,
+        show_my_location,
+    ) = list(value) + [False] * (8 - len(value))
     if not isinstance(obs_time, str) or not obs_time.strip():
         return None
     if not isinstance(grade, str) or not grade.strip():
@@ -214,7 +220,10 @@ def sanitize_settings(raw: Any) -> dict[str, Any]:
 
 
 def load_settings(path: Path | None = None) -> dict[str, Any]:
-    """从 JSON 加载配置；缺失或损坏时返回空 dict。"""
+    """从 JSON 加载配置；缺失或损坏时返回空 dict。
+
+    若 ``last_run_key`` 仍为旧版 5/6/7 项，sanitize 补齐后写回完整 8 项。
+    """
     settings_path = path if path is not None else default_settings_path()
     if not settings_path.is_file():
         logging.info("Settings file not found: %s", settings_path)
@@ -227,20 +236,25 @@ def load_settings(path: Path | None = None) -> dict[str, Any]:
         return {}
 
     cleaned = sanitize_settings(raw)
+    if _should_rewrite_upgraded_fingerprint(raw, cleaned):
+        payload = sanitize_settings({**default_settings(), **cleaned})
+        if _write_settings_payload(settings_path, payload):
+            logging.info("Upgraded last_run_key to 8 items in %s", settings_path)
     logging.info("Loaded settings from %s", settings_path)
     logging.debug("Loaded settings payload: %s", cleaned)
     return cleaned
 
 
-def save_settings(data: dict[str, Any], path: Path | None = None) -> bool:
-    """原子写入 settings.json；成功返回 True。
+def _should_rewrite_upgraded_fingerprint(raw: Any, cleaned: dict[str, Any]) -> bool:
+    """磁盘上仍是短指纹、sanitize 已得到完整 8 项时需要写回。"""
+    if not isinstance(raw, dict) or "last_run_key" not in cleaned:
+        return False
+    raw_key = raw.get("last_run_key")
+    return isinstance(raw_key, (list, tuple)) and len(raw_key) in (5, 6, 7)
 
-    合并顺序：内置默认 → 已有文件 → 本次写入，避免部分更新冲掉其它键。
-    """
-    settings_path = path if path is not None else default_settings_path()
-    existing = load_settings(settings_path) if settings_path.is_file() else {}
-    payload = sanitize_settings({**default_settings(), **existing, **sanitize_settings(data)})
 
+def _write_settings_payload(settings_path: Path, payload: dict[str, Any]) -> bool:
+    """原子写入 settings.json；成功返回 True。"""
     try:
         settings_path.parent.mkdir(parents=True, exist_ok=True)
         fd, tmp_name = tempfile.mkstemp(
@@ -265,6 +279,17 @@ def save_settings(data: dict[str, Any], path: Path | None = None) -> bool:
     except OSError:
         logging.exception("Failed to save settings to %s", settings_path)
         return False
+
+
+def save_settings(data: dict[str, Any], path: Path | None = None) -> bool:
+    """原子写入 settings.json；成功返回 True。
+
+    合并顺序：内置默认 → 已有文件 → 本次写入，避免部分更新冲掉其它键。
+    """
+    settings_path = path if path is not None else default_settings_path()
+    existing = load_settings(settings_path) if settings_path.is_file() else {}
+    payload = sanitize_settings({**default_settings(), **existing, **sanitize_settings(data)})
+    return _write_settings_payload(settings_path, payload)
 
 
 def settings_dict_from_job(

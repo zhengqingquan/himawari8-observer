@@ -78,34 +78,37 @@ class AppliedRunKey(NamedTuple):
 
     @classmethod
     def from_raw(cls, value: Any) -> AppliedRunKey | None:
-        """接受本类型或 5/6/7/8 项序列（缺省布尔为 ``False``）；非法则 ``None``。"""
+        """接受本类型或完整 8 项序列；非法则 ``None``。"""
         if isinstance(value, cls):
             return value
-        if not isinstance(value, (tuple, list)) or len(value) not in (5, 6, 7, 8):
+        if not isinstance(value, (tuple, list)) or len(value) != len(cls._fields):
             return None
         try:
-            obs_time = str(value[0])
-            grade = str(value[1])
-            auto_adjust = bool(value[2])
-            top = float(value[3])
-            bottom = float(value[4])
-            reduce_banding = bool(value[5]) if len(value) >= 6 else False
-            show_typhoon = bool(value[6]) if len(value) >= 7 else False
-            show_my_location = bool(value[7]) if len(value) == 8 else False
+            (
+                obs_time,
+                grade,
+                auto_adjust,
+                top,
+                bottom,
+                reduce_banding,
+                show_typhoon_marker,
+                show_my_location,
+            ) = value
+            key = cls(
+                str(obs_time),
+                str(grade),
+                bool(auto_adjust),
+                float(top),
+                float(bottom),
+                bool(reduce_banding),
+                bool(show_typhoon_marker),
+                bool(show_my_location),
+            )
         except (TypeError, ValueError):
             return None
-        if not obs_time or not grade:
+        if not key.observation_time or not key.resolution_grade:
             return None
-        return cls(
-            obs_time,
-            grade,
-            auto_adjust,
-            top,
-            bottom,
-            reduce_banding,
-            show_typhoon,
-            show_my_location,
-        )
+        return key
 
 
 def build_applied_run_key(
