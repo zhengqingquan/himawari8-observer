@@ -793,7 +793,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
 class WallpaperWritablePathTests(unittest.TestCase):
     def test_alternate_and_pick_writable(self):
-        from src.wallpaper.postprocess import (
+        from src.wallpaper.paths import (
             alternate_wallpaper_path,
             pick_writable_wallpaper_path,
         )
@@ -812,7 +812,7 @@ class WallpaperWritablePathTests(unittest.TestCase):
         import shutil
         from unittest.mock import patch
 
-        from src.wallpaper.postprocess import copy2_wallpaper
+        from src.wallpaper.paths import copy2_wallpaper
 
         real_copy2 = shutil.copy2
         with temporary_base_dir() as base_dir:

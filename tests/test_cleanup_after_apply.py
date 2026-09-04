@@ -31,7 +31,7 @@ class CleanupAfterApplyTests(unittest.TestCase):
             cleanup_after_wallpaper_apply(
                 img_root=img_root,
                 current_run_root=current,
-                keep_file=keep,
+                keep_files=(keep,),
             )
 
             self.assertTrue(keep.is_file())

@@ -41,25 +41,12 @@ from src.wallpaper.markers import (
 from src.wallpaper.paths import (
     AppliedRunState,
     copy2_wallpaper,
-    equal_path_from_disk,
     pick_writable_wallpaper_path,
     save_disk_copy,
     save_unmarked_base,
     wallpaper_base_path,
     wallpaper_disk_path,
-    wallpaper_output_path,
 )
-
-# 对外仍可从 pipeline 导入路径/指纹辅助（兼容既有引用）。
-__all__ = [
-    "run_wallpaper_pipeline",
-    "AppliedRunKey",
-    "build_applied_run_key",
-    "wallpaper_base_path",
-    "wallpaper_disk_path",
-    "equal_path_from_disk",
-    "wallpaper_output_path",
-]
 
 FetchObservationTime = Callable[[], struct_time]
 DownloadTiles = Callable[[Pic], None]
