@@ -1,4 +1,4 @@
-"""后处理快路径：同观测/档位下从 disk/base 重建成品（不拉 latest、不下载）。"""
+"""后处理快路径：同观测/档位下从 disk/base 重建成品（不拉 latest、不下载瓦片）。"""
 
 from __future__ import annotations
 
@@ -15,9 +15,9 @@ from src.wallpaper.fingerprint import (
 )
 from src.wallpaper.markers import (
     FetchIpLatlon,
+    FetchTyphoonCenter,
     apply_my_location_marker_if_needed,
-    cached_typhoon_center,
-    draw_typhoon_marker_at,
+    apply_typhoon_marker_cached_or_fetch,
 )
 from src.wallpaper.paths import (
     AppliedRunState,
@@ -34,38 +34,6 @@ from src.wallpaper.paths import (
 
 SetWallpaper = Callable[[Path], bool | None]
 GetDesktopWallpaper = Callable[[], str | None]
-
-
-def _overlay_typhoon_from_cache(
-    *,
-    applied_run_state: AppliedRunState,
-    wallpaper_path: Path,
-    pic_side: int,
-    observation_time: str,
-    auto_adjust: bool,
-    margin_top_percent: float,
-    margin_bottom_percent: float,
-) -> None:
-    cached = cached_typhoon_center(applied_run_state, observation_time)
-    if cached is None:
-        logging.info(
-            "Postprocess fast path: no typhoon center cache for %s; marker not drawn",
-            observation_time,
-        )
-        return
-    draw_typhoon_marker_at(
-        wallpaper_path=wallpaper_path,
-        pic_side=pic_side,
-        lat=cached[0],
-        lon=cached[1],
-        auto_adjust=auto_adjust,
-        margin_top_percent=margin_top_percent,
-        margin_bottom_percent=margin_bottom_percent,
-    )
-    logging.info(
-        "Postprocess fast path: typhoon marker overlaid from cache for %s",
-        observation_time,
-    )
 
 
 def _rebuild_from_base(
@@ -181,9 +149,12 @@ def try_postprocess_fast_path(
     set_desktop: SetWallpaper,
     record_run_key: bool,
     fetch_ip_latlon_fn: FetchIpLatlon | None = None,
+    fetch_typhoon_center_fn: FetchTyphoonCenter | None = None,
     get_desktop: GetDesktopWallpaper | None = None,
 ) -> str | None:
-    """同观测/档位下仅修边或色带/台风/定位变化时：从 disk/base 重建成品（不拉 latest、不下载）。
+    """同观测/档位下仅修边或色带/台风/定位变化时：从 disk/base 重建成品。
+
+    不拉 ``latest.json``、不下载瓦片。台风/定位在缓存未命中时可各请求一次（与全量同 seam）。
 
     Returns:
         成功时返回观测时间字符串；无法走快路径时 ``None``（调用方应继续全量）。
@@ -239,14 +210,17 @@ def try_postprocess_fast_path(
         base, wallpaper_path = rebuilt
 
         if options.show_typhoon_marker:
-            _overlay_typhoon_from_cache(
-                applied_run_state=applied_run_state,
+            # 同帧缓存优先；未命中（如全量时超时未写入）则回退拉一次 D531108。
+            apply_typhoon_marker_cached_or_fetch(
                 wallpaper_path=wallpaper_path,
                 pic_side=pic_side,
                 observation_time=observation_time,
                 auto_adjust=options.auto_adjust,
                 margin_top_percent=options.margin_top_percent,
                 margin_bottom_percent=options.margin_bottom_percent,
+                applied_run_state=applied_run_state,
+                fetch_typhoon_center_fn=fetch_typhoon_center_fn,
+                allow_network=True,
             )
         if options.show_my_location:
             # IP 定位与观测时间无关：快路径无缓存时允许联网，避免首次开启永远不画。

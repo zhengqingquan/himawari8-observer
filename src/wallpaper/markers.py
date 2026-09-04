@@ -6,7 +6,7 @@ import logging
 import time
 from collections.abc import Callable
 from pathlib import Path
-from time import strftime, struct_time
+from time import strftime, strptime, struct_time
 
 from PIL import Image
 
@@ -123,6 +123,70 @@ def apply_typhoon_marker_if_needed(
         auto_adjust=auto_adjust,
         margin_top_percent=margin_top_percent,
         margin_bottom_percent=margin_bottom_percent,
+    )
+
+
+def apply_typhoon_marker_cached_or_fetch(
+    *,
+    wallpaper_path: Path,
+    pic_side: int,
+    observation_time: str,
+    auto_adjust: bool,
+    margin_top_percent: float,
+    margin_bottom_percent: float,
+    applied_run_state: AppliedRunState | None = None,
+    fetch_typhoon_center_fn: FetchTyphoonCenter | None = None,
+    allow_network: bool = False,
+) -> None:
+    """优先用同观测时间缓存画台风点；未命中且允许联网时拉一次并写缓存。
+
+    Args:
+        observation_time: ``YYYY-MM-DD HH:MM:SS``（UTC）字符串。
+        allow_network: 为 False 时仅用同帧缓存；为 True 时缓存未命中可请求 D531108。
+    """
+    cached = cached_typhoon_center(applied_run_state, observation_time)
+    if cached is not None:
+        draw_typhoon_marker_at(
+            wallpaper_path=wallpaper_path,
+            pic_side=pic_side,
+            lat=cached[0],
+            lon=cached[1],
+            auto_adjust=auto_adjust,
+            margin_top_percent=margin_top_percent,
+            margin_bottom_percent=margin_bottom_percent,
+        )
+        logging.info(
+            "Postprocess fast path: typhoon marker overlaid from cache for %s",
+            observation_time,
+        )
+        return
+    if not allow_network or fetch_typhoon_center_fn is None:
+        logging.info(
+            "Postprocess fast path: no typhoon center cache for %s; marker not drawn",
+            observation_time,
+        )
+        return
+    try:
+        obs = strptime(observation_time, OBS_TIME_FMT)
+    except ValueError:
+        logging.warning(
+            "Postprocess fast path: invalid observation_time %r; typhoon marker skipped",
+            observation_time,
+        )
+        return
+    logging.info(
+        "Postprocess fast path: no typhoon center cache for %s; fetching",
+        observation_time,
+    )
+    apply_typhoon_marker_if_needed(
+        wallpaper_path=wallpaper_path,
+        pic_side=pic_side,
+        observation_time=obs,
+        auto_adjust=auto_adjust,
+        margin_top_percent=margin_top_percent,
+        margin_bottom_percent=margin_bottom_percent,
+        fetch_typhoon_center_fn=fetch_typhoon_center_fn,
+        applied_run_state=applied_run_state,
     )
 
 

@@ -149,6 +149,7 @@ def run_wallpaper_pipeline(
                 set_desktop=set_desktop,
                 record_run_key=record_run_key,
                 fetch_ip_latlon_fn=ip_fetch,
+                fetch_typhoon_center_fn=typhoon_fetch,
                 get_desktop=read_desktop,
             )
             if fast is not None:
@@ -212,6 +213,7 @@ def run_wallpaper_pipeline(
             set_desktop=set_desktop,
             record_run_key=record_run_key,
             fetch_ip_latlon_fn=ip_fetch,
+            fetch_typhoon_center_fn=typhoon_fetch,
             get_desktop=read_desktop,
         )
         if fast is not None:

@@ -186,7 +186,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
         self.assertEqual(len(draws), 2)
         self.assertTrue(state["last"].show_typhoon_marker)
 
-    def test_typhoon_toggle_on_without_matching_cache_skips_marker(self):
+    def test_typhoon_toggle_on_without_matching_cache_fetches_and_draws(self):
         draws = []
         center_fetches = []
 
@@ -212,7 +212,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                 "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False, False),
                 "wallpaper_path": str(wall),
                 "wallpaper_base_path": str(base),
-                # 缓存是别的观测时间 → 不得画
+                # 缓存是别的观测时间 → 应回退拉一次并写入当前帧缓存
                 "typhoon_center_cache": {
                     "observation_time": "2021-06-03 05:10:00",
                     "lat": 29.024,
@@ -236,8 +236,12 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                 )
 
         self.assertEqual(result, "2021-06-03 05:20:00")
-        self.assertEqual(draws, [])
-        self.assertEqual(center_fetches, [])
+        self.assertEqual(len(draws), 1)
+        self.assertEqual(center_fetches, [1])
+        self.assertEqual(
+            state["typhoon_center_cache"]["observation_time"],
+            "2021-06-03 05:20:00",
+        )
         self.assertTrue(state["last"].show_typhoon_marker)
 
     def test_typhoon_only_toggle_off_restores_base_without_download(self):

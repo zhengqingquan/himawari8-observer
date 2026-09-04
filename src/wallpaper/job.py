@@ -22,6 +22,8 @@ from src.scheduler import reschedule_interval
 from src.settings import persist_applied_run_state
 from src.wallpaper.desktop import get_desktop_wallpaper as read_desktop_wallpaper
 from src.wallpaper.desktop import set_wallpaper as apply_desktop_wallpaper
+from src.download.typhoon import fetch_typhoon_center
+from src.download.geoip import fetch_ip_latlon
 from src.wallpaper.fast_path import try_postprocess_fast_path
 from src.wallpaper.fingerprint import (
     AppliedRunKey,
@@ -291,6 +293,8 @@ class WallpaperJobRef:
                 run_key=provisional,
                 set_desktop=apply_desktop_wallpaper,
                 record_run_key=True,
+                fetch_ip_latlon_fn=fetch_ip_latlon,
+                fetch_typhoon_center_fn=fetch_typhoon_center,
                 get_desktop=read_desktop_wallpaper,
             )
             if obs is None:
