@@ -62,25 +62,48 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         job_ref: 托盘与定时器共享的壁纸任务引用，由 ``src.app`` 注入。
     """
 
-    def on_update_wallpaper(icon, item):
+    global icon
+    icon = pystray.Icon(f"{PROGRAM_NAME}_tray_icon")
+    icon.icon = create_image()
+
+    def refresh_tray_title() -> None:
+        """任意线程可调用：只更新悬停标题。
+
+        勿在壁纸工作线程调用 ``update_menu``：菜单打开时会卡死 Win32 托盘。
+        """
+        icon.title = format_tray_icon_title(
+            job_ref.applied_observation_time,
+            pixel_side=job_ref.applied_pixel_side,
+        )
+
+    def refresh_tray_menu() -> None:
+        """仅托盘回调线程调用：刷新标题并重建菜单勾选/文案。"""
+        refresh_tray_title()
+        icon.update_menu()
+
+    def on_update_wallpaper(_icon, _item):
         _run_wallpaper_update_async(job_ref, progressive=True)
 
-    def on_toggle_pause(icon, item):
+    def on_toggle_pause(_icon, _item):
         if is_paused():
             resume()
         else:
             pause()
+        refresh_tray_menu()
 
     def make_interval_item(minutes: int):
-        def on_select(icon, item):
+        def on_select(_icon, _item):
             job_ref.set_download_interval_minutes(minutes)
             persist_job_settings(job_ref)
             logging.info("Download interval set to %s minutes", minutes)
+            refresh_tray_menu()
 
         return pystray.MenuItem(
             f"每 {minutes} 分钟",
             on_select,
-            checked=lambda item: not is_paused() and job_ref.download_interval_minutes == minutes,
+            checked=lambda item: (
+                not is_paused() and job_ref.download_interval_minutes == minutes
+            ),
             radio=True,
         )
 
@@ -91,18 +114,19 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         log_label: str,
         trigger_update: bool = True,
     ):
-        def on_toggle(icon, item):
+        def on_toggle(_icon, _item):
             enabled = not get_value()
             set_value(enabled)
             persist_job_settings(job_ref)
             logging.info("%s %s", log_label, "enabled" if enabled else "disabled")
+            refresh_tray_menu()
             if trigger_update:
                 _run_wallpaper_update_async(job_ref)
 
         return on_toggle
 
     def make_resolution_item(pixel_side: int):
-        def on_select(icon, item):
+        def on_select(_icon, _item):
             job_ref.set_pixel_side(pixel_side)
             persist_job_settings(job_ref)
             logging.info(
@@ -110,6 +134,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
                 pixel_side,
                 job_ref.resolution_grade,
             )
+            refresh_tray_menu()
             _run_wallpaper_update_async(job_ref)
 
         return pystray.MenuItem(
@@ -127,10 +152,11 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         set_value: Callable[[float], None],
         log_label: str,
     ):
-        def on_select(icon, item):
+        def on_select(_icon, _item):
             set_value(percent)
             persist_job_settings(job_ref)
             logging.info("%s set to %s%%", log_label, percent)
+            refresh_tray_menu()
             _run_wallpaper_update_async(job_ref)
 
         return pystray.MenuItem(
@@ -172,18 +198,6 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         log_label="Show my location",
     )
 
-    global icon
-    icon = pystray.Icon(f"{PROGRAM_NAME}_tray_icon")
-    icon.icon = create_image()
-
-    def refresh_tray_display() -> None:
-        """刷新悬停标题，并重建菜单（Win32 会缓存，需 update_menu 才能看到新时间）。"""
-        icon.title = format_tray_icon_title(
-            job_ref.applied_observation_time,
-            pixel_side=job_ref.applied_pixel_side,
-        )
-        icon.update_menu()
-
     resolution_menu = pystray.Menu(*[make_resolution_item(res) for res in IMAGE_RESOLUTION])
     schedule_menu = pystray.Menu(
         pystray.MenuItem(
@@ -223,10 +237,18 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             for p in MARGIN_PERCENT_CHOICES
         ],
     )
+    def on_startup_and_refresh(icon_arg, item):
+        on_startup(icon_arg, item)
+        refresh_tray_menu()
+
+    def on_toggle_logging_and_refresh(icon_arg, item):
+        on_toggle_logging(icon_arg, item)
+        refresh_tray_menu()
+
     log_menu = pystray.Menu(
         pystray.MenuItem(
             "启用日志",
-            on_toggle_logging,
+            on_toggle_logging_and_refresh,
             checked=lambda item: is_logging_enabled(),
         ),
         pystray.MenuItem("打开日志文件", on_open_log),
@@ -292,7 +314,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         pystray.Menu.SEPARATOR,
         pystray.MenuItem(
             "开机启动",
-            on_startup,
+            on_startup_and_refresh,
             checked=lambda item: is_startup_set(),
         ),
         pystray.MenuItem("日志", log_menu),
@@ -301,6 +323,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         pystray.MenuItem("退出", on_quit),
     )
 
-    job_ref.set_on_applied(refresh_tray_display)
-    refresh_tray_display()
+    # 后台上墙只改悬停标题；菜单重建仅在托盘点击回调里做。
+    job_ref.set_on_applied(refresh_tray_title)
+    refresh_tray_menu()
     icon.run_detached()
