@@ -9,6 +9,7 @@
 ### 新增
 
 - 可选「显示台风位置」（`settings.json` / CLI `--show-typhoon-marker` / 托盘），默认关闭；有 NICT D531108 台风中心时在壁纸上标注，失败则静默跳过；写入成图指纹。
+- 开启「显示台风位置」时，额外从 JTWC 西太 ABPW 通报解析 INVEST 扰动（如 `97W`）并画青绿标签点；缓存 TTL 6h，失败静默跳过。
 - 可选「显示我的位置」（`settings.json` / CLI `--show-my-location` / 托盘），默认关闭；经 IP 粗定位（ipwho.is）投影画蓝点 `ME`，缓存 TTL 24h，失败则静默跳过；写入成图指纹第 8 项。
 - 定时更新间隔可配置（`settings.json` / CLI `--download-interval-minutes` / 托盘「定时更新」），档位 `5` / `10` / `15` / `20` / `30` 分钟，默认 `10`；改档立即 reschedule。
 

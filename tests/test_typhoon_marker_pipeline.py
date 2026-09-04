@@ -37,8 +37,11 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
         def fetch_center(_obs):
             return (29.024, 128.437)
 
+        def fetch_invests():
+            return [{"id": "97W", "lat": 19.2, "lon": 138.3}]
+
         def fake_draw(image_path, xy, **kwargs):
-            draws.append((Path(image_path).name, xy))
+            draws.append((Path(image_path).name, xy, kwargs.get("label", "TY")))
             return True
 
         with temporary_base_dir() as base_dir:
@@ -49,17 +52,21 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                     compose_equal=compose_equal,
                     set_wallpaper=set_wallpaper,
                     fetch_typhoon_center_fn=fetch_center,
+                    fetch_jtwc_invests_fn=fetch_invests,
                     options=PostprocessOptions(show_typhoon_marker=True),
                     cleanup_after_apply=False,
                     base_dir=base_dir,
                 )
 
-        self.assertEqual(len(draws), 1)
+        self.assertEqual(len(draws), 2)
         self.assertEqual(draws[0][0], "4d20210603052000.png")
+        self.assertEqual(draws[0][2], "TY")
+        self.assertEqual(draws[1][2], "97W")
         self.assertIsInstance(draws[0][1], tuple)
 
     def test_disabled_does_not_fetch(self):
         fetch_calls = []
+        jtwc_calls = []
 
         def fetch_observation_time():
             return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
@@ -79,6 +86,10 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
             fetch_calls.append(1)
             return (29.024, 128.437)
 
+        def fetch_invests():
+            jtwc_calls.append(1)
+            return [{"id": "97W", "lat": 19.2, "lon": 138.3}]
+
         with temporary_base_dir() as base_dir:
             run_wallpaper_pipeline(
                 fetch_observation_time=fetch_observation_time,
@@ -86,12 +97,14 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                 compose_equal=compose_equal,
                 set_wallpaper=set_wallpaper,
                 fetch_typhoon_center_fn=fetch_center,
+                fetch_jtwc_invests_fn=fetch_invests,
                 options=PostprocessOptions(show_typhoon_marker=False),
                 cleanup_after_apply=False,
                 base_dir=base_dir,
             )
 
         self.assertEqual(fetch_calls, [])
+        self.assertEqual(jtwc_calls, [])
 
     def test_typhoon_only_toggle_on_skips_download(self):
         downloads = []
@@ -136,6 +149,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                     compose_equal=compose_equal,
                     set_wallpaper=set_wallpaper,
                     fetch_typhoon_center_fn=fetch_center,
+                    fetch_jtwc_invests_fn=lambda: [],
                     options=PostprocessOptions(show_typhoon_marker=True),
                     cleanup_after_apply=False,
                     applied_run_state=state,
@@ -159,6 +173,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                     compose_equal=compose_equal,
                     set_wallpaper=set_wallpaper,
                     fetch_typhoon_center_fn=fetch_center,
+                    fetch_jtwc_invests_fn=lambda: [],
                     options=PostprocessOptions(show_typhoon_marker=False),
                     cleanup_after_apply=False,
                     applied_run_state=state,
@@ -174,6 +189,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                     compose_equal=compose_equal,
                     set_wallpaper=set_wallpaper,
                     fetch_typhoon_center_fn=fetch_center,
+                    fetch_jtwc_invests_fn=lambda: [],
                     options=PostprocessOptions(show_typhoon_marker=True),
                     cleanup_after_apply=False,
                     applied_run_state=state,
@@ -229,6 +245,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                     compose_equal=lambda pic: None,
                     set_wallpaper=set_wallpaper,
                     fetch_typhoon_center_fn=fetch_center,
+                    fetch_jtwc_invests_fn=lambda: [],
                     options=PostprocessOptions(show_typhoon_marker=True),
                     cleanup_after_apply=False,
                     applied_run_state=state,
@@ -281,6 +298,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                     compose_equal=compose_equal,
                     set_wallpaper=set_wallpaper,
                     fetch_typhoon_center_fn=fetch_center,
+                    fetch_jtwc_invests_fn=lambda: [],
                     options=PostprocessOptions(show_typhoon_marker=True),
                     cleanup_after_apply=False,
                     applied_run_state=state,
@@ -299,6 +317,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                     compose_equal=compose_equal,
                     set_wallpaper=set_wallpaper,
                     fetch_typhoon_center_fn=fetch_center,
+                    fetch_jtwc_invests_fn=lambda: [],
                     options=PostprocessOptions(show_typhoon_marker=False),
                     cleanup_after_apply=False,
                     applied_run_state=state,
@@ -346,6 +365,7 @@ class TyphoonMarkerPipelineTests(unittest.TestCase):
                     fetch_typhoon_center_fn=lambda _obs: (_ for _ in ()).throw(
                         RuntimeError("must not fetch typhoon json")
                     ),
+                    fetch_jtwc_invests_fn=lambda: [],
                     options=PostprocessOptions(show_typhoon_marker=True),
                     cleanup_after_apply=False,
                     applied_run_state=state,

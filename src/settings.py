@@ -174,6 +174,34 @@ def _coerce_my_location_cache(value: Any) -> dict[str, Any] | None:
     }
 
 
+def _coerce_jtwc_invest_cache(value: Any) -> dict[str, Any] | None:
+    """校验 ``{invests: [{id, lat, lon}, ...], fetched_at}``。"""
+    if not isinstance(value, dict):
+        return None
+    fetched_at = value.get("fetched_at")
+    invests_raw = value.get("invests")
+    if not isinstance(fetched_at, (int, float)):
+        return None
+    if not isinstance(invests_raw, list):
+        return None
+    invests: list[dict[str, Any]] = []
+    for item in invests_raw:
+        if not isinstance(item, dict):
+            return None
+        invest_id = item.get("id")
+        lat = item.get("lat")
+        lon = item.get("lon")
+        if not isinstance(invest_id, str) or not invest_id.strip():
+            return None
+        if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+            return None
+        lat_f, lon_f = float(lat), float(lon)
+        if not (-90.0 <= lat_f <= 90.0 and -180.0 <= lon_f <= 180.0):
+            return None
+        invests.append({"id": invest_id.strip().upper(), "lat": lat_f, "lon": lon_f})
+    return {"invests": invests, "fetched_at": float(fetched_at)}
+
+
 # 字段表：增删 settings 键只改此处；sanitize 循环共用同一套 coerce。
 _SETTINGS_FIELD_COERCERS: tuple[tuple[str, Callable[[Any], Any | None]], ...] = (
     ("resolution", _coerce_resolution),
@@ -192,6 +220,7 @@ _SETTINGS_FIELD_COERCERS: tuple[tuple[str, Callable[[Any], Any | None]], ...] = 
     ("last_wallpaper_path", _coerce_wallpaper_path),
     ("typhoon_center_cache", _coerce_typhoon_center_cache),
     ("my_location_cache", _coerce_my_location_cache),
+    ("jtwc_invest_cache", _coerce_jtwc_invest_cache),
 )
 
 _SETTINGS_KEYS = frozenset(key for key, _ in _SETTINGS_FIELD_COERCERS)
@@ -344,6 +373,11 @@ def applied_run_state_from_settings(settings: dict[str, Any] | None) -> dict[str
         coerced_loc = _coerce_my_location_cache(my_loc)
         if coerced_loc is not None:
             state["my_location_cache"] = coerced_loc
+    jtwc = settings.get("jtwc_invest_cache")
+    if isinstance(jtwc, dict):
+        coerced_jtwc = _coerce_jtwc_invest_cache(jtwc)
+        if coerced_jtwc is not None:
+            state["jtwc_invest_cache"] = coerced_jtwc
     return state
 
 
@@ -370,6 +404,10 @@ def persist_applied_run_state(
     coerced_loc = _coerce_my_location_cache(my_loc) if my_loc is not None else None
     if coerced_loc is not None:
         payload["my_location_cache"] = coerced_loc
+    jtwc = state.get("jtwc_invest_cache")
+    coerced_jtwc = _coerce_jtwc_invest_cache(jtwc) if jtwc is not None else None
+    if coerced_jtwc is not None:
+        payload["jtwc_invest_cache"] = coerced_jtwc
     if not payload:
         return False
     return save_settings(payload, path=path)

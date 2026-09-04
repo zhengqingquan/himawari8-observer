@@ -15,7 +15,9 @@ from src.wallpaper.fingerprint import (
 )
 from src.wallpaper.markers import (
     FetchIpLatlon,
+    FetchJtwcInvests,
     FetchTyphoonCenter,
+    apply_jtwc_invest_markers_if_needed,
     apply_my_location_marker_if_needed,
     apply_typhoon_marker_cached_or_fetch,
 )
@@ -150,6 +152,7 @@ def try_postprocess_fast_path(
     record_run_key: bool,
     fetch_ip_latlon_fn: FetchIpLatlon | None = None,
     fetch_typhoon_center_fn: FetchTyphoonCenter | None = None,
+    fetch_jtwc_invests_fn: FetchJtwcInvests | None = None,
     get_desktop: GetDesktopWallpaper | None = None,
 ) -> str | None:
     """同观测/档位下仅修边或色带/台风/定位变化时：从 disk/base 重建成品。
@@ -220,6 +223,16 @@ def try_postprocess_fast_path(
                 margin_bottom_percent=options.margin_bottom_percent,
                 applied_run_state=applied_run_state,
                 fetch_typhoon_center_fn=fetch_typhoon_center_fn,
+                allow_network=True,
+            )
+            apply_jtwc_invest_markers_if_needed(
+                wallpaper_path=wallpaper_path,
+                pic_side=pic_side,
+                auto_adjust=options.auto_adjust,
+                margin_top_percent=options.margin_top_percent,
+                margin_bottom_percent=options.margin_bottom_percent,
+                fetch_jtwc_invests_fn=fetch_jtwc_invests_fn or (lambda: []),
+                applied_run_state=applied_run_state,
                 allow_network=True,
             )
         if options.show_my_location:

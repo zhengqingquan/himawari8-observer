@@ -9,6 +9,7 @@ from time import struct_time
 
 from src.compose.equal import apply_deband_to_file, apply_margins, compose_equal_image
 from src.download.geoip import fetch_ip_latlon
+from src.download.jtwc import fetch_jtwc_invests
 from src.download.observation import create_session
 from src.download.observation import fetch_observation_time as fetch_latest_observation_time
 from src.download.observation import observation_time_yesterday_local
@@ -32,6 +33,7 @@ from src.wallpaper.fingerprint import (
 )
 from src.wallpaper.folders import create_pic_folders
 from src.wallpaper.markers import (
+    apply_jtwc_invest_markers_if_needed,
     apply_my_location_marker_if_needed,
     apply_typhoon_marker_if_needed,
 )
@@ -53,6 +55,7 @@ SetWallpaper = Callable[[Path], bool | None]
 GetDesktopWallpaper = Callable[[], str | None]
 FetchTyphoonCenter = Callable[[struct_time], tuple[float, float] | None]
 FetchIpLatlon = Callable[[], tuple[float, float] | None]
+FetchJtwcInvests = Callable[[], list]
 RefreshPostprocess = Callable[[], LivePostprocess]
 
 
@@ -83,6 +86,7 @@ def run_wallpaper_pipeline(
     get_desktop_wallpaper: GetDesktopWallpaper | None = None,
     fetch_typhoon_center_fn: FetchTyphoonCenter | None = None,
     fetch_ip_latlon_fn: FetchIpLatlon | None = None,
+    fetch_jtwc_invests_fn: FetchJtwcInvests | None = None,
     refresh_postprocess: RefreshPostprocess | None = None,
     resolution_grade: str | None = None,
     options: PostprocessOptions | None = None,
@@ -117,6 +121,7 @@ def run_wallpaper_pipeline(
     read_desktop = get_desktop_wallpaper or read_desktop_wallpaper
     typhoon_fetch = fetch_typhoon_center_fn or fetch_typhoon_center
     ip_fetch = fetch_ip_latlon_fn or fetch_ip_latlon
+    jtwc_fetch = fetch_jtwc_invests_fn or fetch_jtwc_invests
     grade = resolution_grade if resolution_grade is not None else default_grade()
     opts = options if options is not None else PostprocessOptions()
 
@@ -150,6 +155,7 @@ def run_wallpaper_pipeline(
                 record_run_key=record_run_key,
                 fetch_ip_latlon_fn=ip_fetch,
                 fetch_typhoon_center_fn=typhoon_fetch,
+                fetch_jtwc_invests_fn=jtwc_fetch,
                 get_desktop=read_desktop,
             )
             if fast is not None:
@@ -214,6 +220,7 @@ def run_wallpaper_pipeline(
             record_run_key=record_run_key,
             fetch_ip_latlon_fn=ip_fetch,
             fetch_typhoon_center_fn=typhoon_fetch,
+            fetch_jtwc_invests_fn=jtwc_fetch,
             get_desktop=read_desktop,
         )
         if fast is not None:
@@ -290,6 +297,16 @@ def run_wallpaper_pipeline(
             margin_bottom_percent=opts.margin_bottom_percent,
             fetch_typhoon_center_fn=typhoon_fetch,
             applied_run_state=applied_run_state,
+        )
+        apply_jtwc_invest_markers_if_needed(
+            wallpaper_path=wallpaper_path,
+            pic_side=pic.pic_side,
+            auto_adjust=opts.auto_adjust,
+            margin_top_percent=opts.margin_top_percent,
+            margin_bottom_percent=opts.margin_bottom_percent,
+            fetch_jtwc_invests_fn=jtwc_fetch,
+            applied_run_state=applied_run_state,
+            allow_network=True,
         )
     if opts.show_my_location:
         apply_my_location_marker_if_needed(

@@ -7,6 +7,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 from time import strftime, strptime, struct_time
+from typing import Any
 
 from PIL import Image
 
@@ -18,10 +19,13 @@ from src.wallpaper.paths import AppliedRunState
 
 FetchTyphoonCenter = Callable[[struct_time], tuple[float, float] | None]
 FetchIpLatlon = Callable[[], tuple[float, float] | None]
+FetchJtwcInvests = Callable[[], list[dict[str, Any]]]
 
 _MY_LOCATION_CACHE_TTL_SEC = 24 * 60 * 60
 _MY_LOCATION_MARKER_COLOR = (64, 156, 255)
 _MY_LOCATION_MARKER_LABEL = "ME"
+_JTWC_INVEST_CACHE_TTL_SEC = 6 * 60 * 60
+_JTWC_INVEST_MARKER_COLOR = (64, 200, 160)
 
 
 def store_typhoon_center_cache(
@@ -188,6 +192,111 @@ def apply_typhoon_marker_cached_or_fetch(
         fetch_typhoon_center_fn=fetch_typhoon_center_fn,
         applied_run_state=applied_run_state,
     )
+
+
+def store_jtwc_invest_cache(
+    applied_run_state: AppliedRunState | None,
+    invests: list[dict[str, Any]],
+    *,
+    fetched_at: float | None = None,
+) -> None:
+    if applied_run_state is None:
+        return
+    cleaned: list[dict[str, Any]] = []
+    for item in invests:
+        invest_id = item.get("id")
+        lat = item.get("lat")
+        lon = item.get("lon")
+        if not isinstance(invest_id, str) or not invest_id.strip():
+            continue
+        if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+            continue
+        cleaned.append(
+            {
+                "id": invest_id.strip().upper(),
+                "lat": float(lat),
+                "lon": float(lon),
+            }
+        )
+    applied_run_state["jtwc_invest_cache"] = {
+        "invests": cleaned,
+        "fetched_at": float(time.time() if fetched_at is None else fetched_at),
+    }
+
+
+def cached_jtwc_invests(
+    applied_run_state: AppliedRunState | None,
+    *,
+    now: float | None = None,
+    ttl_sec: float = _JTWC_INVEST_CACHE_TTL_SEC,
+) -> list[dict[str, Any]] | None:
+    """缓存未过期时返回 INVEST 列表；过期或无效返回 ``None``（可区分空列表缓存）。"""
+    if applied_run_state is None:
+        return None
+    raw = applied_run_state.get("jtwc_invest_cache")
+    if not isinstance(raw, dict):
+        return None
+    fetched_at = raw.get("fetched_at")
+    invests_raw = raw.get("invests")
+    if not isinstance(fetched_at, (int, float)):
+        return None
+    if not isinstance(invests_raw, list):
+        return None
+    clock = time.time() if now is None else now
+    if clock - float(fetched_at) > ttl_sec:
+        return None
+    cleaned: list[dict[str, Any]] = []
+    for item in invests_raw:
+        if not isinstance(item, dict):
+            continue
+        invest_id = item.get("id")
+        lat = item.get("lat")
+        lon = item.get("lon")
+        if not isinstance(invest_id, str) or not invest_id.strip():
+            continue
+        if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+            continue
+        cleaned.append(
+            {
+                "id": invest_id.strip().upper(),
+                "lat": float(lat),
+                "lon": float(lon),
+            }
+        )
+    return cleaned
+
+
+def apply_jtwc_invest_markers_if_needed(
+    *,
+    wallpaper_path: Path,
+    pic_side: int,
+    auto_adjust: bool,
+    margin_top_percent: float,
+    margin_bottom_percent: float,
+    fetch_jtwc_invests_fn: FetchJtwcInvests,
+    applied_run_state: AppliedRunState | None = None,
+    allow_network: bool = True,
+) -> None:
+    """用缓存或 JTWC ABPW 在壁纸上画 INVEST 扰动点；失败只记日志。"""
+    invests = cached_jtwc_invests(applied_run_state)
+    if invests is None and allow_network:
+        invests = fetch_jtwc_invests_fn()
+        store_jtwc_invest_cache(applied_run_state, invests)
+    elif invests is None:
+        logging.info("Postprocess fast path: no JTWC invest cache; markers not drawn")
+        return
+    for item in invests:
+        draw_typhoon_marker_at(
+            wallpaper_path=wallpaper_path,
+            pic_side=pic_side,
+            lat=float(item["lat"]),
+            lon=float(item["lon"]),
+            auto_adjust=auto_adjust,
+            margin_top_percent=margin_top_percent,
+            margin_bottom_percent=margin_bottom_percent,
+            label=str(item["id"]),
+            color=_JTWC_INVEST_MARKER_COLOR,
+        )
 
 
 def store_my_location_cache(

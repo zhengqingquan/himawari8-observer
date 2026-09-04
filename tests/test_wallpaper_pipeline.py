@@ -780,6 +780,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                     compose_equal=compose_equal,
                     set_wallpaper=set_wallpaper,
                     fetch_typhoon_center_fn=fetch_center,
+                    fetch_jtwc_invests_fn=lambda: [],
                     options=PostprocessOptions(show_typhoon_marker=True),
                     refresh_postprocess=refresh,
                     cleanup_after_apply=False,
