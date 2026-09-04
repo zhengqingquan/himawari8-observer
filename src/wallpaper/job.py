@@ -19,8 +19,14 @@ from src.resolution_grade import (
     progressive_preview_grade,
 )
 from src.settings import persist_applied_run_state
+from src.wallpaper.desktop import set_wallpaper as apply_desktop_wallpaper
 from src.wallpaper.pipeline import run_wallpaper_pipeline
-from src.wallpaper.postprocess import AppliedRunKey
+from src.wallpaper.postprocess import (
+    AppliedRunKey,
+    layout_or_postprocess_differs,
+    provisional_run_key_from_last,
+    try_postprocess_fast_path,
+)
 
 BuildJob = Callable[..., Callable[[], None]]
 RunPipeline = Callable[..., str | None]
@@ -133,6 +139,7 @@ class WallpaperJobRef:
         persist_state: bool = True,
     ) -> None:
         self._lock = threading.Lock()
+        self._live_postprocess_lock = threading.Lock()
         self._auto_adjust = auto_adjust
         self._margin_top_percent = margin_top_percent
         self._margin_bottom_percent = margin_bottom_percent
@@ -218,6 +225,60 @@ class WallpaperJobRef:
         with self._lock:
             self._persist_applied_state_unlocked()
         self._notify_applied()
+
+    def try_live_postprocess(self) -> bool:
+        """Busy 时立刻对已上墙成品做后处理快路径（不占 update 互斥锁）。
+
+        仅当同观测/档位下修边、色带、台风或定位变化且 disk/base 仍可用时成功。
+
+        Returns:
+            True 若成功重建并设壁纸；无法走快路径时 False。
+        """
+        with self._live_postprocess_lock:
+            with self._lock:
+                state = self._applied_run_state
+                grade = self._grade
+                auto_adjust = self._auto_adjust
+                margin_top_percent = self._margin_top_percent
+                margin_bottom_percent = self._margin_bottom_percent
+                reduce_banding = self._reduce_banding
+                show_typhoon_marker = self._show_typhoon_marker
+                show_my_location = self._show_my_location
+                last = state.get("last")
+
+            provisional = provisional_run_key_from_last(
+                last,
+                resolution_grade=grade,
+                auto_adjust=auto_adjust,
+                margin_top_percent=margin_top_percent,
+                margin_bottom_percent=margin_bottom_percent,
+                reduce_banding=reduce_banding,
+                show_typhoon_marker=show_typhoon_marker,
+                show_my_location=show_my_location,
+            )
+            if provisional is None or not layout_or_postprocess_differs(last, provisional):
+                return False
+
+            obs = try_postprocess_fast_path(
+                applied_run_state=state,
+                run_key=provisional,
+                auto_adjust=auto_adjust,
+                margin_top_percent=margin_top_percent,
+                margin_bottom_percent=margin_bottom_percent,
+                reduce_banding=reduce_banding,
+                show_typhoon_marker=show_typhoon_marker,
+                show_my_location=show_my_location,
+                set_desktop=apply_desktop_wallpaper,
+                record_run_key=True,
+            )
+            if obs is None:
+                return False
+
+            with self._lock:
+                self._sync_applied_display_unlocked()
+                self._persist_applied_state_unlocked()
+            self._notify_applied()
+            return True
 
     def run_progressive(
         self,

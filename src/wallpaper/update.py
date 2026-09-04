@@ -73,6 +73,9 @@ def run_wallpaper_update(
 ) -> bool:
     """空闲时跑一次壁纸更新；已在进行则排队，当前轮结束后跟跑。
 
+    忙时若 ``pipeline`` 提供 ``try_live_postprocess``，会立刻尝试刷新已上墙成品
+    （后处理快路径），同时仍排队跟跑以便新图带上最新设置。
+
     Args:
         pipeline: 组装层注入的零参任务（通常为 ``WallpaperJobRef``）。
         respect_pause: True 时若已暂停则跳过（供定时调度）；手动更新传 False。
@@ -87,6 +90,12 @@ def run_wallpaper_update(
     if not _lock.acquire(blocking=False):
         _queue_follow_up(respect_pause=respect_pause, progressive=progressive)
         logging.info("Wallpaper update already running; queued follow-up")
+        live = getattr(pipeline, "try_live_postprocess", None)
+        if callable(live):
+            try:
+                live()
+            except Exception:
+                logging.exception("Live postprocess while busy failed")
         return False
     ran = False
     try:

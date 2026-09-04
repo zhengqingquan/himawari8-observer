@@ -200,6 +200,61 @@ class WallpaperJobRefTests(unittest.TestCase):
         ref.set_on_applied(boom)
         ref()  # must not raise
 
+    def test_try_live_postprocess_typhoon_toggle_rebuilds(self):
+        from pathlib import Path
+        from unittest.mock import patch
+
+        from PIL import Image
+
+        from tests.workdir_paths import temporary_base_dir
+
+        set_paths = []
+        notifies = []
+
+        with temporary_base_dir() as base_dir:
+            complete = Path(base_dir) / "img" / "20210603052000" / "complete"
+            complete.mkdir(parents=True)
+            wall = complete / "4d20210603052000.png"
+            base = complete / "4d20210603052000_base.png"
+            Image.new("RGB", (64, 64), (1, 2, 3)).save(wall)
+            Image.new("RGB", (64, 64), (1, 2, 3)).save(base)
+            state = {
+                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False, False),
+                "wallpaper_path": str(wall),
+                "wallpaper_base_path": str(base),
+            }
+            ref = WallpaperJobRef(
+                "4d",
+                build_job=_noop_build,
+                applied_run_state=state,
+                persist_state=False,
+            )
+            ref.set_on_applied(lambda: notifies.append(1))
+            ref.set_show_typhoon_marker(True)
+
+            with patch(
+                "src.wallpaper.job.apply_desktop_wallpaper",
+                side_effect=lambda path: set_paths.append(Path(path)) or True,
+            ):
+                self.assertTrue(ref.try_live_postprocess())
+
+        self.assertEqual(len(set_paths), 1)
+        self.assertEqual(notifies, [1])
+        self.assertTrue(ref._applied_run_state["last"][6])
+
+    def test_try_live_postprocess_grade_change_returns_false(self):
+        ref = WallpaperJobRef(
+            "4d",
+            build_job=_noop_build,
+            applied_run_state={
+                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False, False),
+                "wallpaper_path": r"E:\app\img\wall.png",
+            },
+            persist_state=False,
+        )
+        ref.set_resolution_grade("8d")
+        self.assertFalse(ref.try_live_postprocess())
+
 
 class WallpaperJobRefProgressiveTests(unittest.TestCase):
     def test_progressive_runs_preview_then_target(self):

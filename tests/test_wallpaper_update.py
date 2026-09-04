@@ -197,6 +197,40 @@ class RunWallpaperUpdateTests(unittest.TestCase):
         )
         self.assertEqual(calls, ["call"])
 
+    def test_busy_invokes_live_postprocess_and_still_follow_up(self):
+        started = threading.Event()
+        release = threading.Event()
+        calls = []
+        live_calls = []
+
+        class PipelineWithLive:
+            def __call__(self):
+                calls.append(1)
+                if len(calls) == 1:
+                    started.set()
+                    release.wait(timeout=5)
+
+            def try_live_postprocess(self):
+                live_calls.append(1)
+                return True
+
+        pipeline = PipelineWithLive()
+        worker = threading.Thread(
+            target=lambda: run_wallpaper_update(pipeline=pipeline),
+            daemon=True,
+        )
+        worker.start()
+        self.assertTrue(started.wait(timeout=2))
+
+        self.assertFalse(run_wallpaper_update(pipeline=pipeline))
+        self.assertEqual(live_calls, [1])
+        self.assertEqual(len(calls), 1)
+
+        release.set()
+        worker.join(timeout=2)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(live_calls, [1])
+
 
 if __name__ == "__main__":
     unittest.main()
