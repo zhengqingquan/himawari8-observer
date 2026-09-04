@@ -29,6 +29,7 @@ class PostprocessOptions(NamedTuple):
     reduce_banding: bool = False
     show_typhoon_marker: bool = False
     show_my_location: bool = False
+    show_subsolar_point: bool = False
 
     @property
     def layout(self) -> tuple[bool, float, float]:
@@ -48,7 +49,7 @@ class LivePostprocess(NamedTuple):
 
 
 class AppliedRunKey(NamedTuple):
-    """成图指纹：观测时间 + 影响成品的参数（落盘仍为 8 项 list）。"""
+    """成图指纹：观测时间 + 影响成品的参数（落盘仍为 9 项 list）。"""
 
     observation_time: str
     resolution_grade: str
@@ -58,6 +59,7 @@ class AppliedRunKey(NamedTuple):
     reduce_banding: bool
     show_typhoon_marker: bool
     show_my_location: bool
+    show_subsolar_point: bool
 
     @property
     def layout(self) -> tuple[bool, float, float]:
@@ -83,7 +85,7 @@ class AppliedRunKey(NamedTuple):
 
     @classmethod
     def from_raw(cls, value: Any) -> AppliedRunKey | None:
-        """接受本类型或完整 8 项序列；非法则 ``None``。"""
+        """接受本类型或完整 9 项序列；非法则 ``None``。"""
         if isinstance(value, cls):
             return value
         if not isinstance(value, (tuple, list)) or len(value) != len(cls._fields):
@@ -98,6 +100,7 @@ class AppliedRunKey(NamedTuple):
                 reduce_banding,
                 show_typhoon_marker,
                 show_my_location,
+                show_subsolar_point,
             ) = value
             key = cls(
                 str(obs_time),
@@ -108,6 +111,7 @@ class AppliedRunKey(NamedTuple):
                 bool(reduce_banding),
                 bool(show_typhoon_marker),
                 bool(show_my_location),
+                bool(show_subsolar_point),
             )
         except (TypeError, ValueError):
             return None
@@ -160,7 +164,7 @@ def obs_grade_match(last: AppliedRunKey, run_key: AppliedRunKey) -> bool:
 
 
 def layout_or_postprocess_differs(last: Any, run_key: AppliedRunKey) -> bool:
-    """同观测与档位，修边/色带/台风/定位任一不同。"""
+    """同观测与档位，修边/色带/台风/定位/直射点任一不同。"""
     last_key = AppliedRunKey.from_raw(last)
     if last_key is None:
         return False

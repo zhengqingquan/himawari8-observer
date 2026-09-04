@@ -35,6 +35,7 @@ from src.wallpaper.folders import create_pic_folders
 from src.wallpaper.markers import (
     apply_jtwc_invest_markers_if_needed,
     apply_my_location_marker_if_needed,
+    apply_subsolar_marker_if_needed,
     apply_typhoon_marker_if_needed,
 )
 from src.wallpaper.paths import (
@@ -240,11 +241,13 @@ def run_wallpaper_pipeline(
         cleanup_after_apply = live.cleanup_after_apply
         run_key = AppliedRunKey.from_observation(observation_time, grade, opts)
         logging.info(
-            "Post-download postprocess refresh: adjust=%s banding=%s typhoon=%s my_location=%s",
+            "Post-download postprocess refresh: "
+            "adjust=%s banding=%s typhoon=%s my_location=%s subsolar=%s",
             opts.auto_adjust,
             opts.reduce_banding,
             opts.show_typhoon_marker,
             opts.show_my_location,
+            opts.show_subsolar_point,
         )
 
     # 始终先落等分圆盘，再修边；保留 *_disk 供改边距时后处理。
@@ -318,6 +321,15 @@ def run_wallpaper_pipeline(
             fetch_ip_latlon_fn=ip_fetch,
             applied_run_state=applied_run_state,
             allow_network=True,
+        )
+    if opts.show_subsolar_point:
+        apply_subsolar_marker_if_needed(
+            wallpaper_path=wallpaper_path,
+            pic_side=pic.pic_side,
+            observation_time=time_str,
+            auto_adjust=opts.auto_adjust,
+            margin_top_percent=opts.margin_top_percent,
+            margin_bottom_percent=opts.margin_bottom_percent,
         )
     applied = set_desktop(wallpaper_path)
     if applied is False:

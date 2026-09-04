@@ -14,6 +14,7 @@ from PIL import Image
 from src.compose.equal import compute_margin_layout, get_primary_screen_size
 from src.compose.geo import latlon_to_himawari_fd_xy
 from src.compose.overlay import draw_typhoon_marker
+from src.compose.solar import subsolar_latlon
 from src.wallpaper.fingerprint import OBS_TIME_FMT
 from src.wallpaper.paths import AppliedRunState
 
@@ -26,6 +27,8 @@ _MY_LOCATION_MARKER_COLOR = (64, 156, 255)
 _MY_LOCATION_MARKER_LABEL = "ME"
 _JTWC_INVEST_CACHE_TTL_SEC = 6 * 60 * 60
 _JTWC_INVEST_MARKER_COLOR = (64, 200, 160)
+_SUBSOLAR_MARKER_COLOR = (255, 196, 64)
+_SUBSOLAR_MARKER_LABEL = "SUN"
 
 
 def store_typhoon_center_cache(
@@ -381,4 +384,30 @@ def apply_my_location_marker_if_needed(
         label=_MY_LOCATION_MARKER_LABEL,
         color=_MY_LOCATION_MARKER_COLOR,
         style="crosshair",
+    )
+
+
+def apply_subsolar_marker_if_needed(
+    *,
+    wallpaper_path: Path,
+    pic_side: int,
+    observation_time: struct_time,
+    auto_adjust: bool,
+    margin_top_percent: float,
+    margin_bottom_percent: float,
+) -> None:
+    """按 UTC 观测时间计算太阳直射点并标注；投影失败只记日志。"""
+    lat, lon = subsolar_latlon(observation_time)
+    logging.info("Subsolar point: lat=%.3f lon=%.3f", lat, lon)
+    draw_typhoon_marker_at(
+        wallpaper_path=wallpaper_path,
+        pic_side=pic_side,
+        lat=lat,
+        lon=lon,
+        auto_adjust=auto_adjust,
+        margin_top_percent=margin_top_percent,
+        margin_bottom_percent=margin_bottom_percent,
+        label=_SUBSOLAR_MARKER_LABEL,
+        color=_SUBSOLAR_MARKER_COLOR,
+        style="sun",
     )

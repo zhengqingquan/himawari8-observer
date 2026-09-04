@@ -7,7 +7,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-_MarkerStyle = str  # "crosshair" | "corners"
+_MarkerStyle = str  # "crosshair" | "corners" | "sun"
 
 
 def _stroke_line(
@@ -95,6 +95,41 @@ def _draw_corner_brackets(
     return half
 
 
+def _draw_sun(
+    draw: ImageDraw.ImageDraw,
+    x: int,
+    y: int,
+    *,
+    side: int,
+    color: tuple[int, int, int],
+    outline: tuple[int, int, int],
+) -> int:
+    """小圆 + 四向短射线；返回半宽供标签定位。"""
+    radius = max(5, side // 200)
+    ray = max(8, side // 100)
+    line_w = max(2, radius // 3)
+    draw.ellipse(
+        (x - radius, y - radius, x + radius, y + radius),
+        outline=outline,
+        width=max(2, radius // 2),
+    )
+    draw.ellipse(
+        (x - radius + 1, y - radius + 1, x + radius - 1, y + radius - 1),
+        outline=color,
+        width=max(2, radius // 2),
+    )
+    gap = radius + 2
+    rays = (
+        (x, y - gap - ray, x, y - gap),
+        (x, y + gap, x, y + gap + ray),
+        (x - gap - ray, y, x - gap, y),
+        (x + gap, y, x + gap + ray, y),
+    )
+    for x0, y0, x1, y1 in rays:
+        _stroke_line(draw, (x0, y0, x1, y1), color=color, outline=outline, width=line_w)
+    return ray
+
+
 def draw_typhoon_marker(
     image_path: Path,
     xy: tuple[int, int],
@@ -110,7 +145,8 @@ def draw_typhoon_marker(
         xy: 像素坐标 ``(x, y)``。
         label: 中心旁短标签。
         color: 标记主色（RGB）；默认台风橙黄。
-        style: ``"corners"`` 四角折线 + 十字；``"crosshair"`` 圆 + 十字。
+        style: ``"corners"`` 四角折线 + 十字；``"crosshair"`` 圆 + 十字；
+            ``"sun"`` 小圆 + 四向短射线。
 
     Returns:
         成功写回为 True；失败为 False。
@@ -124,6 +160,8 @@ def draw_typhoon_marker(
             outline = (20, 20, 20)
             if style == "crosshair":
                 half = _draw_crosshair(draw, x, y, side=side, color=color, outline=outline)
+            elif style == "sun":
+                half = _draw_sun(draw, x, y, side=side, color=color, outline=outline)
             else:
                 half = _draw_corner_brackets(
                     draw, x, y, side=side, color=color, outline=outline

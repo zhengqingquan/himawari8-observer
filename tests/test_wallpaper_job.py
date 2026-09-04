@@ -19,6 +19,7 @@ class JobKwargsFromConfigTests(unittest.TestCase):
             is_reduce_banding=lambda: True,
             is_show_typhoon_marker=lambda: True,
             is_show_my_location=lambda: True,
+            is_show_subsolar_point=lambda: True,
             get_download_interval_minutes=lambda: 15,
         )
         kwargs = job_kwargs_from_config(config)
@@ -32,6 +33,7 @@ class JobKwargsFromConfigTests(unittest.TestCase):
                 reduce_banding=True,
                 show_typhoon_marker=True,
                 show_my_location=True,
+                show_subsolar_point=True,
             ),
         )
         self.assertFalse(kwargs["cleanup_after_apply"])

@@ -120,6 +120,7 @@ class SettingsFileIoTests(unittest.TestCase):
             self.assertFalse(raw["reduce_banding"])
             self.assertFalse(raw["show_typhoon_marker"])
             self.assertFalse(raw["show_my_location"])
+            self.assertFalse(raw["show_subsolar_point"])
             self.assertFalse(raw["startup_enabled"])
 
     def test_partial_save_preserves_logging_flag(self):
@@ -146,6 +147,7 @@ class SettingsFileIoTests(unittest.TestCase):
                             False,
                             False,
                             False,
+                            False,
                         ],
                         "last_wallpaper_path": r"E:\app\img\wall.png",
                     },
@@ -155,13 +157,33 @@ class SettingsFileIoTests(unittest.TestCase):
             loaded = load_settings(path)
             self.assertEqual(
                 loaded["last_run_key"],
-                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, False, False],
+                [
+                    "2026-09-03 02:10:00",
+                    "20d",
+                    True,
+                    0.0,
+                    5.0,
+                    False,
+                    False,
+                    False,
+                    False,
+                ],
             )
             self.assertEqual(loaded["last_wallpaper_path"], r"E:\app\img\wall.png")
             state = applied_run_state_from_settings(loaded)
             self.assertEqual(
                 state["last"],
-                ("2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, False, False),
+                (
+                    "2026-09-03 02:10:00",
+                    "20d",
+                    True,
+                    0.0,
+                    5.0,
+                    False,
+                    False,
+                    False,
+                    False,
+                ),
             )
             self.assertEqual(state["wallpaper_path"], r"E:\app\img\wall.png")
 
@@ -201,20 +223,65 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
         self.assertFalse(resolved["reduce_banding"])
         self.assertFalse(resolved["show_typhoon_marker"])
         self.assertFalse(resolved["show_my_location"])
+        self.assertFalse(resolved["show_subsolar_point"])
 
     def test_short_fingerprint_pads_missing_bools(self):
         cases = (
             (
                 ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0],
-                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, False, False],
+                [
+                    "2026-09-03 02:10:00",
+                    "20d",
+                    True,
+                    0.0,
+                    5.0,
+                    False,
+                    False,
+                    False,
+                    False,
+                ],
             ),
             (
                 ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, True],
-                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, True, False, False],
+                [
+                    "2026-09-03 02:10:00",
+                    "20d",
+                    True,
+                    0.0,
+                    5.0,
+                    True,
+                    False,
+                    False,
+                    False,
+                ],
             ),
             (
                 ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True],
-                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True, False],
+                [
+                    "2026-09-03 02:10:00",
+                    "20d",
+                    True,
+                    0.0,
+                    5.0,
+                    False,
+                    True,
+                    False,
+                    False,
+                ],
+            ),
+            (
+                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True, True],
+                [
+                    "2026-09-03 02:10:00",
+                    "20d",
+                    True,
+                    0.0,
+                    5.0,
+                    False,
+                    True,
+                    True,
+                    False,
+                ],
             ),
         )
         for short, expected in cases:
@@ -243,16 +310,36 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
             loaded = load_settings(path)
             self.assertEqual(
                 loaded["last_run_key"],
-                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, True, False, False],
+                [
+                    "2026-09-03 02:10:00",
+                    "20d",
+                    True,
+                    0.0,
+                    5.0,
+                    True,
+                    False,
+                    False,
+                    False,
+                ],
             )
             on_disk = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(
                 on_disk["last_run_key"],
-                ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, True, False, False],
+                [
+                    "2026-09-03 02:10:00",
+                    "20d",
+                    True,
+                    0.0,
+                    5.0,
+                    True,
+                    False,
+                    False,
+                    False,
+                ],
             )
             self.assertEqual(on_disk["resolution"], 4400)
 
-    def test_eight_item_fingerprint_round_trip(self):
+    def test_nine_item_fingerprint_round_trip(self):
         cleaned = sanitize_settings(
             {
                 "last_run_key": [
@@ -264,17 +351,18 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                     False,
                     True,
                     True,
+                    True,
                 ]
             }
         )
         self.assertEqual(
             cleaned["last_run_key"],
-            ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True, True],
+            ["2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True, True, True],
         )
         state = applied_run_state_from_settings(cleaned)
         self.assertEqual(
             state["last"],
-            ("2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True, True),
+            ("2026-09-03 02:10:00", "20d", True, 0.0, 5.0, False, True, True, True),
         )
 
     def test_cli_overrides_file(self):

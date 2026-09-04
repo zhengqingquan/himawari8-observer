@@ -61,6 +61,8 @@ class WallpaperJobConfig(Protocol):
 
     def is_show_my_location(self) -> bool: ...
 
+    def is_show_subsolar_point(self) -> bool: ...
+
     def get_download_interval_minutes(self) -> int: ...
 
 
@@ -75,6 +77,7 @@ def job_kwargs_from_config(config: WallpaperJobConfig) -> dict[str, Any]:
             reduce_banding=config.is_reduce_banding(),
             show_typhoon_marker=config.is_show_typhoon_marker(),
             show_my_location=config.is_show_my_location(),
+            show_subsolar_point=config.is_show_subsolar_point(),
         ),
         "cleanup_after_apply": config.is_cleanup_after_apply(),
         "use_yesterday_local_time": config.is_use_yesterday_local_time(),
@@ -415,6 +418,10 @@ class WallpaperJobRef:
         return self.options.show_my_location
 
     @property
+    def show_subsolar_point(self) -> bool:
+        return self.options.show_subsolar_point
+
+    @property
     def download_interval_minutes(self) -> int:
         with self._lock:
             return self._download_interval_minutes
@@ -474,6 +481,9 @@ class WallpaperJobRef:
 
     def set_show_my_location(self, show_my_location: bool) -> None:
         self._replace_options(show_my_location=show_my_location)
+
+    def set_show_subsolar_point(self, show_subsolar_point: bool) -> None:
+        self._replace_options(show_subsolar_point=show_subsolar_point)
 
     def set_download_interval_minutes(self, minutes: int) -> None:
         """更新调度间隔并 reschedule；若已暂停则顺带 resume。不重建流水线 job。"""

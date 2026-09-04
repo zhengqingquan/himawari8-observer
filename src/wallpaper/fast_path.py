@@ -5,10 +5,12 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from pathlib import Path
+from time import strptime
 
 from src.compose.equal import apply_deband_to_file, apply_margins
 from src.resolution_grade import grade_to_pixel
 from src.wallpaper.fingerprint import (
+    OBS_TIME_FMT,
     AppliedRunKey,
     layout_or_postprocess_differs,
     remember_applied,
@@ -19,6 +21,7 @@ from src.wallpaper.markers import (
     FetchTyphoonCenter,
     apply_jtwc_invest_markers_if_needed,
     apply_my_location_marker_if_needed,
+    apply_subsolar_marker_if_needed,
     apply_typhoon_marker_cached_or_fetch,
 )
 from src.wallpaper.paths import (
@@ -58,6 +61,7 @@ def _rebuild_from_base(
         and not last.reduce_banding
         and not last.show_typhoon_marker
         and not last.show_my_location
+        and not last.show_subsolar_point
     ):
         try:
             base = ensure_unmarked_base(last_wallpaper)
@@ -247,13 +251,32 @@ def try_postprocess_fast_path(
                 applied_run_state=applied_run_state,
                 allow_network=True,
             )
+        if options.show_subsolar_point:
+            try:
+                obs = strptime(observation_time, OBS_TIME_FMT)
+            except ValueError:
+                logging.warning(
+                    "Postprocess fast path: invalid observation_time %r; "
+                    "subsolar marker skipped",
+                    observation_time,
+                )
+            else:
+                apply_subsolar_marker_if_needed(
+                    wallpaper_path=wallpaper_path,
+                    pic_side=pic_side,
+                    observation_time=obs,
+                    auto_adjust=options.auto_adjust,
+                    margin_top_percent=options.margin_top_percent,
+                    margin_bottom_percent=options.margin_bottom_percent,
+                )
         logging.info(
             "Postprocess fast path: rebuilt wallpaper "
-            "(layout_same=%s banding=%s typhoon=%s my_location=%s)",
+            "(layout_same=%s banding=%s typhoon=%s my_location=%s subsolar=%s)",
             layout_same,
             options.reduce_banding,
             options.show_typhoon_marker,
             options.show_my_location,
+            options.show_subsolar_point,
         )
     except OSError:
         logging.exception("Postprocess fast path failed while rebuilding wallpaper")

@@ -35,6 +35,7 @@ python run.py --version
 | — | `--reduce-banding` / `--no-reduce-banding` | 布尔开关 | **关闭** | 减轻合成壁纸色带 |
 | — | `--show-typhoon-marker` / `--no-show-typhoon-marker` | 布尔开关 | **关闭** | 在壁纸上标注 NICT 台风中心（有 TY 时） |
 | — | `--show-my-location` / `--no-show-my-location` | 布尔开关 | **关闭** | 在壁纸上标注我的位置（IP 粗定位） |
+| — | `--show-subsolar-point` / `--no-show-subsolar-point` | 布尔开关 | **关闭** | 在壁纸上标注太阳直射点（按观测时间） |
 | — | `--download-interval-minutes` | `5` / `10` / `15` / `20` / `30` | `10` | 定时检查壁纸的间隔（分钟） |
 | — | `--logging` / `--no-logging` | 布尔开关 | **关闭** | 启用控制台与文件日志 |
 | `-v` | `--version` | — | — | 打印版本后退出 |
@@ -176,6 +177,21 @@ python run.py --no-show-my-location
 
 ---
 
+### `--show-subsolar-point` / `--no-show-subsolar-point`
+
+开启后按壁纸观测时间（UTC）本地计算太阳直射点经纬度，投影到全圆盘并画金色 `SUN` 标记（小圆 + 四向短射线）。无需联网；投影到盘外时静默跳过。写入成图指纹。
+
+> **实现说明**：`BooleanOptionalAction`，**默认关闭**；`--show-subsolar-point` 开启。托盘菜单「显示太阳直射点」可运行时切换。
+
+示例：
+
+```bash
+python run.py --show-subsolar-point
+python run.py --no-show-subsolar-point
+```
+
+---
+
 ### `--download-interval-minutes`
 
 定时调度检查间隔（分钟）。可选：`5` / `10` / `15` / `20` / `30`。默认 `10`。写入 `settings.json`；托盘「定时更新」子菜单可运行中切换，改后立即 reschedule（不触发下载）。选某一分钟档时若当前已暂停，会顺带恢复定时。
@@ -258,4 +274,4 @@ himawari8-observer.exe -h
 - `Config().get_download_resolution()`（启动时冻结进 `WallpaperJobRef`）
 - `Config().is_auto_adjust_picture()` → 启动时冻结为 `auto_adjust`
 
-> **接线说明**：启动时解析并冻结进 `WallpaperJobRef`（含成图开关与定时间隔）；托盘「图片分辨率」等可运行中改档并写回 `settings.json`，换参通常立即触发一次更新（定时间隔改档则只 reschedule）。「打开日志」打开 `LOG_PATH`。成图指纹为 8 项（观测时间 + 档位 + 修边三元组 + 色带 + 台风 + 我的位置）。
+> **接线说明**：启动时解析并冻结进 `WallpaperJobRef`（含成图开关与定时间隔）；托盘「图片分辨率」等可运行中改档并写回 `settings.json`，换参通常立即触发一次更新（定时间隔改档则只 reschedule）。「打开日志」打开 `LOG_PATH`。成图指纹为 9 项（观测时间 + 档位 + 修边三元组 + 色带 + 台风 + 我的位置 + 太阳直射点）。
