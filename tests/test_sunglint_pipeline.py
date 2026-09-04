@@ -27,17 +27,13 @@ class SunglintMarkerPipelineTests(unittest.TestCase):
 
         def compose_equal(pic):
             Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
-            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(
-                pic.final_path_equal
-            )
+            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(pic.final_path_equal)
 
         def set_wallpaper(path: Path):
             return True
 
         def fake_draw(image_path, xy, **kwargs):
-            draws.append(
-                (Path(image_path).name, kwargs.get("label"), kwargs.get("color"))
-            )
+            draws.append((Path(image_path).name, kwargs.get("label"), kwargs.get("color")))
             return True
 
         with temporary_base_dir() as base_dir:
@@ -55,6 +51,42 @@ class SunglintMarkerPipelineTests(unittest.TestCase):
         self.assertEqual(len(draws), 1)
         self.assertEqual(draws[0][1], "SG")
         self.assertEqual(draws[0][2], (100, 220, 255))
+
+    def test_outside_full_disk_skips_draw(self):
+        draws = []
+
+        def fetch_observation_time():
+            # 此时耀斑点超出葵花全盘视角
+            return time.strptime("2021-03-20 14:00:00", "%Y-%m-%d %H:%M:%S")
+
+        def download_tiles(pic):
+            for entry in pic.tiles.values():
+                entry.done = True
+
+        def compose_equal(pic):
+            Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
+            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(pic.final_path_equal)
+
+        def set_wallpaper(path: Path):
+            return True
+
+        def fake_draw(*_args, **_kwargs):
+            draws.append(1)
+            return True
+
+        with temporary_base_dir() as base_dir:
+            with patch("src.wallpaper.markers.draw_typhoon_marker", side_effect=fake_draw):
+                run_wallpaper_pipeline(
+                    fetch_observation_time=fetch_observation_time,
+                    download_tiles=download_tiles,
+                    compose_equal=compose_equal,
+                    set_wallpaper=set_wallpaper,
+                    options=PostprocessOptions(show_sunglint_point=True),
+                    cleanup_after_apply=False,
+                    base_dir=base_dir,
+                )
+
+        self.assertEqual(draws, [])
 
     def test_disabled_does_not_draw(self):
         draws = []

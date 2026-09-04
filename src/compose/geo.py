@@ -41,8 +41,9 @@ def latlon_to_himawari_fd_xy(
     n = radius / math.sqrt(1.0 - _E2 * math.sin(lat_rad) * math.sin(lat_rad))
     vrad = _VRAD_DEG / 180.0 * math.pi
 
-    lon_rad = max(-vrad, min(vrad, lon_rad))
-    lat_rad = max(-vrad, min(vrad, lat_rad))
+    # 超出葵花全盘视角则不可见；勿 clamp 到边缘，否则标注会贴在盘缘假阳性。
+    if abs(lon_rad) > vrad or abs(lat_rad) > vrad:
+        return None
 
     z = radius * _F - (n * math.cos(lat_rad) * math.cos(lon_rad))
     if z == 0:

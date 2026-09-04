@@ -24,6 +24,17 @@ class HimawariFdProjectionTests(unittest.TestCase):
     def test_invalid_side_returns_none(self):
         self.assertIsNone(latlon_to_himawari_fd_xy(0.0, 140.7, 0))
 
+    def test_outside_full_disk_returns_none(self):
+        # 纽约相对星下点 ~140.7°E 远超视角，不得贴到盘缘
+        self.assertIsNone(latlon_to_himawari_fd_xy(40.7, -74.0, 1100))
+        self.assertIsNone(latlon_to_himawari_fd_xy(0.0, 0.0, 1100))
+
+    def test_near_limb_inside_still_projects(self):
+        # 星下点附近仍应有像素
+        xy = latlon_to_himawari_fd_xy(0.0, 140.7, 1100)
+        self.assertIsNotNone(xy)
+        self.assertEqual(xy, (550, 550))
+
 
 if __name__ == "__main__":
     unittest.main()
