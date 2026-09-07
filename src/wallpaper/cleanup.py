@@ -1,4 +1,4 @@
-"""设壁纸成功后清理本地影像缓存：保留当前壁纸文件。"""
+"""壁纸流水线本地影像缓存清理：成功上墙后保留成品；下载失败时清半成品。"""
 
 from __future__ import annotations
 
@@ -6,6 +6,44 @@ import logging
 import shutil
 from collections.abc import Iterable
 from pathlib import Path
+
+
+def cleanup_incomplete_download(current_run_root: Path) -> None:
+    """下载未完成时清理本次观测目录下的瓦片树；无成品则尽量删掉空目录。
+
+    由调用方在 ``cleanup_after_apply`` 开启时调用。
+    保留 ``complete/`` 内已有文件（例如渐进预览已上墙的成品），避免误删。
+    删除失败只记日志，不向外抛。
+
+    Args:
+        current_run_root: 本次观测时间对应的运行目录。
+    """
+    try:
+        run_root = current_run_root.resolve()
+    except OSError:
+        logging.exception(
+            "Incomplete-download cleanup skipped: failed to resolve run root %s",
+            current_run_root,
+        )
+        return
+
+    if not run_root.is_dir():
+        return
+
+    _delete_tile_trees(run_root)
+
+    complete = run_root / "complete"
+    if complete.is_dir() and not any(complete.iterdir()):
+        _rmtree(complete)
+
+    if run_root.is_dir() and not any(run_root.iterdir()):
+        _rmtree(run_root)
+        logging.info("Incomplete-download cleanup removed empty run dir: %s", run_root)
+    else:
+        logging.info(
+            "Incomplete-download cleanup finished under %s (kept non-empty complete if any)",
+            run_root,
+        )
 
 
 def cleanup_after_wallpaper_apply(

@@ -234,6 +234,8 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 cleanup_after_apply=False,
                 base_dir=base_dir,
             )
+            # cleanup_after_apply=False：保留半成品目录
+            self.assertTrue((base_dir / "img" / "20210603052000").is_dir())
 
         self.assertEqual(events, ["download"])
 

@@ -4,7 +4,7 @@ import time
 import unittest
 from pathlib import Path
 
-from src.wallpaper.cleanup import cleanup_after_wallpaper_apply
+from src.wallpaper.cleanup import cleanup_after_wallpaper_apply, cleanup_incomplete_download
 from src.wallpaper.pipeline import run_wallpaper_pipeline
 from src.wallpaper.fingerprint import PostprocessOptions
 from tests.workdir_paths import temporary_base_dir
@@ -64,6 +64,88 @@ class CleanupAfterApplyTests(unittest.TestCase):
             self.assertTrue(base.is_file())
             self.assertFalse(extra.exists())
 
+    def test_incomplete_download_removes_empty_run_dir(self):
+        with temporary_base_dir() as tmp:
+            run_root = tmp / "img" / "20210603052000"
+            tiles = run_root / "4d" / "0"
+            complete = run_root / "complete"
+            tiles.mkdir(parents=True)
+            complete.mkdir(parents=True)
+
+            cleanup_incomplete_download(run_root)
+
+            self.assertFalse(run_root.exists())
+
+    def test_incomplete_download_keeps_existing_complete_files(self):
+        with temporary_base_dir() as tmp:
+            run_root = tmp / "img" / "20210603052000"
+            tiles = run_root / "4d" / "0"
+            complete = run_root / "complete"
+            tiles.mkdir(parents=True)
+            complete.mkdir(parents=True)
+            preview = complete / "4d20210603052000.png"
+            preview.write_bytes(b"preview")
+            (tiles / "tile.png").write_bytes(b"t")
+
+            cleanup_incomplete_download(run_root)
+
+            self.assertTrue(preview.is_file())
+            self.assertFalse((run_root / "4d").exists())
+            self.assertTrue(complete.is_dir())
+
+    def test_pipeline_cleans_incomplete_download_folders_when_cleanup_enabled(self):
+        with temporary_base_dir() as base:
+
+            def fetch_observation_time():
+                return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
+
+            def download_tiles(pic):
+                run_root = Path(pic.folder_path).parent
+                tile_dir = run_root / pic.grade / "0"
+                tile_dir.mkdir(parents=True, exist_ok=True)
+                (tile_dir / "partial.png").write_bytes(b"p")
+                # leave TileSlot.done False
+
+            def compose_equal(pic):
+                raise AssertionError("compose should not run")
+
+            run_wallpaper_pipeline(
+                resolution_grade="4d",
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                set_wallpaper=lambda _path: True,
+                cleanup_after_apply=True,
+                base_dir=base,
+            )
+
+            self.assertFalse((base / "img" / "20210603052000").exists())
+
+    def test_pipeline_keeps_incomplete_download_folders_when_cleanup_disabled(self):
+        with temporary_base_dir() as base:
+
+            def fetch_observation_time():
+                return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
+
+            def download_tiles(pic):
+                run_root = Path(pic.folder_path).parent
+                tile_dir = run_root / pic.grade / "0"
+                tile_dir.mkdir(parents=True, exist_ok=True)
+                (tile_dir / "partial.png").write_bytes(b"p")
+
+            run_wallpaper_pipeline(
+                resolution_grade="4d",
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=lambda _pic: None,
+                set_wallpaper=lambda _path: True,
+                cleanup_after_apply=False,
+                base_dir=base,
+            )
+
+            partial = base / "img" / "20210603052000" / "4d" / "0" / "partial.png"
+            self.assertTrue(partial.is_file())
+
     def test_pipeline_cleans_when_enabled(self):
         with temporary_base_dir() as base:
             img_root = base / "img"
@@ -107,7 +189,9 @@ class CleanupAfterApplyTests(unittest.TestCase):
             )
 
             keep = img_root / "20210603052000" / "complete" / keep_name
-            base_wall = img_root / "20210603052000" / "complete" / "4d20210603052000_adjust_base.png"
+            base_wall = (
+                img_root / "20210603052000" / "complete" / "4d20210603052000_adjust_base.png"
+            )
             disk = img_root / "20210603052000" / "complete" / "4d20210603052000_disk.png"
             self.assertTrue(keep.is_file())
             self.assertTrue(base_wall.is_file())

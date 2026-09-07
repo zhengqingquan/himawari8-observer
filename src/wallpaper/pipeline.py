@@ -17,7 +17,7 @@ from src.download.tiles import download_tiles
 from src.download.typhoon import fetch_typhoon_center
 from src.pic import Pic
 from src.resolution_grade import default_grade
-from src.wallpaper.cleanup import cleanup_after_wallpaper_apply
+from src.wallpaper.cleanup import cleanup_after_wallpaper_apply, cleanup_incomplete_download
 from src.wallpaper.desktop import get_desktop_wallpaper as read_desktop_wallpaper
 from src.wallpaper.desktop import set_wallpaper as apply_desktop_wallpaper
 from src.wallpaper.desktop import wallpaper_paths_match
@@ -233,6 +233,8 @@ def run_wallpaper_pipeline(
     download(pic)
     if not pic.download_finish():
         logging.warning("Not all tiles downloaded; skipping compose and wallpaper apply")
+        if cleanup_after_apply:
+            cleanup_incomplete_download(Path(pic.folder_path).parent)
         return None
 
     # 下载可能很长：上墙前再读托盘最新成图开关，避免闪回已关闭的台风/定位等。
