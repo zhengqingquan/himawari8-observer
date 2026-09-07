@@ -257,9 +257,9 @@ def open_deband_params_dialog(job_ref: WallpaperJobRef) -> None:
 
         buttons = ttk.Frame(frame)
         buttons.grid(row=len(_FIELD_ROWS), column=0, columnspan=2, pady=(12, 0))
-        ttk.Button(buttons, text="应用", command=_on_apply).pack(side=tk.LEFT, padx=4)
-        ttk.Button(buttons, text="确定", command=_on_ok).pack(side=tk.LEFT, padx=4)
         ttk.Button(buttons, text="恢复默认", command=_on_defaults).pack(side=tk.LEFT, padx=4)
+        ttk.Button(buttons, text="应用", command=_on_apply).pack(side=tk.LEFT, padx=4)
+        ttk.Button(buttons, text="确认", command=_on_ok).pack(side=tk.LEFT, padx=4)
         ttk.Button(buttons, text="取消", command=_close_window).pack(side=tk.LEFT, padx=4)
 
         root.protocol("WM_DELETE_WINDOW", _close_window)
