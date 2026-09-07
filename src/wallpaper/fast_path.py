@@ -7,7 +7,7 @@ from collections.abc import Callable
 from pathlib import Path
 from time import strptime
 
-from src.compose.equal import apply_deband_to_file, apply_margins
+from src.compose.equal import DebandParams, apply_deband_to_file, apply_margins
 from src.resolution_grade import grade_to_pixel
 from src.wallpaper.fingerprint import (
     OBS_TIME_FMT,
@@ -54,6 +54,7 @@ def _rebuild_from_base(
     auto_adjust: bool,
     margin_top_percent: float,
     margin_bottom_percent: float,
+    deband: DebandParams,
 ) -> tuple[Path, Path] | None:
     """布局未变：从 ``*_base`` 重建成品（可从无标记成品回填 base）。
 
@@ -97,6 +98,7 @@ def _rebuild_from_base(
                 auto_adjust=auto_adjust,
                 margin_top_percent=margin_top_percent,
                 margin_bottom_percent=margin_bottom_percent,
+                params=deband,
             )
 
         try:
@@ -127,6 +129,7 @@ def _rebuild_from_disk(
     margin_bottom_percent: float,
     reduce_banding: bool,
     observation_time: str,
+    deband: DebandParams,
 ) -> tuple[Path, Path] | None:
     """边距/修边变了：从 ``*_disk`` 再修边，写入新 base，可选去色带。
 
@@ -188,6 +191,7 @@ def _rebuild_from_disk(
             auto_adjust=auto_adjust,
             margin_top_percent=margin_top_percent,
             margin_bottom_percent=margin_bottom_percent,
+            params=deband,
         )
     return base, written
 
@@ -249,6 +253,7 @@ def try_postprocess_fast_path(
                 auto_adjust=options.auto_adjust,
                 margin_top_percent=options.margin_top_percent,
                 margin_bottom_percent=options.margin_bottom_percent,
+                deband=options.deband,
             )
         else:
             # 修边/边距变了：从 *_disk 重建。
@@ -261,6 +266,7 @@ def try_postprocess_fast_path(
                 margin_bottom_percent=options.margin_bottom_percent,
                 reduce_banding=options.reduce_banding,
                 observation_time=observation_time,
+                deband=options.deband,
             )
         if rebuilt is None:
             return None

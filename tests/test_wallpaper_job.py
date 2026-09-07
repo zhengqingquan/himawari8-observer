@@ -3,6 +3,7 @@
 import unittest
 from types import SimpleNamespace
 
+from src.compose.equal import DEFAULT_DEBAND
 from src.wallpaper.job import build_wallpaper_job, job_kwargs_from_config
 from src.wallpaper.fingerprint import PostprocessOptions
 
@@ -17,6 +18,7 @@ class JobKwargsFromConfigTests(unittest.TestCase):
             is_cleanup_after_apply=lambda: False,
             is_use_yesterday_local_time=lambda: True,
             is_reduce_banding=lambda: True,
+            get_deband_params=lambda: DEFAULT_DEBAND,
             is_show_typhoon_marker=lambda: True,
             is_show_my_location=lambda: True,
             is_show_subsolar_point=lambda: True,
@@ -36,6 +38,7 @@ class JobKwargsFromConfigTests(unittest.TestCase):
                 show_my_location=True,
                 show_subsolar_point=True,
                 show_sunglint_point=True,
+                deband=DEFAULT_DEBAND,
             ),
         )
         self.assertFalse(kwargs["cleanup_after_apply"])

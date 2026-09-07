@@ -6,6 +6,7 @@ from pathlib import Path
 from time import strftime, struct_time
 from typing import Any, NamedTuple
 
+from src.compose.equal import DEFAULT_DEBAND, DebandParams
 from src.metadata.app_config import (
     DEFAULT_MARGIN_BOTTOM_PERCENT,
     DEFAULT_MARGIN_TOP_PERCENT,
@@ -31,6 +32,7 @@ class PostprocessOptions(NamedTuple):
     show_my_location: bool = False
     show_subsolar_point: bool = False
     show_sunglint_point: bool = False
+    deband: DebandParams = DEFAULT_DEBAND
 
     @property
     def layout(self) -> tuple[bool, float, float]:
@@ -50,7 +52,7 @@ class LivePostprocess(NamedTuple):
 
 
 class AppliedRunKey(NamedTuple):
-    """成图指纹：观测时间 + 影响成品的参数（落盘仍为 10 项 list）。"""
+    """成图指纹：观测时间 + 影响成品的参数（落盘为 11 项 list）。"""
 
     observation_time: str
     resolution_grade: str
@@ -62,6 +64,7 @@ class AppliedRunKey(NamedTuple):
     show_my_location: bool
     show_subsolar_point: bool
     show_sunglint_point: bool
+    deband: DebandParams = DEFAULT_DEBAND
 
     @property
     def layout(self) -> tuple[bool, float, float]:
@@ -75,6 +78,22 @@ class AppliedRunKey(NamedTuple):
             **{name: getattr(self, name) for name in PostprocessOptions._fields}
         )
 
+    def as_settings_list(self) -> list[Any]:
+        """落盘 ``last_run_key``：前 10 项 + 第 11 项为 deband 的 10 数 list。"""
+        return [
+            self.observation_time,
+            self.resolution_grade,
+            self.auto_adjust,
+            self.margin_top_percent,
+            self.margin_bottom_percent,
+            self.reduce_banding,
+            self.show_typhoon_marker,
+            self.show_my_location,
+            self.show_subsolar_point,
+            self.show_sunglint_point,
+            self.deband.as_fingerprint_list(),
+        ]
+
     @classmethod
     def from_observation(
         cls,
@@ -87,10 +106,17 @@ class AppliedRunKey(NamedTuple):
 
     @classmethod
     def from_raw(cls, value: Any) -> AppliedRunKey | None:
-        """接受本类型或完整 10 项序列；非法则 ``None``。"""
+        """接受本类型或完整 11 项序列（第 11 项为 deband list）；非法则 ``None``。
+
+        兼容内存中尚未升级的 10 项序列（补默认 ``DebandParams``）。
+        """
         if isinstance(value, cls):
             return value
-        if not isinstance(value, (tuple, list)) or len(value) != len(cls._fields):
+        if not isinstance(value, (tuple, list)):
+            return None
+        if len(value) == 10:
+            value = list(value) + [DEFAULT_DEBAND.as_fingerprint_list()]
+        if len(value) != len(cls._fields):
             return None
         try:
             (
@@ -104,7 +130,11 @@ class AppliedRunKey(NamedTuple):
                 show_my_location,
                 show_subsolar_point,
                 show_sunglint_point,
+                deband_raw,
             ) = value
+            deband = DebandParams.from_fingerprint_list(deband_raw)
+            if deband is None:
+                return None
             key = cls(
                 str(obs_time),
                 str(grade),
@@ -116,6 +146,7 @@ class AppliedRunKey(NamedTuple):
                 bool(show_my_location),
                 bool(show_subsolar_point),
                 bool(show_sunglint_point),
+                deband,
             )
         except (TypeError, ValueError):
             return None

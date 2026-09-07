@@ -10,6 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from src.compose.equal import DEFAULT_DEBAND, DebandParams
 from src.metadata.app_config import (
     DEFAULT_DOWNLOAD_INTERVAL_MINUTES,
     DEFAULT_MARGIN_BOTTOM_PERCENT,
@@ -38,6 +39,7 @@ def default_settings() -> dict[str, Any]:
         "cleanup_after_apply": True,
         "use_yesterday_local_time": False,
         "reduce_banding": False,
+        "deband": DEFAULT_DEBAND.as_settings_dict(),
         "show_typhoon_marker": False,
         "show_my_location": False,
         "show_subsolar_point": False,
@@ -84,15 +86,132 @@ def _coerce_download_interval_minutes(value: Any) -> int | None:
     return minutes
 
 
+# deband 字段 coerce：键名 → (转类型, 下限含, 上限含, 是否要求严格大于下限)
+_DEBAND_FIELD_SPECS: tuple[
+    tuple[str, type, float, float, bool],
+    ...,
+] = (
+    ("blur_radius", float, 0.0, 64.0, True),
+    ("diff_scale", int, 1.0, 32.0, False),
+    ("noise_sigma", float, 0.0, 64.0, False),
+    ("black_luma_max", int, 0.0, 64.0, False),
+    ("terminator_mu_half", float, 0.0, 1.0, True),
+    ("terminator_mu_steps", int, 2.0, 64.0, False),
+    ("terminator_samples", int, 36.0, 2880.0, False),
+    ("terminator_mask_side", int, 64.0, 2048.0, False),
+    ("terminator_mask_blur", float, 0.0, 64.0, False),
+    ("terminator_stamp_r", int, 0.0, 16.0, False),
+)
+
+
+def _coerce_deband_field(
+    value: Any,
+    *,
+    cast: type,
+    low: float,
+    high: float,
+    exclusive_low: bool,
+) -> float | int | None:
+    try:
+        parsed = cast(value)
+    except (TypeError, ValueError):
+        return None
+    if exclusive_low:
+        if not (low < float(parsed) <= high):
+            return None
+    elif not (low <= float(parsed) <= high):
+        return None
+    return parsed
+
+
+def _coerce_deband(value: Any) -> dict[str, float | int] | None:
+    """校验嵌套 ``deband``；非法字段保留默认，整组非 dict 则 ``None``。"""
+    if isinstance(value, DebandParams):
+        return value.as_settings_dict()
+    if not isinstance(value, dict):
+        return None
+    cleaned = DEFAULT_DEBAND.as_settings_dict()
+    for key, cast, low, high, exclusive_low in _DEBAND_FIELD_SPECS:
+        if key not in value:
+            continue
+        coerced = _coerce_deband_field(
+            value[key],
+            cast=cast,
+            low=low,
+            high=high,
+            exclusive_low=exclusive_low,
+        )
+        if coerced is None:
+            logging.warning("Ignoring invalid settings.deband.%s: %r", key, value[key])
+        else:
+            cleaned[key] = coerced
+    return cleaned
+
+
+def deband_params_from_settings(value: Any) -> DebandParams:
+    """settings 中的 deband dict / 缺省 → ``DebandParams``。"""
+    cleaned = _coerce_deband(value) if value is not None else None
+    if cleaned is None:
+        return DEFAULT_DEBAND
+    return DebandParams(**cleaned)
+
+
+def parse_deband_form(values: dict[str, str]) -> DebandParams | str:
+    """表单字符串 → ``DebandParams``；任一字段非法时返回错误文案。"""
+    parsed: dict[str, float | int] = {}
+    for key, cast, low, high, exclusive_low in _DEBAND_FIELD_SPECS:
+        raw = values.get(key, "")
+        coerced = _coerce_deband_field(
+            raw.strip() if isinstance(raw, str) else raw,
+            cast=cast,
+            low=low,
+            high=high,
+            exclusive_low=exclusive_low,
+        )
+        if coerced is None:
+            return f"无效参数 {key}: {raw!r}"
+        parsed[key] = coerced
+    return DebandParams(**parsed)
+
+
+def _coerce_deband_dialog_position(value: Any) -> dict[str, int] | None:
+    """校验 ``{x, y}`` 窗口左上角屏幕坐标。"""
+    if not isinstance(value, dict):
+        return None
+    try:
+        x = int(value["x"])
+        y = int(value["y"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    # 允许略超出主屏（多显示器 / 任务栏），拒绝明显损坏值。
+    if not (-5000 <= x <= 30000 and -5000 <= y <= 30000):
+        return None
+    return {"x": x, "y": y}
+
+
 def _coerce_last_run_key(value: Any) -> list[Any] | None:
-    """校验指纹列表，统一为完整 10 项。
+    """校验指纹列表，统一为完整 11 项。
 
     ``[obs_time, grade, auto_adjust, top%, bottom%, reduce_banding,
     show_typhoon_marker, show_my_location, show_subsolar_point,
-    show_sunglint_point]``。旧版 5～9 项缺省布尔补 ``False``。
+    show_sunglint_point, deband_list]``。旧版 5～10 项缺省布尔补 ``False``，
+    缺 deband 时补默认参数 list。
     """
-    if not isinstance(value, (list, tuple)) or len(value) not in (5, 6, 7, 8, 9, 10):
+    if not isinstance(value, (list, tuple)) or len(value) not in (
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+    ):
         return None
+    items = list(value)
+    if len(items) < 10:
+        items = items + [False] * (10 - len(items))
+    if len(items) == 10:
+        items = items + [DEFAULT_DEBAND.as_fingerprint_list()]
     (
         obs_time,
         grade,
@@ -104,7 +223,8 @@ def _coerce_last_run_key(value: Any) -> list[Any] | None:
         show_my_location,
         show_subsolar_point,
         show_sunglint_point,
-    ) = list(value) + [False] * (10 - len(value))
+        deband_raw,
+    ) = items
     if not isinstance(obs_time, str) or not obs_time.strip():
         return None
     if not isinstance(grade, str) or not grade.strip():
@@ -125,6 +245,10 @@ def _coerce_last_run_key(value: Any) -> list[Any] | None:
     bottom_f = _coerce_percent(bottom)
     if top_f is None or bottom_f is None:
         return None
+    deband = DebandParams.from_fingerprint_list(deband_raw)
+    if deband is None:
+        # 指纹里的 deband 非法时回退默认，避免整条指纹丢弃。
+        deband = DEFAULT_DEBAND
     return [
         obs_time.strip(),
         grade.strip(),
@@ -136,6 +260,7 @@ def _coerce_last_run_key(value: Any) -> list[Any] | None:
         show_my_location,
         show_subsolar_point,
         show_sunglint_point,
+        deband.as_fingerprint_list(),
     ]
 
 
@@ -222,6 +347,8 @@ _SETTINGS_FIELD_COERCERS: tuple[tuple[str, Callable[[Any], Any | None]], ...] = 
     ("cleanup_after_apply", _coerce_bool),
     ("use_yesterday_local_time", _coerce_bool),
     ("reduce_banding", _coerce_bool),
+    ("deband", _coerce_deband),
+    ("deband_dialog_position", _coerce_deband_dialog_position),
     ("show_typhoon_marker", _coerce_bool),
     ("show_my_location", _coerce_bool),
     ("show_subsolar_point", _coerce_bool),
@@ -264,7 +391,7 @@ def sanitize_settings(raw: Any) -> dict[str, Any]:
 def load_settings(path: Path | None = None) -> dict[str, Any]:
     """从 JSON 加载配置；缺失或损坏时返回空 dict。
 
-    若 ``last_run_key`` 仍为旧版 5～9 项，sanitize 补齐后写回完整 10 项。
+    若 ``last_run_key`` 仍为旧版 5～10 项，sanitize 补齐后写回完整 11 项。
     """
     settings_path = path if path is not None else default_settings_path()
     if not settings_path.is_file():
@@ -281,18 +408,25 @@ def load_settings(path: Path | None = None) -> dict[str, Any]:
     if _should_rewrite_upgraded_fingerprint(raw, cleaned):
         payload = sanitize_settings({**default_settings(), **cleaned})
         if _write_settings_payload(settings_path, payload):
-            logging.info("Upgraded last_run_key to 10 items in %s", settings_path)
+            logging.info("Upgraded last_run_key to 11 items in %s", settings_path)
     logging.info("Loaded settings from %s", settings_path)
     logging.debug("Loaded settings payload: %s", cleaned)
     return cleaned
 
 
 def _should_rewrite_upgraded_fingerprint(raw: Any, cleaned: dict[str, Any]) -> bool:
-    """磁盘上仍是短指纹、sanitize 已得到完整 10 项时需要写回。"""
+    """磁盘上仍是短指纹、sanitize 已得到完整 11 项时需要写回。"""
     if not isinstance(raw, dict) or "last_run_key" not in cleaned:
         return False
     raw_key = raw.get("last_run_key")
-    return isinstance(raw_key, (list, tuple)) and len(raw_key) in (5, 6, 7, 8, 9)
+    return isinstance(raw_key, (list, tuple)) and len(raw_key) in (
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+    )
 
 
 def _write_settings_payload(settings_path: Path, payload: dict[str, Any]) -> bool:
@@ -343,6 +477,7 @@ def settings_dict_from_job(
     cleanup_after_apply: bool,
     use_yesterday_local_time: bool = False,
     reduce_banding: bool = False,
+    deband: DebandParams | dict[str, float | int] | None = None,
     show_typhoon_marker: bool = False,
     show_my_location: bool = False,
     show_subsolar_point: bool = False,
@@ -350,6 +485,12 @@ def settings_dict_from_job(
     download_interval_minutes: int = DEFAULT_DOWNLOAD_INTERVAL_MINUTES,
 ) -> dict[str, Any]:
     """从壁纸任务字段组装可写入的 settings dict（不含 logging / 应用指纹）。"""
+    if isinstance(deband, DebandParams):
+        deband_dict = deband.as_settings_dict()
+    elif isinstance(deband, dict):
+        deband_dict = _coerce_deband(deband) or DEFAULT_DEBAND.as_settings_dict()
+    else:
+        deband_dict = DEFAULT_DEBAND.as_settings_dict()
     return {
         "resolution": resolution,
         "auto_adjust": auto_adjust,
@@ -358,6 +499,7 @@ def settings_dict_from_job(
         "cleanup_after_apply": cleanup_after_apply,
         "use_yesterday_local_time": use_yesterday_local_time,
         "reduce_banding": reduce_banding,
+        "deband": deband_dict,
         "show_typhoon_marker": show_typhoon_marker,
         "show_my_location": show_my_location,
         "show_subsolar_point": show_subsolar_point,
@@ -409,7 +551,7 @@ def persist_applied_run_state(
     payload: dict[str, Any] = {}
     last = AppliedRunKey.from_raw(state.get("last"))
     if last is not None:
-        payload["last_run_key"] = list(last)
+        payload["last_run_key"] = last.as_settings_list()
     wallpaper = state.get("wallpaper_path")
     if isinstance(wallpaper, str) and wallpaper.strip():
         payload["last_wallpaper_path"] = wallpaper.strip()

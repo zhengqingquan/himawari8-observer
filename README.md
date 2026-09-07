@@ -87,7 +87,7 @@ python -m src.oneshot
 | `--margin-top` / `--margin-bottom` | 顶 / 底边黑边百分比（默认顶 `0`、底 `5`） |
 | `--cleanup-after-apply` | 设壁纸后清理缓存（默认开启；`--no-cleanup-after-apply` 关闭） |
 | `--use-yesterday-local-time` | 按本机钟点取昨日影像（默认关闭） |
-| `--reduce-banding` | 减轻色带（默认关闭） |
+| `--reduce-banding` | 减轻色带（默认关闭；算法参数见托盘「减轻色带 → 参数设置」/`settings.json` 的 `deband`） |
 | `--show-typhoon-marker` | 标注台风中心与 JTWC INVEST（默认关闭） |
 | `--show-my-location` | 标注我的位置（IP 粗定位，默认关闭） |
 | `--show-subsolar-point` | 标注太阳直射点（按观测时间，默认关闭） |

@@ -10,15 +10,19 @@ from pathlib import Path
 from unittest.mock import patch
 
 from src.cli.args import Config
+from src.compose.equal import DEFAULT_DEBAND, DebandParams
 from src.settings import (
     applied_run_state_from_settings,
     default_settings,
     load_settings,
+    parse_deband_form,
     persist_applied_run_state,
     resolve_runtime_settings,
     sanitize_settings,
     save_settings,
 )
+
+_DEBAND_FP = DEFAULT_DEBAND.as_fingerprint_list()
 
 
 class SanitizeSettingsTests(unittest.TestCase):
@@ -118,6 +122,7 @@ class SettingsFileIoTests(unittest.TestCase):
             self.assertFalse(raw["logging_enabled"])
             self.assertFalse(raw["use_yesterday_local_time"])
             self.assertFalse(raw["reduce_banding"])
+            self.assertEqual(raw["deband"], DEFAULT_DEBAND.as_settings_dict())
             self.assertFalse(raw["show_typhoon_marker"])
             self.assertFalse(raw["show_my_location"])
             self.assertFalse(raw["show_subsolar_point"])
@@ -170,6 +175,7 @@ class SettingsFileIoTests(unittest.TestCase):
                     False,
                     False,
                     False,
+                    _DEBAND_FP,
                 ],
             )
             self.assertEqual(loaded["last_wallpaper_path"], r"E:\app\img\wall.png")
@@ -187,6 +193,7 @@ class SettingsFileIoTests(unittest.TestCase):
                     False,
                     False,
                     False,
+                    DEFAULT_DEBAND,
                 ),
             )
             self.assertEqual(state["wallpaper_path"], r"E:\app\img\wall.png")
@@ -242,6 +249,7 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
             False,
             False,
             False,
+            _DEBAND_FP,
         ]
         cases = (
             (["2026-09-03 02:10:00", "20d", True, 0.0, 5.0], full),
@@ -258,6 +266,7 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                     False,
                     False,
                     False,
+                    _DEBAND_FP,
                 ],
             ),
             (
@@ -273,6 +282,7 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                     False,
                     False,
                     False,
+                    _DEBAND_FP,
                 ],
             ),
             (
@@ -288,6 +298,7 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                     True,
                     False,
                     False,
+                    _DEBAND_FP,
                 ],
             ),
             (
@@ -313,6 +324,34 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                     True,
                     True,
                     False,
+                    _DEBAND_FP,
+                ],
+            ),
+            (
+                [
+                    "2026-09-03 02:10:00",
+                    "20d",
+                    True,
+                    0.0,
+                    5.0,
+                    False,
+                    True,
+                    True,
+                    True,
+                    True,
+                ],
+                [
+                    "2026-09-03 02:10:00",
+                    "20d",
+                    True,
+                    0.0,
+                    5.0,
+                    False,
+                    True,
+                    True,
+                    True,
+                    True,
+                    _DEBAND_FP,
                 ],
             ),
         )
@@ -340,40 +379,25 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                 encoding="utf-8",
             )
             loaded = load_settings(path)
-            self.assertEqual(
-                loaded["last_run_key"],
-                [
-                    "2026-09-03 02:10:00",
-                    "20d",
-                    True,
-                    0.0,
-                    5.0,
-                    True,
-                    False,
-                    False,
-                    False,
-                    False,
-                ],
-            )
+            expected = [
+                "2026-09-03 02:10:00",
+                "20d",
+                True,
+                0.0,
+                5.0,
+                True,
+                False,
+                False,
+                False,
+                False,
+                _DEBAND_FP,
+            ]
+            self.assertEqual(loaded["last_run_key"], expected)
             on_disk = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(
-                on_disk["last_run_key"],
-                [
-                    "2026-09-03 02:10:00",
-                    "20d",
-                    True,
-                    0.0,
-                    5.0,
-                    True,
-                    False,
-                    False,
-                    False,
-                    False,
-                ],
-            )
+            self.assertEqual(on_disk["last_run_key"], expected)
             self.assertEqual(on_disk["resolution"], 4400)
 
-    def test_ten_item_fingerprint_round_trip(self):
+    def test_ten_item_fingerprint_upgrades_to_eleven(self):
         cleaned = sanitize_settings(
             {
                 "last_run_key": [
@@ -403,6 +427,7 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                 True,
                 True,
                 True,
+                _DEBAND_FP,
             ],
         )
         state = applied_run_state_from_settings(cleaned)
@@ -419,7 +444,29 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
                 True,
                 True,
                 True,
+                DEFAULT_DEBAND,
             ),
+        )
+
+    def test_deband_settings_coerce_and_form_parse(self):
+        cleaned = sanitize_settings(
+            {"deband": {"blur_radius": 8.0, "noise_sigma": 0, "diff_scale": 99}}
+        )
+        self.assertEqual(cleaned["deband"]["blur_radius"], 8.0)
+        self.assertEqual(cleaned["deband"]["noise_sigma"], 0.0)
+        self.assertEqual(cleaned["deband"]["diff_scale"], DEFAULT_DEBAND.diff_scale)
+        parsed = parse_deband_form(
+            {name: str(getattr(DEFAULT_DEBAND, name)) for name in DebandParams._fields}
+        )
+        self.assertEqual(parsed, DEFAULT_DEBAND)
+        self.assertIsInstance(parse_deband_form({"blur_radius": "-1"}), str)
+
+    def test_deband_dialog_position_coerce(self):
+        cleaned = sanitize_settings({"deband_dialog_position": {"x": 120, "y": 80}})
+        self.assertEqual(cleaned["deband_dialog_position"], {"x": 120, "y": 80})
+        self.assertNotIn(
+            "deband_dialog_position",
+            sanitize_settings({"deband_dialog_position": {"x": "bad"}}),
         )
 
     def test_cli_overrides_file(self):

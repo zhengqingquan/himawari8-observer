@@ -104,6 +104,11 @@ def _tray_icon_path() -> Path:
     return Path(__file__).resolve().parents[2] / "assets" / _TRAY_ICON_NAME
 
 
+def tray_icon_path() -> Path:
+    """托盘 / 参数窗共用的图标路径。"""
+    return _tray_icon_path()
+
+
 def create_image():
     """加载托盘图标图像。"""
     icon_path = _tray_icon_path()
@@ -219,6 +224,7 @@ def persist_job_settings(job_ref: WallpaperJobRef) -> None:
             cleanup_after_apply=job_ref.cleanup_after_apply,
             use_yesterday_local_time=job_ref.use_yesterday_local_time,
             reduce_banding=job_ref.reduce_banding,
+            deband=job_ref.deband,
             show_typhoon_marker=job_ref.show_typhoon_marker,
             show_my_location=job_ref.show_my_location,
             show_subsolar_point=job_ref.show_subsolar_point,

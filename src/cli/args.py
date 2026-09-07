@@ -207,6 +207,7 @@ class Config:
             self._resolved["use_yesterday_local_time"],
         )
         logging.info("Reduce banding: %s", self._resolved["reduce_banding"])
+        logging.info("Deband params: %s", self._resolved["deband"])
         logging.info("Show typhoon marker: %s", self._resolved["show_typhoon_marker"])
         logging.info("Show my location: %s", self._resolved["show_my_location"])
         logging.info("Show subsolar point: %s", self._resolved["show_subsolar_point"])
@@ -237,6 +238,11 @@ class Config:
 
     def is_reduce_banding(self):
         return self._resolved["reduce_banding"]
+
+    def get_deband_params(self):
+        from src.settings import deband_params_from_settings
+
+        return deband_params_from_settings(self._resolved.get("deband"))
 
     def is_show_typhoon_marker(self):
         return self._resolved["show_typhoon_marker"]

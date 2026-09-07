@@ -137,6 +137,8 @@ python run.py --no-use-yesterday-local-time
 
 开启后对合成图**晨昏带**做色带减轻（昼心/夜心保留）。写入成图指纹；与修边等参数一并参与跳过判断。
 
+算法细节（模糊半径、噪点、晨昏带宽度等 10 项）不提供 CLI，经托盘「减轻色带 → 参数设置」或 `settings.json` 嵌套键 `deband` 配置；改参同样写入指纹并走后处理快路径。
+
 > **实现说明**：`BooleanOptionalAction`，**默认关闭**；`--reduce-banding` 开启。托盘菜单「减轻色带」可运行时切换。
 
 示例：
@@ -290,4 +292,4 @@ himawari8-observer.exe -h
 - `Config().get_download_resolution()`（启动时冻结进 `WallpaperJobRef`）
 - `Config().is_auto_adjust_picture()` → 启动时冻结为 `auto_adjust`
 
-> **接线说明**：启动时解析并冻结进 `WallpaperJobRef`（含成图开关与定时间隔）；托盘「图片分辨率」等可运行中改档并写回 `settings.json`，换参通常立即触发一次更新（定时间隔改档则只 reschedule）。「打开日志」打开 `LOG_PATH`。成图指纹为 10 项（观测时间 + 档位 + 修边三元组 + 色带 + 台风 + 我的位置 + 太阳直射点 + 海面耀斑）。
+> **接线说明**：启动时解析并冻结进 `WallpaperJobRef`（含成图开关与定时间隔）；托盘「图片分辨率」等可运行中改档并写回 `settings.json`，换参通常立即触发一次更新（定时间隔改档则只 reschedule）。「打开日志」打开 `LOG_PATH`。成图指纹为 11 项（观测时间 + 档位 + 修边三元组 + 色带开关 + 台风 + 我的位置 + 太阳直射点 + 海面耀斑 + deband 参数 list）。

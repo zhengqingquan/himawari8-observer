@@ -30,6 +30,7 @@ from src.tray.actions import (
     on_toggle_logging,
     persist_job_settings,
 )
+from src.tray.deband_dialog import open_deband_params_dialog
 from src.wallpaper.job import WallpaperJobRef
 from src.wallpaper.update import (
     is_paused,
@@ -185,6 +186,18 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         set_value=job_ref.set_reduce_banding,
         log_label="Reduce banding",
     )
+
+    def on_open_deband_params(icon, item):
+        open_deband_params_dialog(job_ref)
+
+    banding_menu = pystray.Menu(
+        pystray.MenuItem(
+            "启用",
+            on_toggle_reduce_banding,
+            checked=lambda item: job_ref.reduce_banding,
+        ),
+        pystray.MenuItem("参数设置", on_open_deband_params),
+    )
     on_toggle_show_typhoon_marker = make_bool_toggle(
         get_value=lambda: job_ref.show_typhoon_marker,
         set_value=job_ref.set_show_typhoon_marker,
@@ -327,11 +340,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             on_toggle_use_yesterday_local_time,
             checked=lambda item: job_ref.use_yesterday_local_time,
         ),
-        pystray.MenuItem(
-            "减轻色带",
-            on_toggle_reduce_banding,
-            checked=lambda item: job_ref.reduce_banding,
-        ),
+        pystray.MenuItem("减轻色带", banding_menu),
         pystray.MenuItem("显示位置", markers_menu),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem(

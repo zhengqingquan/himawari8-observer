@@ -87,7 +87,7 @@ python -m src.oneshot
 | `--margin-top` / `--margin-bottom` | 上／下邊黑邊百分比（預設上 `0`、下 `5`） |
 | `--cleanup-after-apply` | 設成桌布後清理快取（預設開啟；`--no-cleanup-after-apply` 關閉） |
 | `--use-yesterday-local-time` | 按本機鐘點取昨日影像（預設關閉） |
-| `--reduce-banding` | 減輕色帶（預設關閉） |
+| `--reduce-banding` | 減輕色帶（預設關閉；算法參數見托盤「減輕色帶 → 參數設置」/`settings.json` 的 `deband`） |
 | `--show-typhoon-marker` | 標註颱風中心與 JTWC INVEST（預設關閉） |
 | `--show-my-location` | 標註我的位置（IP 粗定位，預設關閉） |
 | `--show-subsolar-point` | 標註太陽直射點（按觀測時間，預設關閉） |

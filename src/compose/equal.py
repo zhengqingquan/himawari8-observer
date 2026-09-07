@@ -8,6 +8,7 @@ import math
 import os
 from pathlib import Path
 from time import struct_time
+from typing import Any, NamedTuple
 
 from PIL import Image, ImageChops, ImageFilter
 
@@ -18,17 +19,54 @@ from src.metadata.app_config import (
     DEFAULT_MARGIN_TOP_PERCENT,
 )
 
-# 去色带：邻域均值替换平坦量化区 + 微粒噪点；近黑（太空/黑边）保持原样。
-# 默认仅在晨昏带（|太阳点积| 近 0）合成回原图，昼心/夜心不动。
-_DEBAND_BLUR_RADIUS = 16.0
-_DEBAND_DIFF_SCALE = 5
-_DEBAND_NOISE_SIGMA = 6.0
-_DEBAND_BLACK_LUMA_MAX = 2
-_DEBAND_TERMINATOR_MU_HALF = 0.20
-_DEBAND_TERMINATOR_MU_STEPS = 15
-_DEBAND_TERMINATOR_SAMPLES = 720
-_DEBAND_TERMINATOR_MASK_SIDE = 512
-_DEBAND_TERMINATOR_MASK_BLUR = 6.0
+
+class DebandParams(NamedTuple):
+    """去色带算法参数（默认等同历史硬编码）。"""
+
+    blur_radius: float = 16.0
+    diff_scale: int = 5
+    noise_sigma: float = 6.0
+    black_luma_max: int = 2
+    terminator_mu_half: float = 0.20
+    terminator_mu_steps: int = 15
+    terminator_samples: int = 720
+    terminator_mask_side: int = 512
+    terminator_mask_blur: float = 6.0
+    terminator_stamp_r: int = 2
+
+    def as_settings_dict(self) -> dict[str, float | int]:
+        """落盘 / settings 用的普通 dict。"""
+        return {name: getattr(self, name) for name in self._fields}
+
+    def as_fingerprint_list(self) -> list[float | int]:
+        """成图指纹第 11 项：固定顺序的 10 个数。"""
+        return [getattr(self, name) for name in self._fields]
+
+    @classmethod
+    def from_fingerprint_list(cls, value: Any) -> DebandParams | None:
+        """接受完整 10 项数值序列；非法则 ``None``。"""
+        if isinstance(value, cls):
+            return value
+        if not isinstance(value, (list, tuple)) or len(value) != len(cls._fields):
+            return None
+        try:
+            return cls(
+                float(value[0]),
+                int(value[1]),
+                float(value[2]),
+                int(value[3]),
+                float(value[4]),
+                int(value[5]),
+                int(value[6]),
+                int(value[7]),
+                float(value[8]),
+                int(value[9]),
+            )
+        except (TypeError, ValueError):
+            return None
+
+
+DEFAULT_DEBAND = DebandParams()
 
 _SM_CXSCREEN = 0
 _SM_CYSCREEN = 1
@@ -121,6 +159,8 @@ def _resolve_disk_origin(
 def build_terminator_belt_mask(
     side: int,
     observation_time: struct_time,
+    *,
+    params: DebandParams | None = None,
 ) -> Image.Image:
     """构建晨昏带软掩码（L）：晨昏线附近高、远离处为 0。
 
@@ -128,11 +168,12 @@ def build_terminator_belt_mask(
     """
     if side <= 0:
         raise ValueError(f"disk side must be positive, got {side}")
-    render = min(side, _DEBAND_TERMINATOR_MASK_SIDE)
+    cfg = params if params is not None else DEFAULT_DEBAND
+    render = min(side, cfg.terminator_mask_side)
     buf = bytearray(render * render)
-    half = _DEBAND_TERMINATOR_MU_HALF
-    steps = _DEBAND_TERMINATOR_MU_STEPS
-    stamp_r = 2
+    half = cfg.terminator_mu_half
+    steps = cfg.terminator_mu_steps
+    stamp_r = cfg.terminator_stamp_r
     for step in range(steps):
         t = step / (steps - 1) if steps > 1 else 0.5
         mu = -half + 2.0 * half * t
@@ -142,7 +183,7 @@ def build_terminator_belt_mask(
         for lat, lon in points_on_solar_mu_circle(
             observation_time,
             mu,
-            sample_count=_DEBAND_TERMINATOR_SAMPLES,
+            sample_count=cfg.terminator_samples,
         ):
             xy = latlon_to_himawari_fd_xy(lat, lon, render)
             if xy is None:
@@ -160,7 +201,7 @@ def build_terminator_belt_mask(
                     if weight > buf[index]:
                         buf[index] = weight
     mask = Image.frombytes("L", (render, render), bytes(buf))
-    blurred = mask.filter(ImageFilter.GaussianBlur(_DEBAND_TERMINATOR_MASK_BLUR))
+    blurred = mask.filter(ImageFilter.GaussianBlur(cfg.terminator_mask_blur))
     mask.close()
     peak = blurred.getextrema()[1]
     if peak > 0 and peak < 255:
@@ -181,6 +222,7 @@ def reduce_color_banding(
     observation_time: struct_time | None = None,
     disk_side: int | None = None,
     disk_origin: tuple[int, int] = (0, 0),
+    params: DebandParams | None = None,
 ) -> Image.Image:
     """减轻 8 bit 平滑渐变中的色带（posterization）。
 
@@ -195,21 +237,24 @@ def reduce_color_banding(
         observation_time: UTC 观测时间；与 ``disk_side`` 同时提供时启用晨昏带限制。
         disk_side: 正方形全盘边长（像素）。
         disk_origin: 全盘在 ``image`` 上的左上角（修边画布用）。
+        params: 去色带参数；缺省用 ``DEFAULT_DEBAND``。
 
     Returns:
         处理后的新 RGB 图（调用方负责关闭）。
     """
+    cfg = params if params is not None else DEFAULT_DEBAND
     rgb = image.convert("RGB") if image.mode != "RGB" else image
-    avg = rgb.filter(ImageFilter.GaussianBlur(_DEBAND_BLUR_RADIUS))
+    avg = rgb.filter(ImageFilter.GaussianBlur(cfg.blur_radius))
     diff = ImageChops.difference(rgb, avg).convert("L")
-    mask = diff.point(lambda p: max(0, min(255, 255 - p * _DEBAND_DIFF_SCALE)))
+    diff_scale = cfg.diff_scale
+    mask = diff.point(lambda p: max(0, min(255, 255 - p * diff_scale)))
     smoothed = Image.composite(avg, rgb, mask)
-    noise = Image.effect_noise(rgb.size, _DEBAND_NOISE_SIGMA).convert("RGB")
+    noise = Image.effect_noise(rgb.size, cfg.noise_sigma).convert("RGB")
     grained = ImageChops.add(smoothed, noise, scale=1.0, offset=-128)
     spatial = None
     limited = grained
     if observation_time is not None and disk_side is not None:
-        disk_mask = build_terminator_belt_mask(disk_side, observation_time)
+        disk_mask = build_terminator_belt_mask(disk_side, observation_time, params=cfg)
         if rgb.size == (disk_side, disk_side) and disk_origin == (0, 0):
             spatial = disk_mask
         else:
@@ -217,7 +262,8 @@ def reduce_color_banding(
             spatial.paste(disk_mask, disk_origin)
             disk_mask.close()
         limited = Image.composite(grained, rgb, spatial)
-    keep_black = rgb.convert("L").point(lambda p: 0 if p <= _DEBAND_BLACK_LUMA_MAX else 255)
+    black_max = cfg.black_luma_max
+    keep_black = rgb.convert("L").point(lambda p: 0 if p <= black_max else 255)
     result = Image.composite(limited, rgb, keep_black)
     avg.close()
     diff.close()
@@ -245,6 +291,7 @@ def apply_deband_to_file(
     margin_top_percent: float = DEFAULT_MARGIN_TOP_PERCENT,
     margin_bottom_percent: float = DEFAULT_MARGIN_BOTTOM_PERCENT,
     screen_size: tuple[int, int] | None = None,
+    params: DebandParams | None = None,
 ) -> None:
     """读取 ``src``，仅对晨昏带减轻色带后写入 ``dest``（可与 ``src`` 相同）。"""
     with Image.open(src) as image:
@@ -261,6 +308,7 @@ def apply_deband_to_file(
             observation_time=observation_time,
             disk_side=disk_side,
             disk_origin=origin,
+            params=params,
         )
         try:
             processed.save(dest)

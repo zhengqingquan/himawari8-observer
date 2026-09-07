@@ -87,7 +87,7 @@ Common options:
 | `--margin-top` / `--margin-bottom` | Top / bottom black-border percent (default top `0`, bottom `5`) |
 | `--cleanup-after-apply` | Clean caches after applying wallpaper (on by default; `--no-cleanup-after-apply` to disable) |
 | `--use-yesterday-local-time` | Use yesterday’s image at the local clock time (off by default) |
-| `--reduce-banding` | Reduce color banding (off by default) |
+| `--reduce-banding` | Reduce color banding (off by default; algo params via tray / `settings.json` `deband`) |
 | `--show-typhoon-marker` | Mark typhoon center and JTWC INVEST (off by default) |
 | `--show-my-location` | Mark approximate location via IP geolocation (off by default) |
 | `--show-subsolar-point` | Mark subsolar point from observation time (off by default) |

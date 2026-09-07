@@ -23,6 +23,7 @@ from src.settings import persist_applied_run_state
 from src.download.geoip import fetch_ip_latlon
 from src.download.jtwc import fetch_jtwc_invests
 from src.download.typhoon import fetch_typhoon_center
+from src.compose.equal import DebandParams
 from src.wallpaper.desktop import get_desktop_wallpaper as read_desktop_wallpaper
 from src.wallpaper.desktop import set_wallpaper as apply_desktop_wallpaper
 from src.wallpaper.fast_path import try_postprocess_fast_path
@@ -57,6 +58,8 @@ class WallpaperJobConfig(Protocol):
 
     def is_reduce_banding(self) -> bool: ...
 
+    def get_deband_params(self) -> DebandParams: ...
+
     def is_show_typhoon_marker(self) -> bool: ...
 
     def is_show_my_location(self) -> bool: ...
@@ -81,6 +84,7 @@ def job_kwargs_from_config(config: WallpaperJobConfig) -> dict[str, Any]:
             show_my_location=config.is_show_my_location(),
             show_subsolar_point=config.is_show_subsolar_point(),
             show_sunglint_point=config.is_show_sunglint_point(),
+            deband=config.get_deband_params(),
         ),
         "cleanup_after_apply": config.is_cleanup_after_apply(),
         "use_yesterday_local_time": config.is_use_yesterday_local_time(),
@@ -413,6 +417,10 @@ class WallpaperJobRef:
         return self.options.reduce_banding
 
     @property
+    def deband(self) -> DebandParams:
+        return self.options.deband
+
+    @property
     def show_typhoon_marker(self) -> bool:
         return self.options.show_typhoon_marker
 
@@ -482,6 +490,9 @@ class WallpaperJobRef:
 
     def set_reduce_banding(self, reduce_banding: bool) -> None:
         self._replace_options(reduce_banding=reduce_banding)
+
+    def set_deband(self, deband: DebandParams) -> None:
+        self._replace_options(deband=deband)
 
     def set_show_typhoon_marker(self, show_typhoon_marker: bool) -> None:
         self._replace_options(show_typhoon_marker=show_typhoon_marker)

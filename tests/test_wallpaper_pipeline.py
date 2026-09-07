@@ -657,6 +657,66 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             self.assertEqual(fetches, [1])
             self.assertEqual(wall.read_bytes(), base_bytes)
 
+    def test_deband_params_change_skips_download(self):
+        from src.compose.equal import DebandParams
+
+        downloads = []
+        fetches = []
+
+        def fetch_observation_time():
+            fetches.append(1)
+            return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
+
+        def download_tiles(pic):
+            downloads.append(1)
+            for entry in pic.tiles.values():
+                entry.done = True
+
+        def compose_equal(pic):
+            Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
+            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(
+                pic.final_path_equal
+            )
+
+        def set_wallpaper(path: Path):
+            return True
+
+        state = {"last": None, "wallpaper_path": None}
+        with temporary_base_dir() as base_dir:
+            run_wallpaper_pipeline(
+                resolution_grade="4d",
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                set_wallpaper=set_wallpaper,
+                options=PostprocessOptions(reduce_banding=True),
+                cleanup_after_apply=False,
+                applied_run_state=state,
+                base_dir=base_dir,
+            )
+            self.assertEqual(downloads, [1])
+            self.assertEqual(fetches, [1])
+            first_bytes = Path(state["wallpaper_path"]).read_bytes()
+
+            run_wallpaper_pipeline(
+                resolution_grade="4d",
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                set_wallpaper=set_wallpaper,
+                options=PostprocessOptions(
+                    reduce_banding=True,
+                    deband=DebandParams(noise_sigma=0.0),
+                ),
+                cleanup_after_apply=False,
+                applied_run_state=state,
+                base_dir=base_dir,
+            )
+            self.assertEqual(downloads, [1])
+            self.assertEqual(fetches, [1], "deband params change must not fetch latest.json")
+            self.assertEqual(state["last"].deband.noise_sigma, 0.0)
+            self.assertNotEqual(Path(state["wallpaper_path"]).read_bytes(), first_bytes)
+
     def test_margin_toggle_skips_download_when_disk_present(self):
         downloads = []
         fetches = []

@@ -77,6 +77,23 @@ class ReduceColorBandingTests(unittest.TestCase):
         finally:
             src.close()
 
+    def test_noise_sigma_zero_keeps_flat_midtone_uniform(self):
+        from src.compose.equal import DebandParams
+
+        src = Image.new("RGB", (64, 64), color=(40, 40, 48))
+        try:
+            out = reduce_color_banding(
+                src, params=DebandParams(noise_sigma=0.0, blur_radius=1.0, diff_scale=1)
+            )
+            try:
+                # 无噪点且几乎不平滑时，平坦区颜色应仍高度集中
+                colors = {out.getpixel((x, y)) for x in range(0, 64, 4) for y in range(0, 64, 4)}
+                self.assertLessEqual(len(colors), 4)
+            finally:
+                out.close()
+        finally:
+            src.close()
+
     def test_breaks_flat_midtone_into_varied_pixels(self):
         src = Image.new("RGB", (64, 64), color=(40, 40, 48))
         try:
@@ -138,7 +155,19 @@ class ReduceColorBandingTests(unittest.TestCase):
             )
             try:
                 self.assertEqual(out.getpixel(sun_xy), src.getpixel(sun_xy))
-                self.assertNotEqual(out.getpixel(term_xy), src.getpixel(term_xy))
+                # 噪点随机，单点可能碰巧不变；在晨昏采样点邻域内应有变化。
+                changed = False
+                tx, ty = term_xy
+                for dy in range(-2, 3):
+                    for dx in range(-2, 3):
+                        px, py = tx + dx, ty + dy
+                        if 0 <= px < side and 0 <= py < side:
+                            if out.getpixel((px, py)) != src.getpixel((px, py)):
+                                changed = True
+                                break
+                    if changed:
+                        break
+                self.assertTrue(changed, "terminator neighborhood should be debanded")
             finally:
                 out.close()
         finally:

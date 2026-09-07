@@ -295,6 +295,7 @@ def run_wallpaper_pipeline(
                 auto_adjust=opts.auto_adjust,
                 margin_top_percent=opts.margin_top_percent,
                 margin_bottom_percent=opts.margin_bottom_percent,
+                params=opts.deband,
             )
         except OSError:
             logging.exception("Failed to apply deband to wallpaper: %s", wallpaper_path)
