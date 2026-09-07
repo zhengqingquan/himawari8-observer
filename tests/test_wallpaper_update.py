@@ -34,6 +34,14 @@ class WallpaperPauseTests(unittest.TestCase):
         resume()
         self.assertFalse(is_paused())
 
+    def test_set_paused(self):
+        from src.wallpaper.update import set_paused
+
+        set_paused(True)
+        self.assertTrue(is_paused())
+        set_paused(False)
+        self.assertFalse(is_paused())
+
     def test_respect_pause_skips_when_paused(self):
         calls = []
         pause()

@@ -212,7 +212,7 @@ python run.py --no-show-sunglint-point
 
 ### `--download-interval-minutes`
 
-定时调度检查间隔（分钟）。可选：`5` / `10` / `15` / `20` / `30`。默认 `10`。写入 `settings.json`；托盘「定时更新」子菜单可运行中切换，改后立即 reschedule（不触发下载）。选某一分钟档时若当前已暂停，会顺带恢复定时。
+定时调度检查间隔（分钟）。可选：`5` / `10` / `15` / `20` / `30`。默认 `10`。写入 `settings.json`；托盘「定时更新」子菜单可运行中切换，改后立即 reschedule（不触发下载）。选某一分钟档时若当前已暂停，会顺带恢复定时并写回 `updates_paused: false`。托盘「暂停更新」写入 `updates_paused`，重启后仍生效。
 
 示例：
 

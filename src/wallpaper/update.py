@@ -34,6 +34,14 @@ def resume() -> None:
     logging.info("Wallpaper updates resumed")
 
 
+def set_paused(paused: bool) -> None:
+    """设置暂停门闩（不写盘；持久化由调用方负责）。"""
+    if paused:
+        pause()
+    else:
+        resume()
+
+
 def _queue_follow_up(*, respect_pause: bool, progressive: bool) -> None:
     global _pending_run, _pending_progressive, _pending_bypass_pause
     with _pending_lock:

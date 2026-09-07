@@ -19,7 +19,7 @@ from src.resolution_grade import (
     progressive_preview_grade,
 )
 from src.scheduler import reschedule_interval
-from src.settings import persist_applied_run_state
+from src.settings import persist_applied_run_state, save_settings
 from src.download.geoip import fetch_ip_latlon
 from src.download.jtwc import fetch_jtwc_invests
 from src.download.typhoon import fetch_typhoon_center
@@ -517,6 +517,8 @@ class WallpaperJobRef:
         reschedule_interval(value * 60)
         if is_paused():
             resume()
+            save_settings({"updates_paused": False})
+            logging.info("Download interval change cleared persisted pause")
 
     def _rebuild_job_locked(self) -> None:
         self._sync_applied_display_unlocked()

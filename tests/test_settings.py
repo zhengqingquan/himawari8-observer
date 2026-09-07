@@ -128,6 +128,7 @@ class SettingsFileIoTests(unittest.TestCase):
             self.assertFalse(raw["show_subsolar_point"])
             self.assertFalse(raw["show_sunglint_point"])
             self.assertFalse(raw["startup_enabled"])
+            self.assertFalse(raw["updates_paused"])
 
     def test_partial_save_preserves_logging_flag(self):
         with tempfile.TemporaryDirectory() as tmp:

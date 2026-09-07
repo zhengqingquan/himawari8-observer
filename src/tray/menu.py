@@ -15,6 +15,7 @@ from src.metadata.app_config import (
     MARGIN_PERCENT_CHOICES,
 )
 from src.metadata.app_info import PROGRAM_NAME
+from src.settings import save_settings
 from src.startup import is_startup_set
 from src.tray.actions import (
     create_image,
@@ -90,6 +91,11 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
             resume()
         else:
             pause()
+        save_settings({"updates_paused": is_paused()})
+        logging.info(
+            "Updates paused setting saved: %s",
+            is_paused(),
+        )
         refresh_tray_menu()
 
     def make_interval_item(minutes: int):

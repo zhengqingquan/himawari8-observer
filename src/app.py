@@ -9,10 +9,15 @@ from src.cli.args import Config
 from src.event import wait_for_shutdown
 from src.log import init_logging
 from src.scheduler import start_scheduler
-from src.settings import applied_run_state_from_settings, default_settings, load_settings
+from src.settings import (
+    applied_run_state_from_settings,
+    default_settings,
+    load_settings,
+)
 from src.startup import apply_startup_enabled
 from src.tray.menu import setup_tray_icon
 from src.wallpaper.job import WallpaperJobRef, job_kwargs_from_config
+from src.wallpaper.update import set_paused
 
 
 def main() -> None:
@@ -22,11 +27,17 @@ def main() -> None:
         config.log_resolved()
 
         file_settings = load_settings()
-        startup_enabled = bool(
-            {**default_settings(), **file_settings}.get("startup_enabled", False)
-        )
+        merged = {**default_settings(), **file_settings}
+        startup_enabled = bool(merged.get("startup_enabled", False))
         apply_startup_enabled(startup_enabled)
         logging.info("Startup on boot: %s", "enabled" if startup_enabled else "disabled")
+
+        updates_paused = bool(merged.get("updates_paused", False))
+        set_paused(updates_paused)
+        logging.info(
+            "Scheduled updates: %s",
+            "paused" if updates_paused else "active",
+        )
 
         applied_state = applied_run_state_from_settings(file_settings)
         job_ref = WallpaperJobRef(

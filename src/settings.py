@@ -47,6 +47,7 @@ def default_settings() -> dict[str, Any]:
         "download_interval_minutes": DEFAULT_DOWNLOAD_INTERVAL_MINUTES,
         "startup_enabled": False,
         "logging_enabled": False,
+        "updates_paused": False,
     }
 
 
@@ -356,6 +357,7 @@ _SETTINGS_FIELD_COERCERS: tuple[tuple[str, Callable[[Any], Any | None]], ...] = 
     ("download_interval_minutes", _coerce_download_interval_minutes),
     ("startup_enabled", _coerce_bool),
     ("logging_enabled", _coerce_bool),
+    ("updates_paused", _coerce_bool),
     ("last_run_key", _coerce_last_run_key),
     ("last_wallpaper_path", _coerce_wallpaper_path),
     ("typhoon_center_cache", _coerce_typhoon_center_cache),
