@@ -1,4 +1,4 @@
-"""观测时间：Session、latest.json、按本地钟点取昨日帧。"""
+"""观测时间：Session、latest.json、按本地钟点取昨日帧、本地时刻对齐 10 分钟档。"""
 
 from __future__ import annotations
 
@@ -12,6 +12,9 @@ import requests
 _LATEST_JSON_URL = "https://himawari8-dl.nict.go.jp/himawari8/img/D531106/latest.json"
 _OBS_TIME_FMT = "%Y-%m-%d %H:%M:%S"
 _FULL_DISK_INTERVAL_MINUTES = 10
+
+OBS_TIME_FMT = _OBS_TIME_FMT
+FULL_DISK_INTERVAL_MINUTES = _FULL_DISK_INTERVAL_MINUTES
 
 
 def create_session() -> requests.Session:
@@ -53,6 +56,47 @@ def fetch_observation_time(session: requests.Session):
     return latest_time
 
 
+def floor_datetime_to_full_disk_utc(dt: datetime) -> datetime:
+    """将时刻换算为 UTC，并向下取整到全盘 10 分钟观测档（秒归零）。
+
+    Args:
+        dt: naive 视为本地时区；aware 按其 ``tzinfo``。
+
+    Returns:
+        取整后的 UTC aware datetime。
+    """
+    if dt.tzinfo is None:
+        local_dt = dt.astimezone()
+    else:
+        local_dt = dt
+    utc_dt = local_dt.astimezone(timezone.utc)
+    floored_minute = (utc_dt.minute // _FULL_DISK_INTERVAL_MINUTES) * _FULL_DISK_INTERVAL_MINUTES
+    return utc_dt.replace(minute=floored_minute, second=0, microsecond=0)
+
+
+def observation_time_from_local(local_dt: datetime) -> struct_time:
+    """本地（或带时区）时刻 → UTC 全盘 10 分钟观测档。
+
+    Args:
+        local_dt: naive 视为本地时区；aware 按其 ``tzinfo``。
+
+    Returns:
+        UTC 观测时间（struct_time，对应 ``%Y-%m-%d %H:%M:%S``）。
+    """
+    if local_dt.tzinfo is None:
+        display_local = local_dt.astimezone()
+    else:
+        display_local = local_dt
+    utc_slot = floor_datetime_to_full_disk_utc(local_dt)
+    result = utc_slot.timetuple()
+    logging.info(
+        "Local observation slot: local=%s -> utc_slot=%s",
+        display_local.strftime(_OBS_TIME_FMT),
+        strftime(_OBS_TIME_FMT, result),
+    )
+    return result
+
+
 def observation_time_yesterday_local(
     *,
     now: datetime | None = None,
@@ -76,13 +120,4 @@ def observation_time_yesterday_local(
         local_now = now
 
     local_yesterday = local_now - timedelta(days=1)
-    utc_dt = local_yesterday.astimezone(timezone.utc)
-    floored_minute = (utc_dt.minute // _FULL_DISK_INTERVAL_MINUTES) * _FULL_DISK_INTERVAL_MINUTES
-    utc_slot = utc_dt.replace(minute=floored_minute, second=0, microsecond=0)
-    result = utc_slot.timetuple()
-    logging.info(
-        "Yesterday-local observation: local=%s -> utc_slot=%s",
-        local_yesterday.strftime(_OBS_TIME_FMT),
-        strftime(_OBS_TIME_FMT, result),
-    )
-    return result
+    return observation_time_from_local(local_yesterday)

@@ -1,5 +1,6 @@
 """Seam: WallpaperJobRef is shared and can replace frozen grade at runtime."""
 
+import time
 import unittest
 
 from src.wallpaper.job import WallpaperJobRef
@@ -199,7 +200,9 @@ class WallpaperJobRefTests(unittest.TestCase):
         }
         ref = WallpaperJobRef(
             "4d",
-            options=PostprocessOptions(auto_adjust=True, margin_top_percent=0.0, margin_bottom_percent=5.0),
+            options=PostprocessOptions(
+                auto_adjust=True, margin_top_percent=0.0, margin_bottom_percent=5.0
+            ),
             build_job=_noop_build,
             applied_run_state=state,
             persist_state=False,
@@ -242,7 +245,18 @@ class WallpaperJobRefTests(unittest.TestCase):
             Image.new("RGB", (64, 64), (1, 2, 3)).save(wall)
             Image.new("RGB", (64, 64), (1, 2, 3)).save(base)
             state = {
-                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False, False, False, False),
+                "last": (
+                    "2021-06-03 05:20:00",
+                    "4d",
+                    False,
+                    0.0,
+                    5.0,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ),
                 "wallpaper_path": str(wall),
                 "wallpaper_base_path": str(base),
             }
@@ -270,7 +284,18 @@ class WallpaperJobRefTests(unittest.TestCase):
             "4d",
             build_job=_noop_build,
             applied_run_state={
-                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False, False, False, False),
+                "last": (
+                    "2021-06-03 05:20:00",
+                    "4d",
+                    False,
+                    0.0,
+                    5.0,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ),
                 "wallpaper_path": r"E:\app\img\wall.png",
             },
             persist_state=False,
@@ -457,6 +482,40 @@ class WallpaperJobRefProgressiveTests(unittest.TestCase):
         self.assertIsNone(mid_last[0])
         self.assertEqual(mid_time[0], obs)
         self.assertEqual(mid_grade[0], "4d")
+
+    def test_observation_override_injects_fetch_and_allows_older(self):
+        captured = []
+
+        def fake_pipeline(**kwargs):
+            captured.append(
+                {
+                    "use_yesterday": kwargs.get("use_yesterday_local_time"),
+                    "allow_older": kwargs.get("allow_older_observation"),
+                    "fetch": kwargs.get("fetch_observation_time"),
+                }
+            )
+            fetch = kwargs["fetch_observation_time"]
+            return time.strftime("%Y-%m-%d %H:%M:%S", fetch())
+
+        obs = time.strptime("2026-09-01 01:00:00", "%Y-%m-%d %H:%M:%S")
+        ref = WallpaperJobRef(
+            "4d",
+            build_job=_noop_build,
+            run_pipeline=fake_pipeline,
+            persist_state=False,
+        )
+        ref.set_observation_override(obs)
+        self.assertTrue(ref.has_observation_override)
+        ref()
+        self.assertEqual(len(captured), 1)
+        self.assertFalse(captured[0]["use_yesterday"])
+        self.assertTrue(captured[0]["allow_older"])
+        self.assertEqual(
+            time.strftime("%Y-%m-%d %H:%M:%S", captured[0]["fetch"]()),
+            "2026-09-01 01:00:00",
+        )
+        ref.clear_observation_override()
+        self.assertFalse(ref.has_observation_override)
 
 
 def _noop_build(resolution_grade, **_kwargs):

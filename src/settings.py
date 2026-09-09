@@ -175,7 +175,7 @@ def parse_deband_form(values: dict[str, str]) -> DebandParams | str:
     return DebandParams(**parsed)
 
 
-def _coerce_deband_dialog_position(value: Any) -> dict[str, int] | None:
+def _coerce_dialog_position(value: Any) -> dict[str, int] | None:
     """校验 ``{x, y}`` 窗口左上角屏幕坐标。"""
     if not isinstance(value, dict):
         return None
@@ -349,7 +349,8 @@ _SETTINGS_FIELD_COERCERS: tuple[tuple[str, Callable[[Any], Any | None]], ...] = 
     ("use_yesterday_local_time", _coerce_bool),
     ("reduce_banding", _coerce_bool),
     ("deband", _coerce_deband),
-    ("deband_dialog_position", _coerce_deband_dialog_position),
+    ("deband_dialog_position", _coerce_dialog_position),
+    ("time_pick_dialog_position", _coerce_dialog_position),
     ("show_typhoon_marker", _coerce_bool),
     ("show_my_location", _coerce_bool),
     ("show_subsolar_point", _coerce_bool),

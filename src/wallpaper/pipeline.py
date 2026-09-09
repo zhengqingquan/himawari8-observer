@@ -94,6 +94,7 @@ def run_wallpaper_pipeline(
     options: PostprocessOptions | None = None,
     cleanup_after_apply: bool = True,
     use_yesterday_local_time: bool = False,
+    allow_older_observation: bool = False,
     base_dir: Path | None = None,
     applied_run_state: AppliedRunState | None = None,
     record_run_key: bool = True,
@@ -105,6 +106,7 @@ def run_wallpaper_pipeline(
     跳过策略（需 ``applied_run_state``）：
     - 同观测/档位下仅修边或色带/台风/定位变化且 disk/base 仍在 → 从中间图重建，不拉 latest、不下载；
     - 自动跟 latest 时若观测时间早于已应用 → 跳过（防源站回退导致往回刷）；
+      ``allow_older_observation=True`` 时跳过该检查（手动选历史帧）；
     - 指纹相同且桌面仍是上次壁纸文件 → 整段跳过；
     - 指纹相同但桌面已换、成品仍在 → 仅重设壁纸；
     - 否则走完整流水线。
@@ -173,7 +175,11 @@ def run_wallpaper_pipeline(
         options=opts,
     )
     observation_time = run_key.observation_time
-    if not use_yesterday_local_time and applied_run_state is not None:
+    if (
+        not allow_older_observation
+        and not use_yesterday_local_time
+        and applied_run_state is not None
+    ):
         last = AppliedRunKey.from_raw(applied_run_state.get("last"))
         if last is not None and observation_time < last.observation_time:
             logging.info(

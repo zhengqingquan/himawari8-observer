@@ -138,9 +138,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
         def fake_compose(pic, **_kwargs):
             events.append("compose")
             Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
-            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(
-                pic.final_path_equal
-            )
+            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(pic.final_path_equal)
 
         def fake_margins(file, margin, path, **_kwargs):
             events.append("margins")
@@ -307,7 +305,18 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             wall = Path(base_dir) / "wall.png"
             wall.write_bytes(b"img")
             state = {
-                "last": ("2021-06-03 05:20:00", "4d", False, 0.0, 5.0, False, False, False, False, False),
+                "last": (
+                    "2021-06-03 05:20:00",
+                    "4d",
+                    False,
+                    0.0,
+                    5.0,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ),
                 "wallpaper_path": str(wall.resolve()),
             }
 
@@ -321,7 +330,9 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 compose_equal=compose_equal,
                 set_wallpaper=set_wallpaper,
                 get_desktop_wallpaper=get_desktop_wallpaper,
-                options=PostprocessOptions(auto_adjust=False, margin_top_percent=0.0, margin_bottom_percent=5.0),
+                options=PostprocessOptions(
+                    auto_adjust=False, margin_top_percent=0.0, margin_bottom_percent=5.0
+                ),
                 cleanup_after_apply=False,
                 applied_run_state=state,
                 base_dir=base_dir,
@@ -573,7 +584,9 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                 download_tiles=download_tiles,
                 compose_equal=compose_equal,
                 set_wallpaper=set_wallpaper,
-                options=PostprocessOptions(auto_adjust=False, margin_top_percent=0.0, margin_bottom_percent=5.0),
+                options=PostprocessOptions(
+                    auto_adjust=False, margin_top_percent=0.0, margin_bottom_percent=5.0
+                ),
                 cleanup_after_apply=False,
                 applied_run_state=state,
                 base_dir=base_dir,
@@ -582,6 +595,62 @@ class RunWallpaperPipelineTests(unittest.TestCase):
         self.assertIsNone(result)
         self.assertEqual(events, ["fetch"])
         self.assertEqual(state["last"].observation_time, "2026-09-04 01:40:00")
+
+    def test_allow_older_observation_runs_pipeline(self):
+        events = []
+
+        def fetch_observation_time():
+            events.append("fetch")
+            return time.strptime("2026-09-04 01:10:00", "%Y-%m-%d %H:%M:%S")
+
+        def download_tiles(pic):
+            events.append("download")
+            for entry in pic.tiles.values():
+                entry.done = True
+
+        def compose_equal(pic):
+            events.append("compose")
+            Path(pic.folder_path).mkdir(parents=True, exist_ok=True)
+            Path(pic.final_path_equal).write_bytes(b"e")
+
+        def set_wallpaper(path: Path):
+            events.append(("set", path.name))
+            return True
+
+        with temporary_base_dir() as base_dir:
+            wall = Path(base_dir) / "wall.png"
+            wall.write_bytes(b"img")
+            state = {
+                "last": AppliedRunKey.from_observation(
+                    "2026-09-04 01:40:00",
+                    "4d",
+                    PostprocessOptions(margin_top_percent=0.0, margin_bottom_percent=5.0),
+                ),
+                "wallpaper_path": str(wall.resolve()),
+            }
+
+            result = run_wallpaper_pipeline(
+                resolution_grade="4d",
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                set_wallpaper=set_wallpaper,
+                options=PostprocessOptions(
+                    auto_adjust=False,
+                    margin_top_percent=0.0,
+                    margin_bottom_percent=5.0,
+                ),
+                cleanup_after_apply=False,
+                allow_older_observation=True,
+                applied_run_state=state,
+                base_dir=base_dir,
+            )
+
+        self.assertEqual(result, "2026-09-04 01:10:00")
+        self.assertEqual(events[0], "fetch")
+        self.assertIn("download", events)
+        self.assertIn("compose", events)
+        self.assertEqual(state["last"].observation_time, "2026-09-04 01:10:00")
 
     def test_reduce_banding_toggle_skips_download(self):
         downloads = []
@@ -598,9 +667,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
         def compose_equal(pic):
             Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
-            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(
-                pic.final_path_equal
-            )
+            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(pic.final_path_equal)
 
         def set_wallpaper(path: Path):
             return True
@@ -676,9 +743,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
         def compose_equal(pic):
             Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
-            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(
-                pic.final_path_equal
-            )
+            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(pic.final_path_equal)
 
         def set_wallpaper(path: Path):
             return True
@@ -735,9 +800,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
         def compose_equal(pic):
             Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
-            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(
-                pic.final_path_equal
-            )
+            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(pic.final_path_equal)
 
         def set_wallpaper(path: Path):
             set_names.append(path.name)
@@ -755,7 +818,9 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                     download_tiles=download_tiles,
                     compose_equal=compose_equal,
                     set_wallpaper=set_wallpaper,
-                    options=PostprocessOptions(auto_adjust=True, margin_top_percent=0.0, margin_bottom_percent=5.0),
+                    options=PostprocessOptions(
+                        auto_adjust=True, margin_top_percent=0.0, margin_bottom_percent=5.0
+                    ),
                     cleanup_after_apply=False,
                     applied_run_state=state,
                     base_dir=base_dir,
@@ -774,7 +839,9 @@ class RunWallpaperPipelineTests(unittest.TestCase):
                     download_tiles=download_tiles,
                     compose_equal=compose_equal,
                     set_wallpaper=set_wallpaper,
-                    options=PostprocessOptions(auto_adjust=True, margin_top_percent=0.0, margin_bottom_percent=10.0),
+                    options=PostprocessOptions(
+                        auto_adjust=True, margin_top_percent=0.0, margin_bottom_percent=10.0
+                    ),
                     cleanup_after_apply=False,
                     applied_run_state=state,
                     base_dir=base_dir,
@@ -800,9 +867,7 @@ class RunWallpaperPipelineTests(unittest.TestCase):
 
         def compose_equal(pic):
             Path(pic.final_path_equal).parent.mkdir(parents=True, exist_ok=True)
-            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(
-                pic.final_path_equal
-            )
+            Image.new("RGB", (pic.pic_side, pic.pic_side), (10, 20, 30)).save(pic.final_path_equal)
 
         def set_wallpaper(path: Path):
             set_paths.append(Path(path).name)

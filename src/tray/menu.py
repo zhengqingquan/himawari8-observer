@@ -32,6 +32,7 @@ from src.tray.actions import (
     persist_job_settings,
 )
 from src.tray.deband_dialog import open_deband_params_dialog
+from src.tray.time_pick_dialog import open_time_pick_dialog
 from src.wallpaper.job import WallpaperJobRef
 from src.wallpaper.update import (
     is_paused,
@@ -84,11 +85,16 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         icon.update_menu()
 
     def on_update_wallpaper(_icon, _item):
+        job_ref.clear_observation_override()
         _run_wallpaper_update_async(job_ref, progressive=True)
+
+    def on_pick_observation_time(_icon, _item):
+        open_time_pick_dialog(job_ref, on_applied=refresh_tray_menu)
 
     def on_toggle_pause(_icon, _item):
         if is_paused():
             resume()
+            job_ref.clear_observation_override()
         else:
             pause()
         save_settings({"updates_paused": is_paused()})
@@ -332,6 +338,7 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
         pystray.MenuItem(wallpaper_time_utc_text, None),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("立即更新壁纸", on_update_wallpaper),
+        pystray.MenuItem("选择时间点…", on_pick_observation_time),
         pystray.MenuItem("定时更新", schedule_menu),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("图片分辨率", resolution_menu),

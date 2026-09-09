@@ -470,6 +470,14 @@ class ResolveRuntimeSettingsTests(unittest.TestCase):
             sanitize_settings({"deband_dialog_position": {"x": "bad"}}),
         )
 
+    def test_time_pick_dialog_position_coerce(self):
+        cleaned = sanitize_settings({"time_pick_dialog_position": {"x": 40, "y": 60}})
+        self.assertEqual(cleaned["time_pick_dialog_position"], {"x": 40, "y": 60})
+        self.assertNotIn(
+            "time_pick_dialog_position",
+            sanitize_settings({"time_pick_dialog_position": {"y": 1}}),
+        )
+
     def test_cli_overrides_file(self):
         resolved = resolve_runtime_settings(
             {

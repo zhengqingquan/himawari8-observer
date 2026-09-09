@@ -6,6 +6,7 @@ import logging
 import threading
 from collections.abc import Callable
 from pathlib import Path
+from time import struct_time
 from typing import Any, Protocol
 
 from src.metadata.app_config import (
@@ -175,6 +176,7 @@ class WallpaperJobRef:
         # 上次成功上墙的观测时间与档位（供托盘展示）；与 applied_run_state 同步。
         self._last_observation_time: str | None = None
         self._last_applied_grade: str | None = None
+        self._observation_override: struct_time | None = None
         self._sync_applied_display_unlocked()
         self._on_applied: Callable[[], None] | None = None
         self._job = self._build_initial_job()
@@ -233,8 +235,13 @@ class WallpaperJobRef:
 
     def __call__(self) -> None:
         with self._lock:
-            job = self._job
-        job()
+            has_override = self._observation_override is not None
+        if has_override:
+            self._run_with_live_postprocess(record_run_key=True)
+        else:
+            with self._lock:
+                job = self._job
+            job()
         with self._lock:
             self._persist_applied_state_unlocked()
         self._notify_applied()
@@ -258,23 +265,28 @@ class WallpaperJobRef:
     ) -> str | None:
         with self._lock:
             grade = resolution_grade if resolution_grade is not None else self._grade
-            use_yesterday = self._use_yesterday_local_time
+            override = self._observation_override
+            use_yesterday = False if override is not None else self._use_yesterday_local_time
             base_dir = self._base_dir
             state = self._applied_run_state
             pipeline = self._run_pipeline
             live = self._live_postprocess_unlocked()
         if cleanup_after_apply is not None:
             live = live._replace(cleanup_after_apply=cleanup_after_apply)
-        return pipeline(
-            resolution_grade=grade,
-            options=live.options,
-            cleanup_after_apply=live.cleanup_after_apply,
-            use_yesterday_local_time=use_yesterday,
-            base_dir=base_dir,
-            applied_run_state=state,
-            record_run_key=record_run_key,
-            refresh_postprocess=self._refresh_postprocess,
-        )
+        kwargs: dict[str, Any] = {
+            "resolution_grade": grade,
+            "options": live.options,
+            "cleanup_after_apply": live.cleanup_after_apply,
+            "use_yesterday_local_time": use_yesterday,
+            "base_dir": base_dir,
+            "applied_run_state": state,
+            "record_run_key": record_run_key,
+            "refresh_postprocess": self._refresh_postprocess,
+        }
+        if override is not None:
+            kwargs["fetch_observation_time"] = lambda: override
+            kwargs["allow_older_observation"] = True
+        return pipeline(**kwargs)
 
     def try_live_postprocess(self) -> bool:
         """Busy 时立刻对已上墙成品做后处理快路径（不占 update 互斥锁）。
@@ -517,8 +529,29 @@ class WallpaperJobRef:
         reschedule_interval(value * 60)
         if is_paused():
             resume()
+            self.clear_observation_override()
             save_settings({"updates_paused": False})
             logging.info("Download interval change cleared persisted pause")
+
+    def set_observation_override(self, observation_time: struct_time) -> None:
+        """锁定观测时间（手动选帧）；后续流水线不再拉 latest / 昨日逻辑。"""
+        with self._lock:
+            self._observation_override = observation_time
+
+    def clear_observation_override(self) -> None:
+        """清除观测时间锁定，恢复 latest / 昨日影像开关。"""
+        with self._lock:
+            self._observation_override = None
+
+    @property
+    def has_observation_override(self) -> bool:
+        with self._lock:
+            return self._observation_override is not None
+
+    def run_for_observation(self, observation_time: struct_time) -> None:
+        """锁定观测时间并跑渐进更新（测试 / 直接调用；托盘经 ``run_wallpaper_update``）。"""
+        self.set_observation_override(observation_time)
+        self.run_progressive()
 
     def _rebuild_job_locked(self) -> None:
         self._sync_applied_display_unlocked()
