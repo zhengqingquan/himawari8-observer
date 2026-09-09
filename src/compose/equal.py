@@ -23,9 +23,9 @@ from src.metadata.app_config import (
 class DebandParams(NamedTuple):
     """去色带算法参数（默认等同历史硬编码）。"""
 
-    blur_radius: float = 16.0
+    blur_radius: float = 10.0
     diff_scale: int = 5
-    noise_sigma: float = 6.0
+    noise_sigma: float = 2.0
     black_luma_max: int = 2
     terminator_mu_half: float = 0.20
     terminator_mu_steps: int = 15
