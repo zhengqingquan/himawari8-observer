@@ -59,6 +59,7 @@ FetchTyphoonCenter = Callable[[struct_time], tuple[float, float] | None]
 FetchIpLatlon = Callable[[], tuple[float, float] | None]
 FetchJtwcInvests = Callable[[], list]
 RefreshPostprocess = Callable[[], LivePostprocess]
+ReportStatus = Callable[[str], None]
 
 
 def _default_fetch_observation_time() -> struct_time:
@@ -90,6 +91,7 @@ def run_wallpaper_pipeline(
     fetch_ip_latlon_fn: FetchIpLatlon | None = None,
     fetch_jtwc_invests_fn: FetchJtwcInvests | None = None,
     refresh_postprocess: RefreshPostprocess | None = None,
+    report_status: ReportStatus | None = None,
     resolution_grade: str | None = None,
     options: PostprocessOptions | None = None,
     cleanup_after_apply: bool = True,
@@ -114,6 +116,8 @@ def run_wallpaper_pipeline(
     ``refresh_postprocess``：下载完成后、合成上墙前再取一次成图开关（修边/色带/台风/定位等），
     避免长下载期间托盘改参仍按启动时冻结值上墙造成闪回。
 
+    ``report_status``：可选状态回调（托盘悬停文案）；键为中文短句，由 JobRef 注入。
+
     Returns:
         成功上墙（含仅重设）时返回观测时间 ``YYYY-MM-DD HH:MM:SS``（UTC）；
         跳过或失败时返回 ``None``。``record_run_key=False`` 时仍可能返回时间（供展示），
@@ -128,6 +132,10 @@ def run_wallpaper_pipeline(
     jtwc_fetch = fetch_jtwc_invests_fn or fetch_jtwc_invests
     grade = resolution_grade if resolution_grade is not None else default_grade()
     opts = options if options is not None else PostprocessOptions()
+
+    def emit(label: str) -> None:
+        if report_status is not None:
+            report_status(label)
 
     def default_adjust(pic: Pic) -> Path:
         out = _adjusted_output_path(pic)
@@ -152,6 +160,7 @@ def run_wallpaper_pipeline(
             options=opts,
         )
         if provisional is not None and layout_or_postprocess_differs(last, provisional):
+            emit("正在合成")
             fast = try_postprocess_fast_path(
                 applied_run_state=applied_run_state,
                 run_key=provisional,
@@ -163,11 +172,13 @@ def run_wallpaper_pipeline(
                 get_desktop=read_desktop,
             )
             if fast is not None:
+                emit("就绪")
                 return fast
 
     if use_yesterday_local_time:
         time_str = observation_time_yesterday_local()
     else:
+        emit("正在获取观测时间")
         time_str = fetch()
     run_key = build_applied_run_key(
         time_str,
@@ -187,6 +198,7 @@ def run_wallpaper_pipeline(
                 observation_time,
                 last.observation_time,
             )
+            emit("已跳过")
             return None
     if applied_run_state is not None:
         last_key = AppliedRunKey.from_raw(applied_run_state.get("last"))
@@ -199,17 +211,20 @@ def run_wallpaper_pipeline(
                     logging.info(
                         "Observation params unchanged and desktop wallpaper still ours; skipping update"
                     )
+                    emit("已跳过")
                     return None
                 logging.info(
                     "Observation params unchanged but desktop wallpaper differs; re-applying %s",
                     last_path,
                 )
+                emit("正在合成")
                 applied = set_desktop(last_path)
                 if applied is False:
                     logging.warning(
                         "Wallpaper re-apply failed; leaving run state unchanged: %s",
                         last_path,
                     )
+                    emit("更新失败")
                     return None
                 remember_applied(
                     applied_run_state,
@@ -217,10 +232,17 @@ def run_wallpaper_pipeline(
                     wallpaper_path=last_path,
                     record_run_key=True,
                 )
+                emit("就绪")
                 return observation_time
 
     # 观测时间已刷新后再试一次（例如 last 观测与 latest 相同、仅后处理开关不同）。
     if applied_run_state is not None:
+        last_for_fast = AppliedRunKey.from_raw(applied_run_state.get("last"))
+        if last_for_fast is not None and layout_or_postprocess_differs(
+            last_for_fast,
+            run_key,
+        ):
+            emit("正在合成")
         fast = try_postprocess_fast_path(
             applied_run_state=applied_run_state,
             run_key=run_key,
@@ -232,15 +254,18 @@ def run_wallpaper_pipeline(
             get_desktop=read_desktop,
         )
         if fast is not None:
+            emit("就绪")
             return fast
 
     pic = Pic(time_str, grade, base_dir=base_dir)
     create_pic_folders(pic)
+    emit("正在下载")
     download(pic)
     if not pic.download_finish():
         logging.warning("Not all tiles downloaded; skipping compose and wallpaper apply")
         if cleanup_after_apply:
             cleanup_incomplete_download(Path(pic.folder_path).parent)
+        emit("更新失败")
         return None
 
     # 下载可能很长：上墙前再读托盘最新成图开关，避免闪回已关闭的台风/定位等。
@@ -260,6 +285,7 @@ def run_wallpaper_pipeline(
             opts.show_sunglint_point,
         )
 
+    emit("正在合成")
     # 始终先落等分圆盘，再修边；保留 *_disk 供改边距时后处理。
     if compose_equal is None:
         compose_equal_image(pic, deband=False)
@@ -307,6 +333,7 @@ def run_wallpaper_pipeline(
             )
         except OSError:
             logging.exception("Failed to apply deband to wallpaper: %s", wallpaper_path)
+            emit("更新失败")
             return None
 
     if opts.show_typhoon_marker:
@@ -367,6 +394,7 @@ def run_wallpaper_pipeline(
             "Wallpaper apply failed or skipped; leaving run state and cache unchanged: %s",
             wallpaper_path,
         )
+        emit("更新失败")
         return None
     remember_applied(
         applied_run_state,
@@ -389,4 +417,5 @@ def run_wallpaper_pipeline(
             keep_files=keep,
         )
     logging.info("Wallpaper pipeline finished: %s", wallpaper_path)
+    emit("就绪")
     return observation_time

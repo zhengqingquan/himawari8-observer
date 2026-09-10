@@ -52,6 +52,39 @@ class RunWallpaperPipelineTests(unittest.TestCase):
             ],
         )
 
+    def test_report_status_phases_for_full_download(self):
+        statuses = []
+
+        def fetch_observation_time():
+            return time.strptime("2021-06-03 05:20:00", "%Y-%m-%d %H:%M:%S")
+
+        def download_tiles(pic):
+            for entry in pic.tiles.values():
+                entry.done = True
+
+        def compose_equal(pic):
+            return None
+
+        def set_wallpaper(path: Path):
+            return True
+
+        with temporary_base_dir() as base_dir:
+            result = run_wallpaper_pipeline(
+                fetch_observation_time=fetch_observation_time,
+                download_tiles=download_tiles,
+                compose_equal=compose_equal,
+                set_wallpaper=set_wallpaper,
+                cleanup_after_apply=False,
+                base_dir=base_dir,
+                report_status=statuses.append,
+            )
+
+        self.assertEqual(result, "2021-06-03 05:20:00")
+        self.assertEqual(
+            statuses,
+            ["正在获取观测时间", "正在下载", "正在合成", "就绪"],
+        )
+
     def test_record_run_key_false_returns_time_without_fingerprint(self):
         state = {"last": None, "wallpaper_path": None}
 

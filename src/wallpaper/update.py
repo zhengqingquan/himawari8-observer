@@ -64,6 +64,12 @@ def _take_pending() -> tuple[bool, bool] | None:
         return progressive, bypass_pause
 
 
+def _set_pipeline_status(pipeline: Callable[[], None], label: str) -> None:
+    set_status = getattr(pipeline, "set_status", None)
+    if callable(set_status):
+        set_status(label)
+
+
 def _run_pipeline(pipeline: Callable[[], None], *, progressive: bool) -> None:
     if progressive:
         run_progressive = getattr(pipeline, "run_progressive", None)
@@ -109,9 +115,11 @@ def run_wallpaper_update(
     try:
         while True:
             try:
+                _set_pipeline_status(pipeline, "正在获取观测时间")
                 _run_pipeline(pipeline, progressive=progressive)
                 ran = True
             except Exception:
+                _set_pipeline_status(pipeline, "更新失败")
                 logging.exception("Wallpaper update failed")
                 raise
             pending = _take_pending()

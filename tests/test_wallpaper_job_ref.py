@@ -517,6 +517,49 @@ class WallpaperJobRefProgressiveTests(unittest.TestCase):
         ref.clear_observation_override()
         self.assertFalse(ref.has_observation_override)
 
+    def test_set_status_notifies_and_tracks_idle(self):
+        from src.wallpaper.job import STATUS_DOWNLOADING, STATUS_FAILED, STATUS_READY
+
+        notifies = []
+        ref = WallpaperJobRef("4d", build_job=_noop_build, persist_state=False)
+        ref.set_on_status_changed(lambda: notifies.append(ref.status_label))
+        self.assertEqual(ref.status_label, STATUS_READY)
+        self.assertTrue(ref.status_is_idle)
+        ref.set_status(STATUS_DOWNLOADING)
+        self.assertEqual(notifies, [STATUS_DOWNLOADING])
+        self.assertFalse(ref.status_is_idle)
+        ref.set_status(STATUS_DOWNLOADING)
+        self.assertEqual(notifies, [STATUS_DOWNLOADING])
+        ref.set_status(STATUS_FAILED)
+        self.assertEqual(notifies, [STATUS_DOWNLOADING, STATUS_FAILED])
+        self.assertTrue(ref.status_is_idle)
+
+    def test_run_pipeline_receives_report_status(self):
+        captured = []
+
+        def fake_pipeline(**kwargs):
+            captured.append(kwargs.get("report_status"))
+            report = kwargs.get("report_status")
+            if report is not None:
+                report("正在下载")
+            return "2026-09-01 01:00:00"
+
+        ref = WallpaperJobRef(
+            "4d",
+            build_job=_noop_build,
+            run_pipeline=fake_pipeline,
+            persist_state=False,
+        )
+        ref.set_observation_override(
+            time.strptime("2026-09-01 01:00:00", "%Y-%m-%d %H:%M:%S")
+        )
+        ref()
+        self.assertEqual(len(captured), 1)
+        self.assertIsNotNone(captured[0])
+        self.assertEqual(ref.status_label, "正在下载")
+        self.assertTrue(callable(captured[0]))
+        self.assertIs(captured[0].__self__, ref)
+
 
 def _noop_build(resolution_grade, **_kwargs):
     def job():

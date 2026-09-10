@@ -58,6 +58,32 @@ class FormatTrayIconTitleTests(unittest.TestCase):
             ),
         )
 
+    def test_includes_status_line(self):
+        china = timezone(timedelta(hours=8))
+        self.assertEqual(
+            format_tray_icon_title(
+                "2026-09-03 02:10:00",
+                pixel_side=2200,
+                local_tz=china,
+                status="正在下载",
+            ),
+            "\n".join(
+                [
+                    PROGRAM_NAME,
+                    "壁纸时间（本地）：2026-09-03 10:10:00",
+                    "壁纸时间（UTC）：2026-09-03 02:10:00",
+                    "分辨率：2200",
+                    "状态：正在下载",
+                ]
+            ),
+        )
+
+    def test_status_only_without_observation(self):
+        self.assertEqual(
+            format_tray_icon_title(None, status="更新失败"),
+            "\n".join([PROGRAM_NAME, "状态：更新失败"]),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

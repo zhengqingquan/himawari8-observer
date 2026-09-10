@@ -74,9 +74,14 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
 
         勿在壁纸工作线程调用 ``update_menu``：菜单打开时会卡死 Win32 托盘。
         """
+        if is_paused() and job_ref.status_is_idle:
+            status = "已暂停"
+        else:
+            status = job_ref.status_label
         icon.title = format_tray_icon_title(
             job_ref.applied_observation_time,
             pixel_side=job_ref.applied_pixel_side,
+            status=status,
         )
 
     def refresh_tray_menu() -> None:
@@ -369,5 +374,6 @@ def setup_tray_icon(job_ref: WallpaperJobRef):
 
     # 后台上墙只改悬停标题；菜单重建仅在托盘点击回调里做。
     job_ref.set_on_applied(refresh_tray_title)
+    job_ref.set_on_status_changed(refresh_tray_title)
     refresh_tray_menu()
     icon.run_detached()

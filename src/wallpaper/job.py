@@ -41,6 +41,23 @@ from src.wallpaper.update import is_paused, resume
 BuildJob = Callable[..., Callable[[], None]]
 RunPipeline = Callable[..., str | None]
 
+STATUS_READY = "就绪"
+STATUS_FETCHING = "正在获取观测时间"
+STATUS_DOWNLOADING = "正在下载"
+STATUS_COMPOSING = "正在合成"
+STATUS_SKIPPED = "已跳过"
+STATUS_FAILED = "更新失败"
+STATUS_PAUSED = "已暂停"
+
+_IDLE_STATUS_LABELS = frozenset(
+    {
+        STATUS_READY,
+        STATUS_SKIPPED,
+        STATUS_FAILED,
+        STATUS_PAUSED,
+    }
+)
+
 
 class WallpaperJobConfig(Protocol):
     """Config / 等价对象：提供装配 job 所需的 getter。"""
@@ -103,6 +120,7 @@ def build_wallpaper_job(
     run_pipeline: RunPipeline | None = None,
     applied_run_state: dict[str, Any] | None = None,
     refresh_postprocess: Callable[[], LivePostprocess] | None = None,
+    report_status: Callable[[str], None] | None = None,
 ) -> Callable[[], None]:
     """返回零参 callable；每次调用使用构造时冻结的参数。
 
@@ -127,6 +145,7 @@ def build_wallpaper_job(
             base_dir=base_dir,
             applied_run_state=state,
             refresh_postprocess=refresh_postprocess,
+            report_status=report_status,
         )
 
     return job
@@ -179,6 +198,8 @@ class WallpaperJobRef:
         self._observation_override: struct_time | None = None
         self._sync_applied_display_unlocked()
         self._on_applied: Callable[[], None] | None = None
+        self._on_status_changed: Callable[[], None] | None = None
+        self._status = STATUS_READY
         self._job = self._build_initial_job()
 
     def _sync_applied_display_unlocked(self) -> None:
@@ -201,6 +222,7 @@ class WallpaperJobRef:
             run_pipeline=self._run_pipeline,
             applied_run_state=self._applied_run_state,
             refresh_postprocess=self._refresh_postprocess,
+            report_status=self.set_status,
         )
 
     def _persist_applied_state_unlocked(self) -> None:
@@ -222,6 +244,35 @@ class WallpaperJobRef:
         """注册本轮流水线正常结束后的回调（锁外调用；供托盘刷新悬停标题等）。"""
         with self._lock:
             self._on_applied = callback
+
+    def set_on_status_changed(self, callback: Callable[[], None] | None) -> None:
+        """注册运行状态变化回调（锁外调用；供托盘刷新悬停状态行）。"""
+        with self._lock:
+            self._on_status_changed = callback
+
+    def set_status(self, label: str) -> None:
+        """更新悬停状态文案；相同则跳过通知。"""
+        with self._lock:
+            if self._status == label:
+                return
+            self._status = label
+            callback = self._on_status_changed
+        if callback is None:
+            return
+        try:
+            callback()
+        except Exception:
+            logging.exception("WallpaperJobRef on_status_changed callback failed")
+
+    @property
+    def status_label(self) -> str:
+        with self._lock:
+            return self._status
+
+    @property
+    def status_is_idle(self) -> bool:
+        with self._lock:
+            return self._status in _IDLE_STATUS_LABELS
 
     def _notify_applied(self) -> None:
         with self._lock:
@@ -282,6 +333,7 @@ class WallpaperJobRef:
             "applied_run_state": state,
             "record_run_key": record_run_key,
             "refresh_postprocess": self._refresh_postprocess,
+            "report_status": self.set_status,
         }
         if override is not None:
             kwargs["fetch_observation_time"] = lambda: override
@@ -311,6 +363,7 @@ class WallpaperJobRef:
             if provisional is None or not layout_or_postprocess_differs(last, provisional):
                 return False
 
+            self.set_status(STATUS_COMPOSING)
             obs = try_postprocess_fast_path(
                 applied_run_state=state,
                 run_key=provisional,
@@ -327,6 +380,7 @@ class WallpaperJobRef:
             with self._lock:
                 self._sync_applied_display_unlocked()
                 self._persist_applied_state_unlocked()
+            self.set_status(STATUS_READY)
             self._notify_applied()
             return True
 

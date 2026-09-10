@@ -239,6 +239,20 @@ class RunWallpaperUpdateTests(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertEqual(live_calls, [1])
 
+    def test_sets_failed_status_when_pipeline_raises(self):
+        statuses = []
+
+        class FailingPipeline:
+            def __call__(self):
+                raise RuntimeError("boom")
+
+            def set_status(self, label: str) -> None:
+                statuses.append(label)
+
+        with self.assertRaises(RuntimeError):
+            run_wallpaper_update(pipeline=FailingPipeline())
+        self.assertEqual(statuses, ["正在获取观测时间", "更新失败"])
+
 
 if __name__ == "__main__":
     unittest.main()

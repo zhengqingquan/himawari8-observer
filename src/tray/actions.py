@@ -70,23 +70,29 @@ def format_tray_icon_title(
     *,
     pixel_side: int | None = None,
     local_tz: tzinfo | None = None,
+    status: str | None = None,
 ) -> str:
-    """托盘悬停标题：有观测时间时附带本地/UTC 与上墙分辨率，否则仅程序名。"""
-    if not obs_time:
-        return PROGRAM_NAME
-    try:
-        local = format_observation_local_time(obs_time, local_tz=local_tz)
-    except (ValueError, OSError):
-        logging.exception("Failed to format tray icon title for observation time: %s", obs_time)
-        return PROGRAM_NAME
-    lines = [
-        PROGRAM_NAME,
-        f"壁纸时间（本地）：{local}",
-        f"壁纸时间（UTC）：{obs_time}",
-    ]
-    if pixel_side is not None:
-        lines.append(f"分辨率：{pixel_side}")
-    return "\n".join(lines)
+    """托盘悬停标题：程序名，可选观测时间/分辨率，可选运行状态行。"""
+    lines = [PROGRAM_NAME]
+    if obs_time:
+        try:
+            local = format_observation_local_time(obs_time, local_tz=local_tz)
+        except (ValueError, OSError):
+            logging.exception(
+                "Failed to format tray icon title for observation time: %s",
+                obs_time,
+            )
+            if status:
+                lines.append(f"状态：{status}")
+                return "\n".join(lines)
+            return PROGRAM_NAME
+        lines.append(f"壁纸时间（本地）：{local}")
+        lines.append(f"壁纸时间（UTC）：{obs_time}")
+        if pixel_side is not None:
+            lines.append(f"分辨率：{pixel_side}")
+    if status:
+        lines.append(f"状态：{status}")
+    return "\n".join(lines) if len(lines) > 1 else PROGRAM_NAME
 
 
 def _tray_icon_path() -> Path:
