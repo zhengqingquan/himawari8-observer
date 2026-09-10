@@ -25,7 +25,7 @@
   <img src="https://github.com/zhengqingquan/gallery/blob/main/himawari8-observer/1/154000_0_0.png?raw=true" width="300" alt="Himawari sample 2" />
 </p>
 
-数据源：[himawari8.nict.go.jp](https://himawari8.nict.go.jp/) · [himawari8-dl.nict.go.jp](https://himawari8-dl.nict.go.jp/)
+数据源：[himawari8.nict.go.jp](https://himawari8.nict.go.jp/)
 
 </div>
 

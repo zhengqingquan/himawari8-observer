@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### 修复
+
+- 观测时间 `latest.json` 改为与瓦片同源的 `himawari8.nict.go.jp`；`himawari8-dl.nict.go.jp` 现返回 403 导致无法更新壁纸。
+
 ## [1.7.0] - 2026-09-09
 
 ### 新增

@@ -27,6 +27,8 @@ class FetchObservationTimeTests(unittest.TestCase):
         got = fetch_observation_time(session)
         self.assertEqual(got, time.strptime("2026-09-03 02:10:00", "%Y-%m-%d %H:%M:%S"))
         session.get.assert_called_once()
+        url = session.get.call_args.args[0]
+        self.assertEqual(url, "https://himawari8.nict.go.jp/img/D531106/latest.json")
 
     def test_http_error_propagates(self):
         session = MagicMock()

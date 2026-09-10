@@ -9,7 +9,7 @@ from time import strftime, strptime, struct_time
 
 import requests
 
-_LATEST_JSON_URL = "https://himawari8-dl.nict.go.jp/himawari8/img/D531106/latest.json"
+_LATEST_JSON_URL = "https://himawari8.nict.go.jp/img/D531106/latest.json"
 _OBS_TIME_FMT = "%Y-%m-%d %H:%M:%S"
 _FULL_DISK_INTERVAL_MINUTES = 10
 

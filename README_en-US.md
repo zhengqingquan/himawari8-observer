@@ -25,7 +25,7 @@ Lightweight system-tray app · Local compositing · Current version **v1.7.0**
   <img src="https://github.com/zhengqingquan/gallery/blob/main/himawari8-observer/1/154000_0_0.png?raw=true" width="300" alt="Himawari sample 2" />
 </p>
 
-Data sources: [himawari8.nict.go.jp](https://himawari8.nict.go.jp/) · [himawari8-dl.nict.go.jp](https://himawari8-dl.nict.go.jp/)
+Data source: [himawari8.nict.go.jp](https://himawari8.nict.go.jp/)
 
 </div>
 
